@@ -1,0 +1,774 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - JNC_Kalasi{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="dashboard-wrapper">
+  {% macro admin_url(endpoint) %}
+    {% if school %}
+      {{ url_for('school_admin.' ~ endpoint, school_slug=school.slug) }}
+    {% else %}
+      {{ url_for('admin.' ~ endpoint) }}
+    {% endif %}
+  {% endmacro %}
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Principal</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('dashboard') }}" class="sidebar-menu-link active">
+            <i class="fas fa-chart-line"></i>
+            <span>Tableau de Bord</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    {% if is_super_admin %}
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Administration</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('schools') }}" class="sidebar-menu-link">
+            <i class="fas fa-school"></i>
+            <span>Gestion des écoles</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('users') }}" class="sidebar-menu-link">
+            <i class="fas fa-users-cog"></i>
+            <span>Admins des écoles</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('subscriptions_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-credit-card"></i>
+            <span>Abonnements & Assistance</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('global_reports') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-contract"></i>
+            <span>Rapports Globaux</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('global_reports') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-contract"></i>
+            <span>Rapports Globaux</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('bulletins_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-pdf"></i>
+            <span>Paramétrage Bulletins</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('academic_years') }}" class="sidebar-menu-link">
+            <i class="fas fa-calendar-days"></i>
+            <span>Années Scolaires</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('audit_logs') }}" class="sidebar-menu-link">
+            <i class="fas fa-shield-halved"></i>
+            <span>Audit & Sécurité</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('backups') }}" class="sidebar-menu-link">
+            <i class="fas fa-database"></i>
+            <span>Sauvegarde & Restauration</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('communications') }}" class="sidebar-menu-link">
+            <i class="fas fa-bullhorn"></i>
+            <span>Communications</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if not is_super_admin %}
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Gestion Académique</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('students') }}" class="sidebar-menu-link">
+            <i class="fas fa-user-graduate"></i>
+            <span>Inscription élèves</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('sections') }}" class="sidebar-menu-link">
+            <i class="fas fa-layer-group"></i>
+            <span>Sections/Niveaux/Classes</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('courses') }}" class="sidebar-menu-link">
+            <i class="fas fa-book"></i>
+            <span>Cours/Attributions</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('professors') }}" class="sidebar-menu-link">
+            <i class="fas fa-chalkboard-user"></i>
+            <span>Professeurs</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('attendance_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Gestion des présences</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Évaluations</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('grades_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-star"></i>
+            <span>Gestion des cotes</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('bulletins_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-pdf"></i>
+            <span>Paramétrage Bulletins</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('exam_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Gestion Examen</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('deliberation_execute') }}" class="sidebar-menu-link">
+            <i class="fas fa-balance-scale"></i>
+            <span>Délibération</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('deliberation_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-sliders-h"></i>
+            <span>Paramètres Délibération</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_school_admin() %}
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Configuration</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{% if school %}{{ url_for('school_admin.edit_school', school_slug=school.slug, school_id=current_user.school_id) }}{% else %}{{ url_for('admin.edit_school', school_id=current_user.school_id) }}{% endif %}" class="sidebar-menu-link">
+            <i class="fas fa-cog"></i>
+            <span>Paramètres école</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ secretary_grades_url }}" class="sidebar-menu-link">
+            <i class="fas fa-user-tie"></i>
+            <span>Déverrouillage cours</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('register_user_redirect') }}" class="sidebar-menu-link">
+            <i class="fas fa-user-plus"></i>
+            <span>Ajouter utilisateur</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ admin_url('school_reset') }}" class="sidebar-menu-link">
+            <i class="fas fa-rotate-left"></i>
+            <span>Réinitialisations école</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    {% if school %}
+    <div class="mb-4">
+      <div class="card school-header-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+        <div class="card-body">
+          <div class="row align-items-center">
+            {% if school.logo %}
+            <div class="col-auto">
+              <img src="{{ school.logo }}" alt="{{ school.name }}" class="school-logo" style="max-height: 80px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+            {% endif %}
+            <div class="col">
+              <h2 class="mb-1" style="color: white; font-weight: 700;">{{ school.name }}</h2>
+              {% if school.slogan %}
+              <p class="mb-0" style="font-size: 1.05rem; opacity: 0.95;"><i class="fas fa-quote-left" style="margin-right: 0.5rem; font-size: 0.8em;"></i>{{ school.slogan }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGE TITLE -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+      <div>
+        <h1 class="page-title" style="margin-bottom: 0;">
+          <i class="fas fa-tachometer-alt"></i>
+          {% if school %}
+            Tableau de Bord - {{ school.name }}
+          {% else %}
+            Tableau de Bord
+          {% endif %}
+        </h1>
+        {% if school %}
+          <p class="text-muted mb-0">Vue de gestion de l'école sélectionnée.</p>
+        {% endif %}
+      </div>
+      {% if not is_super_admin and secretary_grades_url %}
+      <a href="{{ secretary_grades_url }}" class="btn btn-outline-primary">
+        <i class="fas fa-user-tie"></i> Déverrouillage cours
+      </a>
+      {% endif %}
+    </div>
+
+    {% if is_super_admin and schools %}
+    <div class="mb-4">
+      <div class="card p-3 shadow-sm">
+        <div class="row align-items-center g-3">
+          <div class="col-12 col-md-auto">
+            <strong>Gérer une école :</strong>
+          </div>
+          <div class="col-12 col-md-6">
+            <select class="form-select" onchange="if (this.value) window.location.href=this.value;">
+              <option value="{{ url_for('admin.dashboard') }}" {% if not school %}selected{% endif %}>
+                Vue globale du système
+              </option>
+              {% for school_option in schools %}
+                <option value="{{ url_for('school_admin.dashboard', school_slug=school_option.slug) }}" {% if school and school_option.id == school.id %}selected{% endif %}>
+                  {{ school_option.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if school %}
+          <div class="col-auto">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">Retour à la vue globale</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- STATISTICS SECTION -->
+    <div class="mb-4">
+      <div class="row g-3">
+        {% if is_super_admin and not school %}
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card primary">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Écoles</div>
+                  <div class="stat-value">{{ school_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #3498db; opacity: 0.3;">
+                  <i class="fas fa-school"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card success">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Admins d'école</div>
+                  <div class="stat-value">{{ school_admin_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #27ae60; opacity: 0.3;">
+                  <i class="fas fa-users-cog"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card warning">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Élèves totaux</div>
+                  <div class="stat-value">{{ total_students }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #f39c12; opacity: 0.3;">
+                  <i class="fas fa-user-graduate"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card danger">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Inscriptions</div>
+                  <div class="stat-value">{{ total_enrollments }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #e74c3c; opacity: 0.3;">
+                  <i class="fas fa-clipboard-list"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card success">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Écoles abonnées actives</div>
+                  <div class="stat-value">{{ active_subscription_school_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #27ae60; opacity: 0.3;">
+                  <i class="fas fa-credit-card"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card warning">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Abonnements en attente</div>
+                  <div class="stat-value">{{ pending_subscription_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #f39c12; opacity: 0.3;">
+                  <i class="fas fa-hourglass-half"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card primary">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Tickets assistance ouverts</div>
+                  <div class="stat-value">{{ open_support_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #3498db; opacity: 0.3;">
+                  <i class="fas fa-headset"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card success">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Total Enseignants</div>
+                  <div class="stat-value">{{ total_professors_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #27ae60; opacity: 0.3;">
+                  <i class="fas fa-chalkboard-user"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card warning">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Cotes Enregistrées</div>
+                  <div class="stat-value">{{ total_grades_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #f39c12; opacity: 0.3;">
+                  <i class="fas fa-star"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card danger">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Taux d'utilisation</div>
+                  <div class="stat-value">{{ usage_rate }}%</div>
+                </div>
+                <div style="font-size: 2rem; color: #e74c3c; opacity: 0.3;">
+                  <i class="fas fa-chart-pie"></i>
+                </div>
+              </div>
+              <div class="progress mt-2" style="height: 5px;">
+                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ usage_rate }}%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Super Admin Actions -->
+          <div class="col-12 mt-4">
+            <h5 class="mb-3" style="color: #2c3e50; font-weight: 700; border-bottom: 2px solid #3498db; display: inline-block; padding-bottom: 5px;">
+              <i class="fas fa-cog" style="color: #3498db;"></i> Gestion Système
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
+                      <i class="fas fa-school"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Gestion des écoles</h6>
+                    <p class="text-muted small">Ajouter/modifier écoles</p>
+                    <a href="{{ admin_url('schools') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white;">
+                      <i class="fas fa-users-cog"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Admins écoles</h6>
+                    <p class="text-muted small">Gérer les administrateurs</p>
+                    <a href="{{ admin_url('users') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #16a085, #1abc9c); color: white;">
+                      <i class="fas fa-headset"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Abonnements & Assistance</h6>
+                    <p class="text-muted small">Paiements, activation, maintenance distante</p>
+                    <a href="{{ admin_url('subscriptions_management') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #2c3e50, #000000); color: white;">
+                      <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Audit & Sécurité</h6>
+                    <p class="text-muted small">Journaux, cotes modifiées, intrusions</p>
+                    <a href="{{ admin_url('audit_logs') }}" class="btn btn-primary btn-sm w-100">Consulter</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;">
+                      <i class="fas fa-database"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Sauvegardes</h6>
+                    <p class="text-muted small">Backup DB & Exportation SQL</p>
+                    <a href="{{ admin_url('backups') }}" class="btn btn-primary btn-sm w-100">Gérer</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+                      <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Communications</h6>
+                    <p class="text-muted small">Annonces & Notifications globales</p>
+                    <a href="{{ admin_url('communications') }}" class="btn btn-primary btn-sm w-100">Diffuser</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <div class="card action-card-modern h-100">
+                  <div class="card-body text-center">
+                    <div class="action-icon" style="background: linear-gradient(135deg, #34495e, #2c3e50); color: white;">
+                      <i class="fas fa-file-contract"></i>
+                    </div>
+                    <h6 class="mt-3 mb-2">Rapports Globaux</h6>
+                    <p class="text-muted small">Performances & Finance</p>
+                    <a href="{{ admin_url('global_reports') }}" class="btn btn-primary btn-sm w-100">Générer</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card success">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Élèves inscrits</div>
+                  <div class="stat-value">{{ student_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #27ae60; opacity: 0.3;">
+                  <i class="fas fa-user-graduate"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card primary">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Inscriptions</div>
+                  <div class="stat-value">{{ enrollment_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #3498db; opacity: 0.3;">
+                  <i class="fas fa-clipboard-list"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card warning">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Sections</div>
+                  <div class="stat-value">{{ section_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #f39c12; opacity: 0.3;">
+                  <i class="fas fa-layer-group"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6">
+            <div class="stat-card danger">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="stat-label">Utilisateurs</div>
+                  <div class="stat-value">{{ user_count }}</div>
+                </div>
+                <div style="font-size: 2rem; color: #e74c3c; opacity: 0.3;">
+                  <i class="fas fa-users"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1"><i class="fas fa-credit-card text-primary me-2"></i>Abonnement de l'école</h6>
+                    {% if subscription_snapshot and subscription_snapshot.active %}
+                      <div class="text-success fw-semibold">Abonnement actif: {{ subscription_snapshot.active.plan_name }}</div>
+                      <div class="small text-muted">Validité: {{ subscription_snapshot.active.start_date.strftime('%d/%m/%Y') }} - {{ subscription_snapshot.active.end_date.strftime('%d/%m/%Y') }}</div>
+                    {% elif subscription_snapshot and subscription_snapshot.latest %}
+                      <div class="text-warning fw-semibold">Aucun abonnement actif actuellement</div>
+                      <div class="small text-muted">Dernier statut: {{ subscription_snapshot.latest.status }}</div>
+                    {% else %}
+                      <div class="text-danger fw-semibold">Aucun abonnement enregistré</div>
+                    {% endif %}
+                  </div>
+                  <div class="text-end">
+                    <span class="badge {% if subscription_snapshot and subscription_snapshot.active %}bg-success{% else %}bg-danger{% endif %}">
+                      {% if subscription_snapshot and subscription_snapshot.active %}École active{% else %}Risque de désactivation{% endif %}
+                    </span>
+                    <div class="small text-muted mt-1">Tickets assistance ouverts: {{ support_open_count or 0 }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+<!-- ACTION CARDS SECTION -->
+          <div class="col-12 mt-4">
+            <h5 class="mb-3" style="color: #2c3e50; font-weight: 700;">
+              <i class="fas fa-lightning-bolt" style="color: #f39c12;"></i> Actions rapides
+            </h5>
+          </div>
+
+          <!-- Gestion Académique -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white;">
+                  <i class="fas fa-user-graduate"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Inscription élèves</h6>
+                <p class="text-muted small">Ajouter et gérer les inscriptions</p>
+                <a href="{{ admin_url('students') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #f39c12, #d68910); color: white;">
+                  <i class="fas fa-layer-group"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Sections/Niveaux</h6>
+                <p class="text-muted small">Paramétrer sections et niveaux</p>
+                <a href="{{ admin_url('sections') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="card action-card-modern h-100">
+                <div class="card-body text-center">
+                  <div class="action-icon" style="background: linear-gradient(135deg, #ff7e5f, #feb47b); color: white;">
+                    <i class="fas fa-rocket"></i>
+                  </div>
+                  <h6 class="mt-3 mb-2">Promotion de classe</h6>
+                  <p class="text-muted small">Promouvoir les élèves vers la nouvelle année</p>
+                  <a href="{{ admin_url('class_promotion') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+                </div>
+              </div>
+            </div>
+
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #27ae60, #229954); color: white;">
+                  <i class="fas fa-book"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Cours/Attributions</h6>
+                <p class="text-muted small">Gérer les cours et les professeurs</p>
+                <a href="{{ admin_url('courses') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white;">
+                  <i class="fas fa-chalkboard-user"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Professeurs</h6>
+                <p class="text-muted small">Gérer les professeurs</p>
+                <a href="{{ admin_url('professors') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Presences -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white;">
+                  <i class="fas fa-clipboard-check"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Presences</h6>
+                <p class="text-muted small">Suivre les presences</p>
+                <a href="{{ admin_url('attendance_management') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Évaluations -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #e67e22, #d35400); color: white;">
+                  <i class="fas fa-star"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Gestion cotes</h6>
+                <p class="text-muted small">Gérer les évaluations</p>
+                <a href="{{ admin_url('grades_management') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #1abc9c, #16a085); color: white;">
+                  <i class="fas fa-file-pdf"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Bulletins</h6>
+                <p class="text-muted small">Paramétrer les bulletins</p>
+                <a href="{{ admin_url('bulletins_config') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #34495e, #2c3e50); color: white;">
+                  <i class="fas fa-user-tie"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Déverrouillage cours</h6>
+                <p class="text-muted small">Accès direct au déverrouillage des périodes</p>
+                <a href="{{ secretary_grades_url }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+<div class="col-md-6 col-lg-3">
+            <div class="card action-card-modern h-100">
+              <div class="card-body text-center">
+                <div class="action-icon" style="background: linear-gradient(135deg, #2980b9, #1f618d); color: white;">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+                <h6 class="mt-3 mb-2">Ajouter User</h6>
+                <p class="text-muted small">Créer un nouvel utilisateur</p>
+                <a href="{{ admin_url('register_user_redirect') }}" class="btn btn-primary btn-sm w-100">Accéder</a>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+</div>
+
+<style>
+/* Modern Action Cards */
+.action-card-modern {
+  background: white;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.action-card-modern:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.action-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-card-modern h6 {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.action-card-modern .text-muted {
+  font-size: 0.85rem;
+}
+
+.action-card-modern .btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+</style>
+{% endblock %}

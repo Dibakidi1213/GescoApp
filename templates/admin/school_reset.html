@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Réinitialisations école{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-4">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h2 class="card-title">Réinitialisations de l'école</h2>
+          <p class="text-muted">Accédez aux opérations de réinitialisation au niveau de l'école pour les classes, les niveaux et les mots de passe des professeurs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row gy-4">
+    <div class="col-lg-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-lg-4">
+              <div class="card h-100 border-secondary-subtle">
+                <div class="card-body">
+                  <h5 class="card-title">Réinitialiser le mot de passe d'un professeur</h5>
+                  <p class="text-muted">Le mot de passe sera remis à <code>prof123</code> pour le professeur sélectionné.</p>
+                  <form method="post" action="{{ url_for('admin.reset_professor_password_form') }}" onsubmit="return confirm('Réinitialiser le mot de passe de ce professeur à prof123 ?');">
+                    <div class="mb-3">
+                      <label for="professorSelect" class="form-label">Professeur</label>
+                      <select id="professorSelect" name="professor_id" class="form-select" required>
+                        <option value="">Choisir un professeur</option>
+                        {% for professor in professors %}
+                        <option value="{{ professor.id }}">{{ professor.full_name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary w-100">Réinitialiser le mot de passe</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="row gy-4">
+                <div class="col-lg-6">
+                  <div class="card h-100 border-danger-subtle">
+                    <div class="card-body">
+                      <h5 class="card-title">Réinitialiser une classe</h5>
+                      <p class="text-muted">Cette action supprime définitivement tous les élèves de la classe sélectionnée.</p>
+                      <form method="post" action="{{ url_for('admin.reset_student_class') }}" onsubmit="return confirm('Cette opération supprimera définitivement tous les élèves de cette classe. Continuer ?');">
+                        <div class="mb-3">
+                          <label for="resetClassSection" class="form-label">Section</label>
+                          <select id="resetClassSection" name="reset_section_name_class" class="form-select" required>
+                            <option value="">Choisir une section</option>
+                            {% for section_name in section_names %}
+                            <option value="{{ section_name }}">{{ section_name }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label for="resetClassLevel" class="form-label">Niveau</label>
+                          <select id="resetClassLevel" name="reset_level_class" class="form-select" required disabled>
+                            <option value="">Choisir un niveau</option>
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label for="resetClassName" class="form-label">Classe</label>
+                          <select id="resetClassName" name="reset_class_name" class="form-select" required disabled>
+                            <option value="">Choisir une classe</option>
+                          </select>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Réinitialiser la classe</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-lg-6">
+                  <div class="card h-100 border-warning-subtle">
+                    <div class="card-body">
+                      <h5 class="card-title">Réinitialiser un niveau</h5>
+                      <p class="text-muted">Cette action supprime définitivement tous les élèves du niveau sélectionné.</p>
+                      <form method="post" action="{{ url_for('admin.reset_student_level') }}" onsubmit="return confirm('Cette opération supprimera définitivement tous les élèves du niveau sélectionné. Continuer ?');">
+                        <div class="mb-3">
+                          <label for="resetLevelSection" class="form-label">Section</label>
+                          <select id="resetLevelSection" name="reset_section_name_level" class="form-select" required>
+                            <option value="">Choisir une section</option>
+                            {% for section_name in section_names %}
+                            <option value="{{ section_name }}">{{ section_name }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label for="resetLevelLevel" class="form-label">Niveau</label>
+                          <select id="resetLevelLevel" name="reset_level_level" class="form-select" required disabled>
+                            <option value="">Choisir un niveau</option>
+                          </select>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">Réinitialiser le niveau</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    const sectionsCatalog = {{ sections_catalog|tojson }};
+
+    const resetClassSection = document.getElementById('resetClassSection');
+    const resetClassLevel = document.getElementById('resetClassLevel');
+    const resetClassName = document.getElementById('resetClassName');
+    const resetLevelSection = document.getElementById('resetLevelSection');
+    const resetLevelLevel = document.getElementById('resetLevelLevel');
+
+    function populateSelect(selectElement, placeholder, items) {
+      selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+      for (const item of items) {
+        const option = document.createElement('option');
+        option.value = item;
+        option.textContent = item;
+        selectElement.appendChild(option);
+      }
+      selectElement.disabled = items.length === 0;
+    }
+
+    function getLevelsForSection(sectionName) {
+      return [...new Set(sectionsCatalog.filter(s => s.name === sectionName).map(s => s.level))].filter(Boolean).sort();
+    }
+
+    function getClassesForSectionAndLevel(sectionName, levelName) {
+      return [...new Set(sectionsCatalog
+        .filter(s => s.name === sectionName && s.level === levelName)
+        .map(s => s.class_name))]
+        .filter(Boolean)
+        .sort();
+    }
+
+    function wireHierarchy(sectionSelect, levelSelect, classSelect) {
+      if (!sectionSelect) return;
+
+      sectionSelect.addEventListener('change', () => {
+        const sectionName = sectionSelect.value;
+        const levels = sectionName ? getLevelsForSection(sectionName) : [];
+        populateSelect(levelSelect, 'Choisir un niveau', levels);
+        if (classSelect) {
+          populateSelect(classSelect, 'Choisir une classe', []);
+        }
+      });
+
+      if (levelSelect) {
+        levelSelect.addEventListener('change', () => {
+          if (!classSelect) return;
+          const sectionName = sectionSelect.value;
+          const levelName = levelSelect.value;
+          const classes = (sectionName && levelName) ? getClassesForSectionAndLevel(sectionName, levelName) : [];
+          populateSelect(classSelect, 'Choisir une classe', classes);
+        });
+      }
+    }
+
+    wireHierarchy(resetClassSection, resetClassLevel, resetClassName);
+    wireHierarchy(resetLevelSection, resetLevelLevel, null);
+  </script>
+{% endblock %}

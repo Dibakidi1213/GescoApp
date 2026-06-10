@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fiche de présence - {{ class_label }}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111827;
+    }
+
+    body {
+      margin: 0;
+      background: #f3f4f6;
+    }
+
+    .print-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #ffffff;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    .print-toolbar button {
+      border: 1px solid #1d4ed8;
+      background: #1d4ed8;
+      color: #ffffff;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .print-toolbar button.secondary {
+      background: #ffffff;
+      color: #1d4ed8;
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 14px auto;
+      padding: 16mm 14mm;
+      background: #ffffff;
+      box-sizing: border-box;
+      page-break-after: always;
+    }
+
+    .sheet:last-child {
+      page-break-after: auto;
+    }
+
+    .school-name {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .document-title {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin: 12px 0;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 18px;
+      margin: 12px 0 16px;
+      font-size: 13px;
+    }
+
+    .meta-grid strong {
+      display: inline-block;
+      min-width: 110px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      border: 1px solid #111827;
+      padding: 6px 7px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #e5e7eb;
+      text-align: left;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .col-number {
+      width: 34px;
+      text-align: center;
+    }
+
+    .col-gender {
+      width: 90px;
+    }
+
+    .col-status {
+      width: 150px;
+    }
+
+    .status-present {
+      color: #166534;
+      font-weight: 700;
+    }
+
+    .status-absent {
+      color: #991b1b;
+      font-weight: 700;
+    }
+
+    .status-malade {
+      color: #92400e;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      width: 210mm;
+      margin: 14px auto;
+      padding: 24px;
+      background: #ffffff;
+      box-sizing: border-box;
+      text-align: center;
+      border: 1px solid #d1d5db;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .print-toolbar {
+        display: none;
+      }
+
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      .empty-state {
+        width: auto;
+        margin: 0;
+        border: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar">
+    <button type="button" class="secondary" onclick="window.close()">Fermer</button>
+    <button type="button" onclick="window.print()">Imprimer</button>
+  </div>
+
+  {% if days %}
+    {% for day in days %}
+    <section class="sheet">
+      <div class="school-name">{{ school.name if school else 'École' }}</div>
+      <div class="document-title">Fiche de présence</div>
+
+      <div class="meta-grid">
+        <div><strong>Classe :</strong> {{ class_label or '—' }}</div>
+        <div><strong>Date :</strong> {{ day.date_label }}</div>
+        <div><strong>Période :</strong> {{ period_label }}</div>
+        <div><strong>Année scolaire :</strong> {{ academic_year }}</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="col-number">N°</th>
+            <th>Nom complet</th>
+            <th class="col-gender">Sexe</th>
+            <th class="col-status">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in day.rows %}
+          <tr>
+            <td class="col-number">{{ loop.index }}</td>
+            <td>{{ row.student_name }}</td>
+            <td>{{ row.gender_label or '—' }}</td>
+            <td class="status-{{ row.status }}">{{ row.status_label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      Aucune date imprimable dans la période du {{ start_date_label }} au {{ end_date_label }}.
+    </div>
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+
+{% block title %}Secrétaire - Saisie de la Conduite{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5 secretary-dashboard">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div>
+      <h2 class="mb-1">📋 Saisie de la Conduite</h2>
+      <small class="text-muted">Accès {{ access_label or 'secrétaire' }} pour enregistrer la conduite des élèves.</small>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ back_url or url_for('secretary.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+      </a>
+    </div>
+  </div>
+  <hr>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header py-2">
+      <strong class="small"><i class="fas fa-filter text-muted me-1"></i> Filtres de sélection</strong>
+    </div>
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+          <label for="sectionSelect" class="form-label small text-muted mb-1">Section</label>
+          <select class="form-select form-select-sm" id="sectionSelect">
+            <option value="">-- Sélectionner une section --</option>
+            {% set seen_sections = [] %}
+            {% for section in sections %}
+              {% if section.name not in seen_sections %}
+                <option value="{{ section.name }}">{{ section.name }}</option>
+                {% set _ = seen_sections.append(section.name) %}
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="levelSelect" class="form-label small text-muted mb-1">Niveau</label>
+          <select class="form-select form-select-sm" id="levelSelect" disabled>
+            <option value="">-- Sélectionner un niveau --</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label for="classSelect" class="form-label small text-muted mb-1">Classe</label>
+          <select class="form-select form-select-sm" id="classSelect" disabled>
+            <option value="">-- Sélectionner une classe --</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3" id="conduitePanel" style="display: none;">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+      <strong class="small">Saisie de la conduite</strong>
+      <button class="btn btn-primary btn-sm" id="saveConduiteBtn">
+        <i class="fas fa-save"></i> Enregistrer
+      </button>
+    </div>
+    <div class="card-body">
+      <div id="actionStatus" class="mb-3"></div>
+      
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Élève</th>
+              <th class="text-center" style="width: 15%">1èP</th>
+              <th class="text-center" style="width: 15%">2èP</th>
+              <th class="text-center" style="width: 15%">3èP</th>
+              <th class="text-center" style="width: 15%">4èP</th>
+            </tr>
+          </thead>
+          <tbody id="studentsTableBody">
+            <!-- Rempli par JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const sectionSelect = document.getElementById('sectionSelect');
+  const levelSelect = document.getElementById('levelSelect');
+  const classSelect = document.getElementById('classSelect');
+  const conduitePanel = document.getElementById('conduitePanel');
+  const studentsTableBody = document.getElementById('studentsTableBody');
+  const saveConduiteBtn = document.getElementById('saveConduiteBtn');
+  const actionStatus = document.getElementById('actionStatus');
+
+  const secretaryBaseUrl = {{ url_for('secretary.dashboard')|tojson }};
+  
+  let currentClassId = null;
+
+  function buildSecretaryUrl(path = '') {
+    const base = secretaryBaseUrl.endsWith('/') ? secretaryBaseUrl : `${secretaryBaseUrl}/`;
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+    return `${base}${cleanPath}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showStatus(message, isError = false) {
+    actionStatus.innerHTML = `
+      <div class="alert alert-${isError ? 'danger' : 'success'} alert-dismissible fade show" role="alert">
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+  }
+
+  // Event Listeners for selects
+  sectionSelect.addEventListener('change', async function() {
+    const sectionName = this.value;
+    levelSelect.innerHTML = '<option value="">-- Sélectionner un niveau --</option>';
+    classSelect.innerHTML = '<option value="">-- Sélectionner une classe --</option>';
+    levelSelect.disabled = true;
+    classSelect.disabled = true;
+    conduitePanel.style.display = 'none';
+    currentClassId = null;
+
+    if (!sectionName) return;
+
+    try {
+      const response = await fetch(buildSecretaryUrl(`api/levels/${encodeURIComponent(sectionName)}`));
+      const levels = await response.json();
+      levels.forEach(level => {
+        const option = document.createElement('option');
+        option.value = level;
+        option.textContent = level;
+        levelSelect.appendChild(option);
+      });
+      levelSelect.disabled = false;
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  levelSelect.addEventListener('change', async function() {
+    const sectionName = sectionSelect.value;
+    const level = this.value;
+    classSelect.innerHTML = '<option value="">-- Sélectionner une classe --</option>';
+    classSelect.disabled = true;
+    conduitePanel.style.display = 'none';
+    currentClassId = null;
+
+    if (!level) return;
+
+    try {
+      const response = await fetch(buildSecretaryUrl(`api/classes/${encodeURIComponent(sectionName)}/${encodeURIComponent(level)}`));
+      const classes = await response.json();
+      classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls.id;
+        option.textContent = cls.class_name || cls.name;
+        classSelect.appendChild(option);
+      });
+      classSelect.disabled = false;
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  classSelect.addEventListener('change', async function() {
+    currentClassId = this.value;
+    if (!currentClassId) {
+      conduitePanel.style.display = 'none';
+      return;
+    }
+
+    await loadClassConduite(currentClassId);
+  });
+
+  studentsTableBody.addEventListener('keydown', function(event) {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    const target = event.target;
+    if (!target.matches('.conduct-input')) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const currentRow = target.closest('tr');
+    const currentCell = target.closest('td');
+    if (!currentRow || !currentCell) {
+      return;
+    }
+
+    const cellIndex = Array.prototype.indexOf.call(currentRow.children, currentCell);
+    const nextRow = currentRow.nextElementSibling;
+    if (!nextRow) {
+      return;
+    }
+
+    const nextInputCell = nextRow.children[cellIndex];
+    if (!nextInputCell) {
+      return;
+    }
+
+    const nextInput = nextInputCell.querySelector('.conduct-input');
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select();
+    }
+  });
+
+  async function loadClassConduite(classId) {
+    actionStatus.innerHTML = '';
+    studentsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
+    conduitePanel.style.display = 'block';
+    saveConduiteBtn.disabled = true;
+
+    try {
+      const response = await fetch(buildSecretaryUrl(`api/conduite/${classId}`));
+      const students = await response.json();
+      
+      if (students.error) {
+        showStatus(students.error, true);
+        studentsTableBody.innerHTML = '';
+        return;
+      }
+
+      if (students.length === 0) {
+        studentsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Aucun élève dans cette classe.</td></tr>';
+        return;
+      }
+
+      studentsTableBody.innerHTML = students.map(student => `
+        <tr data-student-id="${student.student_id}">
+          <td class="align-middle fw-medium">${escapeHtml(student.full_name)}</td>
+          <td><input type="text" class="form-control form-control-sm text-center conduct-input" data-period="1èP" value="${escapeHtml(student.conducts['1èP'])}" placeholder="Ex: E, TB..." autocomplete="off" /></td>
+          <td><input type="text" class="form-control form-control-sm text-center conduct-input" data-period="2èP" value="${escapeHtml(student.conducts['2èP'])}" placeholder="Ex: E, TB..." autocomplete="off" /></td>
+          <td><input type="text" class="form-control form-control-sm text-center conduct-input" data-period="3èP" value="${escapeHtml(student.conducts['3èP'])}" placeholder="Ex: E, TB..." autocomplete="off" /></td>
+          <td><input type="text" class="form-control form-control-sm text-center conduct-input" data-period="4èP" value="${escapeHtml(student.conducts['4èP'])}" placeholder="Ex: E, TB..." autocomplete="off" /></td>
+        </tr>
+      `).join('');
+
+      saveConduiteBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      showStatus('Erreur lors du chargement des données.', true);
+      studentsTableBody.innerHTML = '';
+    }
+  }
+
+  saveConduiteBtn.addEventListener('click', async function() {
+    if (!currentClassId) return;
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+    
+    const grades = [];
+    const rows = studentsTableBody.querySelectorAll('tr[data-student-id]');
+    
+    rows.forEach(row => {
+      const studentId = row.dataset.studentId;
+      const inputs = row.querySelectorAll('.conduct-input');
+      inputs.forEach(input => {
+        grades.push({
+          student_id: parseInt(studentId),
+          period: input.dataset.period,
+          value: input.value.trim()
+        });
+      });
+    });
+
+    try {
+      const response = await fetch(buildSecretaryUrl(`api/conduite/${currentClassId}`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ grades: grades })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        showStatus(data.message || 'Cotes enregistrées avec succès.');
+      } else {
+        showStatus(data.error || 'Erreur lors de l\'enregistrement.', true);
+      }
+    } catch (err) {
+      console.error(err);
+      showStatus('Erreur de connexion.', true);
+    } finally {
+      this.disabled = false;
+      this.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
+    }
+  });
+});
+</script>
+{% endblock %}

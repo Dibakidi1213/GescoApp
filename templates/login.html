@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Connexion - JNC_Kalasi{% endblock %}
+{% block content %}
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>JNC_Kalasi</h1>
+      <p class="tagline">Plateforme de Gestion Scolaire Moderne</p>
+      {% if school %}
+      <div class="alert alert-info mt-3" role="alert">
+        Accès à l’espace de l’école : <strong>{{ school.name }}</strong>
+      </div>
+      {% endif %}
+    </div>
+    <div class="login-body">
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label" for="username">Nom d'utilisateur</label>
+          <input id="username" type="text" name="username" class="form-control" placeholder="Entrez votre nom d'utilisateur" title="Nom d'utilisateur" required autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="password">Mot de passe</label>
+          <input id="password" type="password" name="password" class="form-control" placeholder="Entrez votre mot de passe" title="Mot de passe" required>
+        </div>
+        <button type="submit" class="btn-login">Se connecter</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Configuration de la Délibération{% endblock %}
+{% block content %}
+<div class="dashboard-wrapper">
+  <aside class="sidebar no-print">
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Evaluations</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-menu-link">
+            <i class="fas fa-table"></i>
+            <span>Centralisation</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+            <i class="fas fa-balance-scale"></i>
+            <span>Délibération</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link active">
+            <i class="fas fa-cogs"></i>
+            <span>Paramètres Délibération</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="page-title mb-1">
+          <i class="fas fa-cogs text-primary"></i> Critères de Délibération
+        </h1>
+        <p class="text-muted mb-0">Paramétrez les critères pour délibérer les cotes des élèves selon le règlement.</p>
+      </div>
+    </div>
+
+    <form method="post" class="card shadow-sm border-0 mb-4">
+      <div class="card-body">
+        <ul class="nav nav-tabs mb-3" id="deliberationTabs" role="tablist">
+          {% for group in groups %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if loop.first %}active{% endif %}" id="tab-{{ group }}" data-bs-toggle="tab" data-bs-target="#content-{{ group }}" type="button" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}">
+              {{ group_labels.get(group, group|replace('_', ' ')|title) }}
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <div class="tab-content" id="deliberationTabsContent">
+          {% for group in groups %}
+          {% set criteria = criteria_dict.get(group) %}
+          <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="content-{{ group }}" role="tabpanel" tabindex="0">
+            
+            <h5 class="mb-3 text-primary border-bottom pb-2">Passage Automatique</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Pourcentage minimum (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_percentage_auto" value="{{ criteria.min_percentage_auto if criteria else 50 }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Maximum d'échecs tolérés</label>
+                <input type="number" class="form-control" name="{{ group }}_max_echecs_auto" value="{{ criteria.max_echecs_auto if criteria else 0 }}">
+              </div>
+            </div>
+
+            <h5 class="mb-3 text-warning border-bottom pb-2">Repêchage</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Pourcentage minimum (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_percentage_repechage" value="{{ criteria.min_percentage_repechage if criteria else 50 }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Maximum d'échecs (ex: 4, 5, 6)</label>
+                <input type="number" class="form-control" name="{{ group }}_max_echecs_repechage" value="{{ criteria.max_echecs_repechage if criteria else 6 }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Refus si échec Branche Spécifique < (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_score_specific_branch" value="{{ criteria.min_score_specific_branch if criteria else 30 }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Refus si échec Branche Option < (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_score_option_branch" value="{{ criteria.min_score_option_branch if criteria else 35 }}">
+              </div>
+            </div>
+
+            <h5 class="mb-3 text-danger border-bottom pb-2">Redoublement / Exclusion</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Pourcentage minimum pour Redoublement (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_percentage_redoublement" value="{{ criteria.min_percentage_redoublement if criteria else 45 }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Pourcentage minimum avant Exclusion absolue (%)</label>
+                <input type="number" step="0.1" class="form-control" name="{{ group }}_min_percentage_exclusion" value="{{ criteria.min_percentage_exclusion if criteria else 45 }}">
+              </div>
+            </div>
+
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer text-end">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i> Enregistrer tous les critères
+        </button>
+      </div>
+    </form>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}Exécution de la Délibération{% endblock %}
+{% block content %}
+<div class="dashboard-wrapper">
+  <aside class="sidebar no-print">
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Evaluations</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-menu-link">
+            <i class="fas fa-table"></i>
+            <span>Centralisation</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link active">
+            <i class="fas fa-balance-scale"></i>
+            <span>Délibération</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-cogs"></i>
+            <span>Paramètres Délibération</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4 no-print">
+      <div>
+        <h1 class="page-title mb-1">
+          <i class="fas fa-balance-scale text-primary"></i> Délibération
+        </h1>
+        <p class="text-muted mb-0">Consultez et exécutez la délibération pour une classe.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-dark" onclick="window.print()">
+          <i class="fas fa-print"></i> Imprimer
+        </button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4 no-print">
+      <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label for="section_id" class="form-label">Classe</label>
+            <select id="section_id" name="section_id" class="form-select" required>
+              <option value="">-- Choisir une classe --</option>
+              {% for section in sections %}
+              <option value="{{ section.id }}" {% if selected_section_id == section.id %}selected{% endif %}>
+                {{ section.name }} - {{ section.level }} {{ section.class_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="period" class="form-label">Période / Synthèse</label>
+            <select id="period" name="period" class="form-select">
+              {% for p in periods %}
+              <option value="{{ p }}" {% if selected_period == p %}selected{% endif %}>{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search"></i> Charger
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if selected_section %}
+      {% if not criteria %}
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i> Les critères de délibération n'ont pas encore été configurés pour ce niveau. 
+        <a href="{{ url_for('admin.deliberation_config') }}">Veuillez les paramétrer d'abord.</a>
+      </div>
+      {% endif %}
+
+      {% if deliberation_rows %}
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Résultats de la délibération - {{ selected_section.level }} {{ selected_section.class_name }}</h5>
+          {% if criteria %}
+          <form method="post" class="m-0 p-0">
+            <input type="hidden" name="section_id" value="{{ selected_section_id }}">
+            <input type="hidden" name="period" value="{{ selected_period }}">
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-bolt"></i> Exécuter/Mettre à jour la délibération
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 50px;" class="text-center">N°</th>
+                  <th>Élève</th>
+                  <th class="text-center" style="width: 100px;">Total (%)</th>
+                  <th class="text-center" style="width: 100px;">Échecs</th>
+                  <th>Cours en échec</th>
+                  <th style="width: 200px;">Décision de Délibération</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in deliberation_rows %}
+                <tr>
+                  <td class="text-center">{{ row.index }}</td>
+                  <td><strong>{{ row.student.last_name|upper }} {{ row.student.first_name }}</strong></td>
+                  <td class="text-center fw-bold">{{ '%.1f'|format(row.percentage) }}%</td>
+                  <td class="text-center">
+                    <span class="badge {% if row.echecs|length > 0 %}bg-danger{% else %}bg-success{% endif %}">
+                      {{ row.echecs|length }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if row.echecs %}
+                    <span class="small text-muted">
+                      {% for echec in row.echecs %}
+                        {{ echec.course }}{% if not loop.last %}, {% endif %}
+                      {% endfor %}
+                    </span>
+                    {% else %}
+                    <span class="text-success small"><i class="fas fa-check-circle"></i> Aucun échec</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if row.result %}
+                      {% set d = row.result.decision %}
+                      {% if 'PASSAGE' in d %}
+                        <span class="badge bg-success text-wrap w-100 p-2">{{ d }}</span>
+                      {% elif 'REPECHAGE' in d %}
+                        <span class="badge bg-warning text-dark text-wrap w-100 p-2">{{ d }}</span>
+                      {% elif 'REDOUBLEMENT' in d %}
+                        <span class="badge bg-danger text-wrap w-100 p-2">{{ d }}</span>
+                      {% else %}
+                        <span class="badge bg-dark text-wrap w-100 p-2">{{ d }}</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted fst-italic">Non délibéré</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-info">Aucune donnée disponible pour cette classe sur la période sélectionnée.</div>
+      {% endif %}
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Espace Caissier{% endblock %}
+{% block content %}
+<div class="row mb-3">
+  <div class="col-md-4">
+    <div class="card text-white bg-success h-100">
+      <div class="card-body">
+        <h5 class="card-title">Paiements</h5>
+        <p class="display-6">{{ payment_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white bg-primary h-100">
+      <div class="card-body">
+        <h5 class="card-title">Montant total</h5>
+        <p class="display-6">{{ total_amount }} €</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white bg-info h-100">
+      <div class="card-body">
+        <h5 class="card-title">École</h5>
+        <p class="display-6">{{ current_user.school.name }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="card mb-3">
+      <div class="card-header">Derniers paiements</div>
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Élève</th>
+              <th>Montant</th>
+              <th>Date</th>
+              <th>Concept</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in latest_payments %}
+            <tr>
+              <td><strong>{{ payment.student.last_name }} {{ payment.student.first_name }}</strong></td>
+              <td>{{ payment.amount }} €</td>
+              <td>{{ payment.payment_date }}</td>
+              <td>{{ payment.concept }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <a class="btn btn-primary" href="{{ url_for('admin.payments') }}">Enregistrer un nouveau paiement</a>
+  </div>
+</div>
+{% endblock %}

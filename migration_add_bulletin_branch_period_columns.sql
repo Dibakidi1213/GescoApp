@@ -1,0 +1,7 @@
+ALTER TABLE bulletin_branches
+  ADD COLUMN max_period_1 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_value,
+  ADD COLUMN max_period_2 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_period_1,
+  ADD COLUMN max_exam_1 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_period_2,
+  ADD COLUMN max_period_3 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_exam_1,
+  ADD COLUMN max_period_4 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_period_3,
+  ADD COLUMN max_exam_2 DECIMAL(5,2) DEFAULT 10 NULL AFTER max_period_4;

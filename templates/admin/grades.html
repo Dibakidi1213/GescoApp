@@ -1,0 +1,754 @@
+{% extends 'base.html' %}
+{% block title %}Administration - Gestion des cotes{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="dashboard-wrapper">
+  <aside class="sidebar">
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Principal</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+            <i class="fas fa-chart-line"></i>
+            <span>Tableau de Bord</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Gestion Academique</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+            <i class="fas fa-user-graduate"></i>
+            <span>Inscription eleves</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+            <i class="fas fa-layer-group"></i>
+            <span>Sections/Niveaux/Classes</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+            <i class="fas fa-book"></i>
+            <span>Cours/Attributions</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+            <i class="fas fa-chalkboard-user"></i>
+            <span>Professeurs</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.attendance_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Gestion des presences</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Evaluations</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link active">
+            <i class="fas fa-star"></i>
+            <span>Gestion des cotes</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="#deverrouillage-cours" class="sidebar-menu-link">
+            <i class="fas fa-user-tie"></i>
+            <span>Deverrouillage cours</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-pdf"></i>
+            <span>Parametrage Bulletins</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.exam_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Gestion Examen</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+            <i class="fas fa-balance-scale"></i>
+            <span>Délibération</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-sliders-h"></i>
+            <span>Paramètres Délibération</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Configuration</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.edit_school', school_id=current_user.school_id) }}" class="sidebar-menu-link">
+            <i class="fas fa-school"></i>
+            <span>Parametres ecole</span>
+          </a>
+        </li>
+        
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.register_user_redirect') }}" class="sidebar-menu-link">
+            <i class="fas fa-user-plus"></i>
+            <span>Ajouter utilisateur</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header mb-4">
+      <h1><i class="fas fa-star"></i> Gestion des cotes</h1>
+      <p class="text-muted mb-0">Saisie par section, niveau, classe, cours et periode.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="fas fa-filter me-2 text-primary"></i> Filtre de saisie
+        </h6>
+      </div>
+      <div class="card-body">
+        <form method="get" id="grades-filter-form" class="row g-3 align-items-end">
+          <div class="col-md-4 col-lg-2">
+            <label class="form-label">Section</label>
+            <select name="section_name" class="form-select" id="section_name_filter" required>
+              <option value="">-- Selectionner --</option>
+              {% for section_name in section_name_options %}
+              <option value="{{ section_name }}" {% if selected_section_name == section_name %}selected{% endif %}>{{ section_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-2">
+            <label class="form-label">Niveau</label>
+            <select name="level" class="form-select" id="level_filter" required>
+              <option value="">-- Selectionner --</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-2">
+            <label class="form-label">Classe</label>
+            <select name="class_name" class="form-select" id="class_filter" required>
+              <option value="">-- Selectionner --</option>
+            </select>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <label class="form-label">Cours</label>
+            <select name="course_id" id="course_filter" class="form-select" {% if not selected_section %}disabled{% endif %}>
+              <option value="">-- Selectionner un cours --</option>
+              {% for course in courses %}
+              <option value="{{ course.id }}" {% if selected_course_id == course.id %}selected{% endif %}>{{ course.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6 col-lg-2">
+            <label class="form-label">Periode</label>
+            <select name="period" class="form-select" required>
+              {% for period_value, period_label in period_options %}
+              <option value="{{ period_value }}" {% if selected_period == period_value %}selected{% endif %}>{{ period_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-1">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if selected_section %}
+    <div class="d-flex justify-content-end mb-4 no-print gap-2">
+      {% if current_user.school %}
+      <a href="{{ url_for('secretary.conduite', school_slug=current_user.school.slug) }}" class="btn btn-success btn-sm me-2">
+        <i class="fas fa-clipboard-check me-1"></i> Saisir la Conduite
+      </a>
+      {% endif %}
+      {% if selected_course %}
+      <a href="{{ url_for('professor.export_fiche_cotes', school_slug=current_user.school.slug, course_id=selected_course_id, filled=0) }}" class="btn btn-outline-primary bg-white">
+        <i class="fas fa-file-excel"></i> Fiche Vierge
+      </a>
+      <a href="{{ url_for('professor.export_fiche_cotes', school_slug=current_user.school.slug, course_id=selected_course_id, filled=1) }}" class="btn btn-outline-primary bg-white">
+        <i class="fas fa-file-excel"></i> Fiche Remplie
+      </a>
+      {% endif %}
+      <a
+        href="{{ url_for('admin.secretary_centralization', section_id=selected_section_id, scope=selected_period) }}"
+        class="btn btn-outline-dark"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <i class="fas fa-table me-1"></i> Ouvrir la fiche centralisatrice
+      </a>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-xl-6">
+        <div id="deverrouillage-cours" class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+          <div class="card-header bg-white py-3 border-bottom">
+            <h6 class="mb-0 fw-bold text-dark">
+              <i class="fas fa-lock-open me-2 text-warning"></i> Deverrouillage cours
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-3 text-muted">
+              Déverrouille la période du cours sélectionné pour reprendre la saisie si nécessaire.
+            </p>
+            <div class="small text-dark mb-3">
+              <div><strong>Classe :</strong> {{ selected_section.name }} / {{ selected_section.level }} / {{ selected_section.class_name }}</div>
+              <div><strong>Cours :</strong> {{ selected_course.title if selected_course else 'Aucun cours sélectionné' }}</div>
+              <div><strong>Période :</strong> {{ selected_period }}</div>
+              <div><strong>Notes soumises :</strong> {{ selected_course_submitted_count }}</div>
+            </div>
+            <button type="button" id="unlock-course-btn" class="btn btn-warning" {% if not selected_course or selected_course_submitted_count == 0 %}disabled{% endif %}>
+              <i class="fas fa-lock-open me-1"></i> Déverrouiller la période du cours
+            </button>
+            <div id="unlock-course-status" class="small mt-3 text-muted"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+          <div class="card-header bg-white py-3 border-bottom">
+            <h6 class="mb-0 fw-bold text-dark">
+              <i class="fas fa-file-pdf me-2 text-primary"></i> Impression des bulletins
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-3 text-muted">
+              Imprime un bulletin individuel ou tous les bulletins de la classe sélectionnée.
+            </p>
+            <div class="row g-3 align-items-end">
+              <div class="col-lg-6">
+                <label class="form-label">Élève</label>
+                <select id="bulletin-student-select" class="form-select">
+                  <option value="">-- Sélectionner un élève --</option>
+                  {% for student_item in students %}
+                  <option value="{{ student_item.id }}">{{ ((student_item.last_name or '') ~ ' ' ~ (student_item.first_name or ''))|trim }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-lg-6 d-grid gap-2">
+                <button type="button" id="print-student-bulletin-btn" class="btn btn-outline-primary" {% if not students %}disabled{% endif %}>
+                  <i class="fas fa-file-pdf me-1"></i> Bulletin de l'élève
+                </button>
+                <button type="button" id="print-class-bulletins-btn" class="btn btn-primary" {% if not students %}disabled{% endif %}>
+                  <i class="fas fa-eye me-1"></i> Aperçu des bulletins de la classe
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if selected_section %}
+    <section id="class-bulletins-preview-panel" class="class-bulletins-preview-panel no-print" hidden>
+      <div class="class-bulletins-preview-header">
+        <div>
+          <h6 class="mb-1 fw-bold text-dark">
+            <i class="fas fa-eye me-2 text-primary"></i> Aperçu des bulletins de la classe
+          </h6>
+          <div class="small text-muted">
+            {{ selected_section.name }} / {{ selected_section.level }} / {{ selected_section.class_name }}
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" id="print-preview-bulletins-btn" class="btn btn-primary btn-sm">
+            <i class="fas fa-print me-1"></i> Imprimer
+          </button>
+          <button type="button" id="close-preview-bulletins-btn" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-xmark me-1"></i> Fermer
+          </button>
+        </div>
+      </div>
+      <div id="class-bulletins-preview-status" class="class-bulletins-preview-status">
+        Chargement de l'aperçu...
+      </div>
+      <iframe
+        id="class-bulletins-preview-frame"
+        class="class-bulletins-preview-frame"
+        title="Aperçu des bulletins de la classe"
+      ></iframe>
+    </section>
+    {% endif %}
+
+    {% if selected_section and not courses %}
+    <div class="alert alert-warning">
+      <i class="fas fa-triangle-exclamation"></i>
+      Aucun cours n'est disponible pour la section {{ selected_section.name }} et le niveau {{ selected_section.level }}.
+    </div>
+    {% elif selected_course and selected_section %}
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-primary text-white py-3">
+        <h6 class="mb-0">
+          <i class="fas fa-pen-to-square me-2"></i>
+          Saisie des cotes - <strong>{{ selected_course.title }}</strong>
+          <span class="ms-2">({{ selected_section.name }} / {{ selected_section.level }} / {{ selected_section.class_name }} - {{ selected_period }})</span>
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th style="width: 35%;" class="ps-4">Eleve</th>
+                <th style="width: 20%;">Cote ({{ selected_period }})</th>
+                <th style="width: 45%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if students %}
+                {% for student in students %}
+                <tr>
+                  <td class="ps-4">
+                    <strong>{{ ((student.last_name or '') ~ ' ' ~ (student.first_name or ''))|trim }}</strong>
+                  </td>
+                  <td>
+                    <form method="post" action="{{ url_for('admin.save_grade_admin') }}" class="d-inline-flex gap-2 align-items-center">
+                      <input type="hidden" name="student_id" value="{{ student.id }}">
+                      <input type="hidden" name="course_id" value="{{ selected_course_id }}">
+                      <input type="hidden" name="section_id" value="{{ selected_section_id or '' }}">
+                      <input type="hidden" name="section_name" value="{{ selected_section_name }}">
+                      <input type="hidden" name="level" value="{{ selected_level }}">
+                      <input type="hidden" name="class_name" value="{{ selected_class_name }}">
+                      <input type="hidden" name="period" value="{{ selected_period }}">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="{{ max_for_period }}"
+                        name="value"
+                        class="form-control form-control-sm"
+                        style="width: 110px;"
+                        value="{{ grades_map.get(student.id, '') }}"
+                        required
+                      >
+                  </td>
+                  <td>
+                      <button type="submit" class="btn btn-sm btn-success">
+                        <i class="fas fa-save"></i> Enregistrer et finaliser
+                      </button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-outline-info ms-2" onclick="openStudentBulletinPreview({{ student.id }})">
+                      <i class="fas fa-file-pdf"></i> Bulletin PDF
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted py-4">
+                    <i class="fas fa-inbox"></i> Aucun eleve trouve pour cette classe.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i>
+      Selectionnez une section, un niveau, une classe, un cours et une periode pour commencer la saisie.
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<!-- Modal for Student Bulletin Preview -->
+<div class="modal fade" id="student-bulletin-preview-modal" tabindex="-1" aria-labelledby="studentBulletinPreviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="studentBulletinPreviewLabel">Aperçu du Bulletin - Print Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" style="height: calc(100vh - 200px); overflow: auto;">
+        <div id="student-bulletin-preview-status" class="alert alert-info" hidden>
+          <i class="fas fa-spinner fa-spin"></i> Chargement du bulletin...
+        </div>
+        <iframe id="student-bulletin-preview-frame" style="width: 100%; height: 100%; border: none;" src="about:blank"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="closeStudentBulletinPreview()">
+          <i class="fas fa-times"></i> Fermer
+        </button>
+        <button type="button" class="btn btn-primary" onclick="printStudentBulletinPreview()">
+          <i class="fas fa-print"></i> Imprimer / Print Preview
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const sectionsData = {{ sections_payload|tojson }};
+  const initialLevel = {{ selected_level|tojson }};
+  const initialClass = {{ selected_class_name|tojson }};
+  const selectedSectionId = {{ selected_section_id|tojson }};
+  const selectedCourseId = {{ selected_course_id|tojson }};
+  const selectedPeriod = {{ selected_period|tojson }};
+  const selectedCourseSubmittedCount = {{ selected_course_submitted_count|tojson }};
+  const bulletinsReportUrl = {{ url_for('admin.bulletins_report')|tojson }};
+  const unlockCourseUrlTemplate = {{ url_for('admin.unlock_course_period', course_id=987654321)|tojson }};
+
+  const normalize = (value) => (value || '').toString().trim().toLowerCase();
+
+  const sortValues = (values) => [...values].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' }));
+
+  function fillSelect(selectEl, values, placeholder, selectedValue) {
+    selectEl.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = placeholder;
+    selectEl.appendChild(placeholderOption);
+
+    values.forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      if (normalize(selectedValue) === normalize(value)) {
+        option.selected = true;
+      }
+      selectEl.appendChild(option);
+    });
+  }
+
+  function getLevels(sectionName) {
+    const levels = new Set();
+    sectionsData.forEach((item) => {
+      if (normalize(item.name) === normalize(sectionName) && item.level) {
+        levels.add(item.level);
+      }
+    });
+    return sortValues(levels);
+  }
+
+  function getClasses(sectionName, level) {
+    const classes = new Set();
+    sectionsData.forEach((item) => {
+      if (normalize(item.name) === normalize(sectionName) && normalize(item.level) === normalize(level) && item.class_name) {
+        classes.add(item.class_name);
+      }
+    });
+    return sortValues(classes);
+  }
+
+  function bindHierarchy(sectionId, levelId, classId, defaultLevel, defaultClass) {
+    const formEl = document.getElementById('grades-filter-form');
+    const courseEl = document.getElementById('course_filter');
+    const sectionEl = document.getElementById(sectionId);
+    const levelEl = document.getElementById(levelId);
+    const classEl = document.getElementById(classId);
+    if (!sectionEl || !levelEl || !classEl || !formEl || !courseEl) return;
+
+    const refreshLevels = (selectedLevel = '') => {
+      const sectionName = sectionEl.value;
+      const levels = getLevels(sectionName);
+      fillSelect(levelEl, levels, '-- Selectionner --', selectedLevel);
+      levelEl.disabled = levels.length === 0;
+    };
+
+    const refreshClasses = (selectedClass = '') => {
+      const classes = getClasses(sectionEl.value, levelEl.value);
+      fillSelect(classEl, classes, '-- Selectionner --', selectedClass);
+      classEl.disabled = classes.length === 0;
+    };
+
+    const updateCourseAvailability = () => {
+      const hasCompleteSelection = !!(sectionEl.value && levelEl.value && classEl.value);
+      courseEl.disabled = !hasCompleteSelection;
+    };
+
+    sectionEl.addEventListener('change', () => {
+      refreshLevels('');
+      refreshClasses('');
+      courseEl.value = '';
+      updateCourseAvailability();
+    });
+
+    levelEl.addEventListener('change', () => {
+      refreshClasses('');
+      courseEl.value = '';
+      updateCourseAvailability();
+    });
+
+    classEl.addEventListener('change', () => {
+      updateCourseAvailability();
+      if (sectionEl.value && levelEl.value && classEl.value) {
+        courseEl.value = '';
+        formEl.submit();
+      }
+    });
+
+    refreshLevels(defaultLevel);
+    refreshClasses(defaultClass);
+    updateCourseAvailability();
+  }
+
+  function openBulletinReport(params) {
+    const query = new URLSearchParams(params);
+    window.open(`${bulletinsReportUrl}?${query.toString()}`, '_blank');
+  }
+
+  function buildBulletinReportUrl(params) {
+    const query = new URLSearchParams(params);
+    return `${bulletinsReportUrl}?${query.toString()}`;
+  }
+
+  function printStudentBulletin() {
+    const studentSelect = document.getElementById('bulletin-student-select');
+    if (!studentSelect || !studentSelect.value) {
+      alert("Sélectionnez un élève avant d'imprimer son bulletin.");
+      return;
+    }
+
+    openBulletinReport({ student_id: studentSelect.value });
+  }
+
+  function printClassBulletins() {
+    if (!selectedSectionId) {
+      alert('Sélectionnez une section pour imprimer les bulletins de la classe.');
+      return;
+    }
+
+    const panel = document.getElementById('class-bulletins-preview-panel');
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    const statusEl = document.getElementById('class-bulletins-preview-status');
+    if (!panel || !frame) {
+      window.location.href = buildBulletinReportUrl({ section_id: selectedSectionId, preview: '1' });
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = "Chargement de l'aperçu...";
+    }
+
+    panel.hidden = false;
+    frame.src = buildBulletinReportUrl({ section_id: selectedSectionId, preview: '1', embedded: '1' });
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function closeClassBulletinsPreview() {
+    const panel = document.getElementById('class-bulletins-preview-panel');
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    if (frame) {
+      frame.src = 'about:blank';
+    }
+    if (panel) {
+      panel.hidden = true;
+    }
+  }
+
+  function printClassBulletinsPreview() {
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    if (!frame || !frame.contentWindow || !frame.getAttribute('src') || frame.getAttribute('src') === 'about:blank') {
+      alert("Chargez d'abord l'aperçu des bulletins de la classe.");
+      return;
+    }
+
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  }
+
+  function openStudentBulletinPreview(studentId) {
+    const modal = document.getElementById('student-bulletin-preview-modal');
+    const frame = document.getElementById('student-bulletin-preview-frame');
+    const statusEl = document.getElementById('student-bulletin-preview-status');
+    
+    if (!modal || !frame) {
+      // Fallback: open in new window
+      window.open(buildBulletinReportUrl({ student_id: studentId }), '_blank');
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = "Chargement du bulletin...";
+    }
+
+    frame.src = buildBulletinReportUrl({ student_id: studentId, embedded: '1' });
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  }
+
+  function printStudentBulletinPreview() {
+    const frame = document.getElementById('student-bulletin-preview-frame');
+    if (!frame) {
+      alert("Erreur : iframe non trouvée.");
+      return;
+    }
+
+    // Attendre que l'iframe soit chargé avant d'imprimer
+    const checkAndPrint = () => {
+      try {
+        if (frame.contentWindow && frame.contentDocument) {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } else {
+          setTimeout(checkAndPrint, 100);
+        }
+      } catch (e) {
+        console.error('Error printing:', e);
+        alert("Erreur lors de l'impression. Veuillez réessayer.");
+      }
+    };
+
+    checkAndPrint();
+  }
+
+  function closeStudentBulletinPreview() {
+    const modal = document.getElementById('student-bulletin-preview-modal');
+    const frame = document.getElementById('student-bulletin-preview-frame');
+    if (frame) {
+      frame.src = 'about:blank';
+    }
+    if (modal) {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      if (bsModal) {
+        bsModal.hide();
+      }
+    }
+  }
+
+  async function unlockSelectedCourse() {
+    const unlockBtn = document.getElementById('unlock-course-btn');
+    const statusEl = document.getElementById('unlock-course-status');
+    if (!unlockBtn || !statusEl || !selectedCourseId) {
+      return;
+    }
+
+    if (selectedCourseSubmittedCount <= 0) {
+      statusEl.textContent = 'Aucune note soumise à déverrouiller pour cette période.';
+      return;
+    }
+
+    const confirmed = confirm(`Déverrouiller ${selectedCourseSubmittedCount} note(s) de la période ${selectedPeriod} ?`);
+    if (!confirmed) {
+      return;
+    }
+
+    unlockBtn.disabled = true;
+    statusEl.textContent = 'Déverrouillage en cours...';
+
+    try {
+      const response = await fetch(unlockCourseUrlTemplate.replace('987654321', String(selectedCourseId)), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ period: selectedPeriod })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Le déverrouillage a échoué.');
+      }
+
+      statusEl.textContent = data.message || 'Déverrouillage effectué.';
+      setTimeout(() => window.location.reload(), 700);
+    } catch (error) {
+      statusEl.textContent = error.message || 'Erreur inconnue.';
+      unlockBtn.disabled = false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindHierarchy('section_name_filter', 'level_filter', 'class_filter', initialLevel, initialClass);
+
+    const printStudentBtn = document.getElementById('print-student-bulletin-btn');
+    if (printStudentBtn) {
+      printStudentBtn.addEventListener('click', printStudentBulletin);
+    }
+
+    const printClassBtn = document.getElementById('print-class-bulletins-btn');
+    if (printClassBtn) {
+      printClassBtn.addEventListener('click', printClassBulletins);
+    }
+
+    const previewFrame = document.getElementById('class-bulletins-preview-frame');
+    const previewStatus = document.getElementById('class-bulletins-preview-status');
+    if (previewFrame && previewStatus) {
+      previewFrame.addEventListener('load', () => {
+        if (previewFrame.getAttribute('src') && previewFrame.getAttribute('src') !== 'about:blank') {
+          previewStatus.hidden = true;
+        }
+      });
+    }
+
+    const printPreviewBtn = document.getElementById('print-preview-bulletins-btn');
+    if (printPreviewBtn) {
+      printPreviewBtn.addEventListener('click', printClassBulletinsPreview);
+    }
+
+    const closePreviewBtn = document.getElementById('close-preview-bulletins-btn');
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener('click', closeClassBulletinsPreview);
+    }
+
+    const unlockBtn = document.getElementById('unlock-course-btn');
+    if (unlockBtn) {
+      unlockBtn.addEventListener('click', unlockSelectedCourse);
+    }
+  });
+</script>
+
+<style>
+  .class-bulletins-preview-panel {
+    border: 1px solid #d8dee9;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .class-bulletins-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+
+  .class-bulletins-preview-status {
+    padding: 0.75rem 1.25rem;
+    color: #64748b;
+    font-size: 0.875rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .class-bulletins-preview-frame {
+    display: block;
+    width: 100%;
+    height: 78vh;
+    min-height: 620px;
+    border: 0;
+    background: #eef2f7;
+  }
+</style>
+{% endblock %}

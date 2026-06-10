@@ -1,0 +1,44 @@
+{% extends 'admin/base.html' %}
+{% block content %}
+<div class="container py-5" style="max-width: 960px;">
+  <h2 class="mb-4" style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; color: transparent;">Promotion des élèves</h2>
+  {% if not prev_year %}
+    <div class="alert alert-info" role="alert">
+      Aucun exercice académique précédent trouvé. Créez d'abord une année scolaire antérieure.
+    </div>
+  {% else %}
+    <form method="post" class="glass-card p-4" style="background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);">
+      {{ csrf_token() }}
+      <div class="mb-3">
+        <label class="form-label fw-bold">Année précédente</label>
+        <input type="text" class="form-control" value="{{ prev_year.year }}" disabled>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Élèves de l'année précédente</label>
+        <div class="row g-2">
+          {% for student in prev_students %}
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}" id="stu{{ student.id }}">
+                <label class="form-check-label" for="stu{{ student.id }}">
+                  <strong>{{ student.last_name }} {{ student.first_name }}</strong> ({{ student.serial_number }})
+                </label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Classe de destination</label>
+        <select class="form-select" name="dest_section_id" required>
+          <option value="" selected disabled>Choisir une section / classe</option>
+          {% for sec in dest_sections %}
+            <option value="{{ sec.id }}">{{ sec.name }}{% if sec.level %} - Niveau {{ sec.level }}{% endif %}{% if sec.class_name %} - Classe {{ sec.class_name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Promouvoir les élèves sélectionnés</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

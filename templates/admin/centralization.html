@@ -1,0 +1,649 @@
+{% extends 'base.html' %}
+{% block title %}Centralisation des cotes{% endblock %}
+{% block content %}
+<div class="dashboard-wrapper">
+  <aside class="sidebar no-print">
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Principal</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+            <i class="fas fa-chart-line"></i>
+            <span>Tableau de Bord</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Evaluations</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+            <i class="fas fa-star"></i>
+            <span>Gestion des cotes</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-menu-link">
+            <i class="fas fa-user-tie"></i>
+            <span>Deverrouillage cours</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-file-pdf"></i>
+            <span>Parametrage Bulletins</span>
+          </a>
+        </li>
+        
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-menu-link active">
+            <i class="fas fa-table"></i>
+            <span>Centralisation</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+            <i class="fas fa-balance-scale"></i>
+            <span>Délibération</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+            <i class="fas fa-cogs"></i>
+            <span>Paramètres Délibération</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4 no-print">
+      <div>
+        <h1 class="page-title mb-1">
+          <i class="fas fa-table" style="color: #2c3e50;"></i> Centralisation des cotes
+        </h1>
+        <p class="text-muted mb-0">Modèle fiche centralisatrice + impression.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-dark" onclick="window.print()">
+          <i class="fas fa-print"></i> Imprimer la centralisation
+        </button>
+        {% if selected_section and student_ids %}
+        <button type="button" class="btn btn-primary" onclick="previewClassBulletins()">
+          <i class="fas fa-eye"></i> Aperçu des bulletins de la classe
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4 no-print">
+      <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label for="section_id" class="form-label">Classe</label>
+            <select id="section_id" name="section_id" class="form-select" required>
+              <option value="">-- Choisir une classe --</option>
+              {% for section in sections %}
+              <option value="{{ section.id }}" {% if selected_section_id == section.id %}selected{% endif %}>
+                {{ section.name }} - {{ section.level }} {{ section.class_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="scope" class="form-label">Période / synthèse</label>
+            <select id="scope" name="scope" class="form-select">
+              {% for scope_value, scope_label in scope_options %}
+              <option value="{{ scope_value }}" {% if selected_scope == scope_value %}selected{% endif %}>{{ scope_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search"></i> Charger la centralisation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if selected_section and student_ids %}
+    <section id="class-bulletins-preview-panel" class="class-bulletins-preview-panel no-print" hidden>
+      <div class="class-bulletins-preview-header">
+        <div>
+          <h6 class="mb-1 fw-bold text-dark">
+            <i class="fas fa-eye me-2 text-primary"></i> Aperçu des bulletins de la classe
+          </h6>
+          <div class="small text-muted">
+            {{ selected_section.name }} / {{ selected_section.level }} / {{ selected_section.class_name }}
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" id="print-preview-bulletins-btn" class="btn btn-primary btn-sm">
+            <i class="fas fa-print me-1"></i> Imprimer
+          </button>
+          <button type="button" id="close-preview-bulletins-btn" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-xmark me-1"></i> Fermer
+          </button>
+        </div>
+      </div>
+      <div id="class-bulletins-preview-status" class="class-bulletins-preview-status">
+        Chargement de l'aperçu...
+      </div>
+      <iframe
+        id="class-bulletins-preview-frame"
+        class="class-bulletins-preview-frame"
+        title="Aperçu des bulletins de la classe"
+      ></iframe>
+    </section>
+    {% endif %}
+
+    {% if selected_section %}
+      {% if course_columns %}
+      <div class="centralization-sheet-wrapper">
+        <div class="centralization-sheet">
+          <div class="centralization-top">
+            <div class="school-block">
+              <div class="school-line school-name">
+                {{ ((school.bulletin_school_name if school else '') or (school.name if school else '') or '-')|upper }}
+              </div>
+              <div class="school-line">
+                {{ ((school.city if school else '') or '-')|upper }}{% if school and school.province %}, {{ school.province|upper }}{% endif %}
+              </div>
+              {% if school and school.address %}
+              <div class="school-line">{{ school.address|upper }}</div>
+              {% endif %}
+              {% if school and school.phone %}
+              <div class="school-line">{{ school.phone }}</div>
+              {% endif %}
+            </div>
+
+            <div class="sheet-meta">
+              <div class="meta-row"><strong>Année :</strong> {{ academic_year|replace(' ', '') }}</div>
+              <div class="meta-row">
+                <strong>Classe :</strong> {{ selected_section.level }} {{ selected_section.class_name }} {{ selected_section.name|upper }}
+              </div>
+            </div>
+
+    <div class="title-row">
+      <div class="sheet-title">FICHE CENTRALISATRICE</div>
+    </div>
+          </div>
+
+          <h3 class="total-title">{{ selected_scope_label }}</h3>
+
+          <table class="centralization-table">
+            <thead>
+              <tr>
+                <th rowspan="2" class="num-col">N&deg;</th>
+                <th rowspan="2" class="student-col">Nom complet / Maxima</th>
+                {% for column in course_columns %}
+                <th class="course-col vertical-header{% if column.is_ns %} ns-course-col{% endif %}">
+                  <span>{{ column.course.title|upper }}</span>
+                  {% if column.is_ns %}
+                  <div class="ns-pill">NS</div>
+                  {% endif %}
+                </th>
+                {% endfor %}
+                <th class="summary-col vertical-header"><span>MAXIMA GENERAUX</span></th>
+                <th class="percent-col vertical-header"><span>POURCENTAGE</span></th>
+              </tr>
+              <tr class="maxima-row">
+                {% for column in course_columns %}
+                <th class="points-col{% if column.is_ns %} ns-course-col{% endif %}">{{ 'NS' if column.is_ns else ('%g'|format(column.max_points) if column.max_points else 0) }}</th>
+                {% endfor %}
+                <th class="points-col">{{ '%g'|format(total_maxima_general) if total_maxima_general else 0 }}</th>
+                <th class="points-col">100</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if centralization_rows %}
+                {% for row in centralization_rows %}
+                <tr>
+                  <td class="text-center">{{ row.index }}</td>
+                  <td class="student-name">{{ row.student.last_name|upper }} {{ row.student.first_name|upper }}</td>
+                  {% for column in course_columns %}
+                  {% set points = row.course_points[loop.index0] %}
+                  <td class="text-center{% if column.is_ns %} ns-course-col{% endif %}">
+                    {% if column.is_ns %}
+                      NS
+                    {% else %}
+                      {{ '%g'|format(points) if points is not none else '-' }}
+                    {% endif %}
+                  </td>
+                  {% endfor %}
+                  <td class="text-center fw-bold">{{ '%g'|format(row.total_general) }}</td>
+                  <td class="text-center fw-bold">{{ '%.2f'|format(row.percentage) }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="{{ 4 + course_columns|length }}" class="text-center text-muted py-4">
+                    Aucune donnée disponible pour cette classe sur l'année scolaire sélectionnée.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-info">
+        Aucune donnée disponible pour cette classe sur l'année scolaire sélectionnée.
+      </div>
+      {% endif %}
+    {% else %}
+    <div class="alert alert-info">
+      Sélectionnez une classe pour afficher la centralisation.
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+  function previewClassBulletins() {
+    const selectedSectionId = {{ selected_section_id|tojson }};
+    if (!selectedSectionId) {
+      alert('Aucune classe sélectionnée.');
+      return;
+    }
+
+    const bulletinsReportUrl = {{ url_for('admin.bulletins_report')|tojson }};
+    const panel = document.getElementById('class-bulletins-preview-panel');
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    const statusEl = document.getElementById('class-bulletins-preview-status');
+    const params = new URLSearchParams({ section_id: selectedSectionId, preview: '1', embedded: '1' });
+    const previewUrl = `${bulletinsReportUrl}?${params.toString()}`;
+
+    if (!panel || !frame) {
+      window.location.href = previewUrl;
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = "Chargement de l'aperçu...";
+    }
+
+    panel.hidden = false;
+    frame.src = previewUrl;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function closeClassBulletinsPreview() {
+    const panel = document.getElementById('class-bulletins-preview-panel');
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    if (frame) {
+      frame.src = 'about:blank';
+    }
+    if (panel) {
+      panel.hidden = true;
+    }
+  }
+
+  function printClassBulletinsPreview() {
+    const frame = document.getElementById('class-bulletins-preview-frame');
+    if (!frame || !frame.contentWindow || !frame.getAttribute('src') || frame.getAttribute('src') === 'about:blank') {
+      alert("Chargez d'abord l'aperçu des bulletins de la classe.");
+      return;
+    }
+
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const previewFrame = document.getElementById('class-bulletins-preview-frame');
+    const previewStatus = document.getElementById('class-bulletins-preview-status');
+    if (previewFrame && previewStatus) {
+      previewFrame.addEventListener('load', () => {
+        if (previewFrame.getAttribute('src') && previewFrame.getAttribute('src') !== 'about:blank') {
+          previewStatus.hidden = true;
+        }
+      });
+    }
+
+    const printPreviewBtn = document.getElementById('print-preview-bulletins-btn');
+    if (printPreviewBtn) {
+      printPreviewBtn.addEventListener('click', printClassBulletinsPreview);
+    }
+
+    const closePreviewBtn = document.getElementById('close-preview-bulletins-btn');
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener('click', closeClassBulletinsPreview);
+    }
+  });
+</script>
+
+<style>
+  .class-bulletins-preview-panel {
+    border: 1px solid #d8dee9;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .class-bulletins-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+
+  .class-bulletins-preview-status {
+    padding: 0.75rem 1.25rem;
+    color: #64748b;
+    font-size: 0.875rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .class-bulletins-preview-frame {
+    display: block;
+    width: 100%;
+    height: 78vh;
+    min-height: 620px;
+    border: 0;
+    background: #eef2f7;
+  }
+
+  .centralization-sheet-wrapper {
+    background: #fff;
+    border: 1px solid #d8dee9;
+    border-radius: 8px;
+    padding: 1rem;
+    overflow: auto;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  }
+
+  .centralization-sheet {
+    min-width: max-content;
+  }
+
+  .centralization-top {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.2rem;
+    margin-bottom: 0.6rem;
+    align-items: start;
+  }
+
+  .school-block {
+    min-width: 260px;
+    max-width: 320px;
+    padding-top: 0.4rem;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .school-line {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .school-name {
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+
+  .sheet-meta {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+    justify-self: end;
+  }
+
+  .meta-row {
+    font-size: 14px;
+    line-height: 1.2;
+    margin-bottom: 0.3rem;
+  }
+
+  .title-row {
+    display: grid;
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.3rem;
+  }
+
+  .sheet-title {
+    grid-column: 2;
+    border: 1px solid #000;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0.2rem 0.8rem;
+    width: fit-content;
+    max-width: none;
+    justify-self: center;
+  }
+
+  .total-title {
+    margin: 0.6rem 0 0.4rem;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .centralization-table {
+    border-collapse: collapse;
+    width: 100%;
+    background: #fff;
+    font-size: 15px;
+  }
+
+  .centralization-table th,
+  .centralization-table td {
+    border: 1px solid #000;
+    padding: 0.1rem 0.25rem;
+  }
+
+  .num-col {
+    min-width: 30px;
+    width: 30px;
+    text-align: center;
+  }
+
+  .student-col {
+    min-width: 110px;
+    width: 110px;
+    text-align: left;
+  }
+
+  .student-name {
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .course-col,
+  .summary-col,
+  .percent-col {
+    min-width: 32px;
+    width: 32px;
+    padding: 0;
+    vertical-align: bottom;
+    text-align: center;
+  }
+
+  .vertical-header {
+    height: 180px;
+  }
+
+  .vertical-header span {
+    display: inline-block;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0.2rem 0;
+  }
+
+  .maxima-row th {
+    background: #f5f5f5;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .points-col {
+    min-width: 32px;
+    width: 32px;
+  }
+
+  .ns-course-col {
+    background: #ffe5e5 !important;
+    color: #a40000 !important;
+    font-weight: 700;
+  }
+
+  .ns-pill {
+    display: inline-block;
+    margin-top: 3px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 10px;
+    line-height: 1.4;
+    background: #d9534f;
+    color: #fff;
+  }
+
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 10mm 6mm 14mm 6mm;
+      @bottom-center {
+        content: "Page " counter(page);
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 10px;
+        font-weight: 700;
+        color: #000;
+      }
+    }
+
+    .navbar,
+    .no-print,
+    .sidebar {
+      display: none !important;
+    }
+
+    .dashboard-container,
+    .dashboard-wrapper,
+    .main-content {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      background: #fff !important;
+      overflow: visible !important;
+      min-height: auto !important;
+    }
+
+    .centralization-sheet-wrapper {
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+      border-radius: 0 !important;
+    }
+
+    .centralization-sheet {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    .school-block {
+      min-width: 170px;
+      max-width: 220px;
+    }
+
+    .school-line {
+      font-size: 10px;
+    }
+
+    .meta-row {
+      font-size: 12px;
+    }
+
+    .sheet-title {
+      font-size: 10px;
+      padding: 0.05rem 0.5rem;
+      letter-spacing: 0.4px;
+    }
+
+    .total-title {
+      font-size: 11px;
+      margin: 0.2rem 0 0.25rem;
+    }
+
+    .centralization-table {
+      font-size: 9px;
+    }
+
+    .centralization-table th,
+    .centralization-table td {
+      padding: 0.02rem 0.06rem;
+    }
+
+    .num-col {
+      min-width: 18px;
+      width: 18px;
+    }
+
+    .student-col {
+      min-width: 80px;
+      width: 80px;
+      max-width: 80px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: normal;
+    }
+
+    .student-name {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.1;
+    }
+
+    .course-col,
+    .summary-col,
+    .percent-col,
+    .points-col {
+      min-width: 18px;
+      width: 18px;
+    }
+
+    .vertical-header {
+      height: 92px;
+    }
+
+    .vertical-header span {
+      font-size: 8px;
+      letter-spacing: 0.1px;
+    }
+
+    .maxima-row th {
+      font-size: 8px;
+    }
+
+    .centralization-table tr {
+      page-break-inside: avoid;
+    }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,499 @@
+{% extends 'base.html' %}
+{% block title %}Administration - Professeurs{% endblock %}
+{% block content %}
+<div class="dashboard-wrapper">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <!-- Principal -->
+    <div class="sidebar-group">
+      <h6 class="sidebar-group-title">Principal</h6>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+          <i class="fas fa-chart-line"></i>
+          <span>Tableau de Bord</span>
+        </a></li>
+      </ul>
+    </div>
+
+    <!-- Gestion Académique -->
+    <div class="sidebar-group">
+      <h6 class="sidebar-group-title">Gestion Académique</h6>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+          <i class="fas fa-users"></i>
+          <span>Inscription élèves</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+          <i class="fas fa-layer-group"></i>
+          <span>Sections/Niveaux/Classes</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+          <i class="fas fa-book"></i>
+          <span>Cours/Attributions</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link active">
+          <i class="fas fa-chalkboard-user"></i>
+          <span>Professeurs</span>
+        </a></li>
+      </ul>
+    </div>
+
+    <!-- Évaluations -->
+    <div class="sidebar-group">
+      <h6 class="sidebar-group-title">Évaluations</h6>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+          <i class="fas fa-star"></i>
+          <span>Gestion des cotes</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+          <i class="fas fa-file-pdf"></i>
+          <span>Paramétrage Bulletins</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+          <i class="fas fa-balance-scale"></i>
+          <span>Délibération</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+          <i class="fas fa-sliders-h"></i>
+          <span>Paramètres Délibération</span>
+        </a></li>
+      </ul>
+    </div>
+
+    <!-- Configuration -->
+    <div class="sidebar-group">
+      <h6 class="sidebar-group-title">Configuration</h6>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-menu-link">
+          <i class="fas fa-cog"></i>
+          <span>Paramètres école</span>
+        </a></li>
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+          <i class="fas fa-user-shield"></i>
+          <span>Utilisateurs</span>
+        </a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <!-- PAGE HEADER -->
+    <div class="page-header mb-4">
+      <h1><i class="fas fa-chalkboard-user"></i> Gestion des Professeurs</h1>
+      <p class="text-muted">Gérez les comptes professeurs, ajoutez-les individuellement ou en masse</p>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <ul class="nav nav-tabs nav-modern mb-4" role="tablist">
+      <li role="presentation">
+        <button class="nav-link active" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-pane" type="button" role="tab" aria-controls="list-pane" aria-selected="true">
+          <i class="fas fa-list"></i> Liste des professeurs
+        </button>
+      </li>
+      <li role="presentation">
+        <button class="nav-link" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-pane" type="button" role="tab" aria-controls="add-pane" aria-selected="false">
+          <i class="fas fa-plus-circle"></i> Ajouter un professeur
+        </button>
+      </li>
+      <li role="presentation">
+        <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import-pane" type="button" role="tab" aria-controls="import-pane" aria-selected="false">
+          <i class="fas fa-file-excel"></i> Importer Excel
+        </button>
+      </li>
+    </ul>
+
+    <!-- TAB CONTENT -->
+    <div class="tab-content">
+      <!-- LIST TAB -->
+      <div class="tab-pane fade show active" id="list-pane" role="tabpanel" aria-labelledby="list-tab">
+        {% if professors %}
+        <div class="professors-container">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>
+                    <i class="fas fa-user-circle"></i> Nom complet
+                  </th>
+                  <th>
+                    <i class="fas fa-at"></i> Utilisateur
+                  </th>
+                  <th>
+                    <i class="fas fa-envelope"></i> Email
+                  </th>
+                  <th>
+                    <i class="fas fa-calendar-alt"></i> Créé le
+                  </th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for professor in professors %}
+                <tr>
+                  <td><strong>{{ professor.full_name }}</strong></td>
+                  <td><code>{{ professor.username }}</code></td>
+                  <td>
+                    {% if professor.email %}
+                      <a href="mailto:{{ professor.email }}">{{ professor.email }}</a>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if professor.created_at %}
+                      {{ professor.created_at.strftime('%d/%m/%Y') }}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('admin.edit_professor', professor_id=professor.id) }}" class="btn btn-sm btn-outline-primary" title="Modifier">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProfessorModal{{ professor.id }}" title="Supprimer">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info alert-modern">
+          <i class="fas fa-info-circle"></i>
+          <div>
+            <strong>Aucun professeur trouvé</strong>
+            <p class="mb-0">Ajoutez votre premier professeur en utilisant l'onglet "Ajouter un professeur".</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ADD TAB -->
+      <div class="tab-pane fade" id="add-pane" role="tabpanel" aria-labelledby="add-tab">
+        <div class="form-card">
+          <form method="post" class="needs-validation" novalidate>
+            <div class="form-sections">
+              <!-- Personal Information -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h6><i class="fas fa-id-card"></i> Informations personnelles</h6>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="full_name" class="form-label">
+                      Nom complet <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="full_name" id="full_name" class="form-control" required>
+                    <div class="invalid-feedback">
+                      Le nom complet est requis.
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="username" class="form-label">
+                      Nom d'utilisateur <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="username" id="username" class="form-control" required>
+                    <div class="invalid-feedback">
+                      Le nom d'utilisateur est requis.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account Information -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h6><i class="fas fa-lock"></i> Informations de compte</h6>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label for="email" class="form-label">
+                      Email <span class="text-muted">(optionnel)</span>
+                    </label>
+                    <input type="email" name="email" id="email" class="form-control">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="password" class="form-label">
+                      Mot de passe <span class="text-danger">*</span>
+                    </label>
+                    <input type="password" name="password" id="password" class="form-control" required>
+                    <div class="invalid-feedback">
+                      Le mot de passe est requis.
+                    </div>
+                    <small class="form-text text-muted">Minimum 6 caractères</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary-modern">
+                <i class="fas fa-save"></i> Enregistrer le professeur
+              </button>
+              <button type="reset" class="btn btn-outline-secondary">
+                <i class="fas fa-redo"></i> Réinitialiser
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- IMPORT TAB -->
+      <div class="tab-pane fade" id="import-pane" role="tabpanel" aria-labelledby="import-tab">
+        <div class="form-card">
+          <form method="post" id="professor-import-form" enctype="multipart/form-data">
+            <div class="form-sections">
+              <!-- Import Information -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h6><i class="fas fa-file-upload"></i> Importer depuis Excel</h6>
+                </div>
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label for="import_file" class="form-label">
+                      Fichier Excel (.xlsx, .xls) <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                      <input type="file" name="import_file" id="import_file" class="form-control" accept=".xls,.xlsx" required>
+                      <a href="{{ url_for('static', filename='templates/template_import_professeurs.xlsx') }}" class="btn btn-outline-secondary" download title="Télécharger le template">
+                        <i class="fas fa-download"></i> Template
+                      </a>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="alert alert-info alert-modern">
+                      <i class="fas fa-lightbulb"></i>
+                      <div>
+                        <strong>Format du fichier :</strong>
+                        <p class="mb-0">Colonnes obligatoires : <code>full_name</code> (ou <code>nom_complet</code>)<br>
+                        <code>username</code> est optionnel et sera défini sur <code>full_name</code> si absent.<br>
+                        Colonnes optionnelles : <code>email</code>, <code>password</code> (par défaut : <code>prof123</code>).</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+              <button type="submit" id="professor-import-button" class="btn btn-primary-modern w-100">
+                <span id="professor-import-spinner" class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                <i class="fas fa-upload"></i>
+                <span id="professor-import-button-text">Importer les professeurs</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- DELETE CONFIRMATION MODALS -->
+{% for professor in professors %}
+<div class="modal fade" id="deleteProfessorModal{{ professor.id }}" tabindex="-1" aria-labelledby="deleteProfessorModalLabel{{ professor.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title" id="deleteProfessorModalLabel{{ professor.id }}">
+          <i class="fas fa-exclamation-triangle text-danger"></i> Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer le professeur <strong>{{ professor.full_name }}</strong> ?</p>
+        <p class="text-muted small mb-0">Cette action est irréversible et pourrait affecter les attributions de cours.</p>
+      </div>
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{{ url_for('admin.delete_professor', professor_id=professor.id) }}" style="display: inline;">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<style>
+  /* PROFESSORS PAGE SPECIFIC STYLES */
+  .professors-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .table {
+    margin-bottom: 0;
+  }
+
+  .table thead {
+    background-color: #f8f9fa;
+  }
+
+  .table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .table tbody td {
+    vertical-align: middle;
+  }
+
+  .form-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .form-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-section {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .section-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .section-header h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-header i {
+    color: #3498db;
+    font-size: 1.1rem;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+
+  .form-actions button {
+    padding: 0.6rem 1.5rem;
+    font-weight: 500;
+  }
+
+  .btn-primary-modern {
+    background-color: #3498db;
+    border-color: #3498db;
+    color: white;
+  }
+
+  .btn-primary-modern:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+  }
+
+  .alert-modern {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    color: #1565c0;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .alert-modern i {
+    font-size: 1.25rem;
+    margin-top: 0.2rem;
+  }
+
+  code {
+    background-color: #f0f0f0;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    .form-card {
+      padding: 1.5rem;
+    }
+
+    .form-actions {
+      flex-direction: column;
+    }
+
+    .form-actions button {
+      width: 100%;
+    }
+
+    .professors-container {
+      padding: 1rem;
+    }
+  }
+</style>
+
+<script>
+  // Form validation
+  (() => {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+      form.addEventListener('submit', event => {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+
+  // Import form overlay
+  (() => {
+    const importForm = document.getElementById('professor-import-form');
+    const importBtn = document.getElementById('professor-import-button');
+    const spinner = document.getElementById('professor-import-spinner');
+    const buttonText = document.getElementById('professor-import-button-text');
+    
+    if (importForm) {
+      importForm.addEventListener('submit', function () {
+        importBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Importation en cours...';
+      });
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Bulletin - {{ student.last_name }} {{ student.first_name }}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 3mm;
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      margin: 0;
+      padding: 0;
+      color: #000;
+      font-size: 10.5px;
+      line-height: 0.95;
+    }
+    .bulletin-table {
+      width: 100%;
+      border: 1px solid #000;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-top: -1px;
+    }
+    .bulletin-table th, .bulletin-table td {
+      border: 1px solid #000;
+      padding: 1px 2px;
+      text-align: center;
+      vertical-align: middle;
+      height: 15px;
+    }
+    .bulletin-table thead th {
+      padding: 0px 1px;
+      height: 12px;
+      line-height: 0.95;
+      font-size: 11px;
+    }
+    .academic-col, .exam-col, .tot-col, .totg-col, .rep-col {
+      width: 9px;
+      min-width: 9px;
+      max-width: 9px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      .rep-col {display:none;}
+    }
+    .totg-col {
+      width: 14px !important;
+      min-width: 14px !important;
+      max-width: 14px !important;
+    }
+    .branch-col { width: 90px; min-width: 90px; }
+    
+    .branch-name-cell { text-align: left !important; padding-left: 2px !important; }
+    .bulletin-domain-row td { text-align: center !important; font-weight: bold; text-transform: uppercase; background: #e6e6e6; }
+    .bulletin-subdomain-row td { text-align: center !important; font-weight: bold; font-style: italic; background: #f5f5f5; }
+    .summary-row td { height: 13px !important; padding: 0px 1px !important; line-height: 0.95; font-size: 9.5px; }
+    .black-cell { background-color: #000 !important; }
+    
+    .id-box { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; margin-right: -1px; vertical-align: middle; background: #fff; text-align: center; line-height: 12px; font-size: 9px; font-weight: bold; box-sizing: border-box; }
+    .decision-box { border-left: 1px solid #000; padding: 1px 2px; font-size: 10px; vertical-align: top; text-align: left !important; line-height: 0.95; }
+    
+    .header-table { width: 100%; border: 1px solid #000; border-collapse: collapse; margin-bottom: 0; }
+    .header-table td { border: 1px solid #000; padding: 2px 3px; font-size: 11.5px; line-height: 1.05; }
+    
+    .text-center { text-align: center; }
+    .fw-bold { font-weight: bold; }
+    .text-uppercase { text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  {% macro display_score(value) -%}
+    {%- if value is not none -%}{{ value|int }}{%- else -%}x{%- endif -%}
+  {%- endmacro %}
+  {% macro display_score_with_check(value, max_value) -%}
+    {%- if value is not none -%}
+      {%- set score = value|int -%}
+      {%- if max_value and max_value > 0 and (value / max_value) < 0.5 -%}
+        {{ score }}*
+      {%- else -%}
+        {{ score }}
+      {%- endif -%}
+    {%- else -%}
+      x
+    {%- endif -%}
+  {%- endmacro %}
+  {% macro get_application_grade(pct) -%}
+    {% if pct is not none and pct != '' %}
+      {% set p = pct|float %}
+      {% if p >= 80 %}E
+      {% elif p >= 70 %}TB
+      {% elif p >= 60 %}B
+      {% elif p >= 50 %}AB
+      {% elif p >= 40 %}Me
+      {% else %}Ma{% endif %}
+    {% endif %}
+  {%- endmacro %}
+  {% set preview_totals = bulletin_totals if bulletin_totals is defined else none %}
+  <div class="bulletin-container">
+    <!-- MINISTRY HEADER -->
+    <table class="header-table">
+      <tr>
+        <td style="width: 15%; text-align: center;">
+          <img src="{{ url_for('static', filename='img/drapeau.png') }}" style="width: 40px; height: auto; border: 0.5px solid #000;">
+        </td>
+        <td style="width: 70%; text-align: center;">
+          <div class="fw-bold" style="font-size: 11px;">RÉPUBLIQUE DÉMOCRATIQUE DU CONGO</div>
+          <div class="fw-bold" style="font-size: 11px;">{{ school.ministry or "MINISTÈRE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE" }}</div>
+        </td>
+        <td style="width: 15%; text-align: center;">
+           <img src="{{ url_for('static', filename='img/embleme.png') }}" style="width: 36px; height: auto;">
+        </td>
+      </tr>
+      <tr>
+        <td colspan="3">
+          <div style="display: flex; align-items: center;">
+            <strong style="margin-right: 15px;">N° ID</strong>
+            {% set id_number = (student.student_id_number or '')|string %}{% for i in range(15) %}<div class="id-box">{{ id_number[i] if i < id_number|length else '' }}</div>{% endfor %}
+          </div>
+        </td>
+      </tr>
+      <tr><td colspan="3"><strong>PROVINCE :</strong> {{ school.province or '....................................................................................................................................' }}</td></tr>
+      <tr>
+        <td colspan="3" style="padding: 0;">
+          <table style="width: 100%; border: none; border-collapse: collapse;">
+            <tr>
+              <td style="width: 45%; border: none; border-right: 1px solid #000;"><strong>VILLE :</strong> {{ school.city or '.......................................' }}</td>
+              <td style="width: 35%; border: none; border-right: 1px solid #000;"><strong>ÉLÈVE :</strong> <span class="fw-bold">{{ student.last_name }} {{ student.first_name }}</span></td>
+              <td style="width: 20%; border: none;"><strong>SEXE :</strong> {{ student.gender or '....' }}</td>
+            </tr>
+            <tr>
+              <td style="border: none; border-top: 1px solid #000; border-right: 1px solid #000;"><strong>COMMUNE :</strong> {{ school.commune or '.................................' }}</td>
+              <td colspan="2" style="border: none; border-top: 1px solid #000;"><strong>NÉ(E) À :</strong> {{ student.place_of_birth or '................' }}, <strong>LE :</strong> {{ student.birth_date.strftime('%d / %m / %Y') if student.birth_date else '..../..../....' }}</td>
+            </tr>
+            <tr>
+              <td style="border: none; border-top: 1px solid #000; border-right: 1px solid #000;"><strong>ÉCOLE :</strong> {{ school.bulletin_school_name or school.name }}</td>
+              <td colspan="2" style="border: none; border-top: 1px solid #000;"><strong>CLASSE :</strong> {{ student.section.level ~ ' ' ~ student.section.class_name if student.section else '................' }}</td>
+            </tr>
+            <tr>
+              <td style="border: none; border-top: 1px solid #000; border-right: 1px solid #000;"><strong>CODE :</strong> {% if school.school_code %}{{ school.school_code }}{% else %}{% for i in range(7) %}<div class="id-box"></div>{% endfor %}{% endif %}</td>
+              <td colspan="2" style="border: none; border-top: 1px solid #000;"><strong>N° PERM :</strong> {% set perm_number = (student.serial_number or '')|string %}{% for i in range(12) %}<div class="id-box">{{ perm_number[i] if i < perm_number|length else '' }}</div>{% endfor %}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div class="text-center fw-bold" style="border: 1px solid #000; border-top: none; padding: 0; font-size: 10.5px; font-weight: bold !important;">
+      <strong>BULLETIN DE LA {{ student.section.level }}<sup>ème</sup> ANNÉE &nbsp;&nbsp;
+      {% if 'education de base' in student.section.name|lower or 'éducation de base' in student.section.name|lower %}
+        CYCLE TERMINAL DE L'ÉDUCATION DE BASE (CTEB)
+      {% else %}
+        HUMANITÉS / {{ student.section.name|upper }}
+      {% endif %}
+      &nbsp;&nbsp; ANNÉE SCOLAIRE {{ student.academic_year or '20....... - 20.......' }}</strong>
+    </div>
+
+    <!-- MAIN TABLE -->
+    <table class="bulletin-table" style="border-top: none;">
+      <thead>
+        <tr>
+          <th rowspan="3" class="branch-col">BRANCHES</th>
+          <th colspan="7">PREMIER SEMESTRE</th>
+          <th colspan="7">SECOND SEMESTRE</th>
+          <th colspan="2" rowspan="3" class="totg-col">TOT.<br>G</th>
+          <th colspan="2" class="rep-col">EXAMEN DE<br>REPÊCHAGE</th>
+        </tr>
+        <tr>
+          <th colspan="3">TRAVAUX JOURNAL</th>
+          <th colspan="2" rowspan="2" class="exam-col">MAX<br>EXAM</th>
+          <th colspan="2" rowspan="2" class="tot-col">MAX<br>TOT</th>
+          <th colspan="3">TRAVAUX JOURNAL</th>
+          <th colspan="2" rowspan="2" class="exam-col">MAX<br>EXAM</th>
+          <th colspan="2" rowspan="2" class="tot-col">MAX<br>TOT</th>
+          <th rowspan="2" class="rep-col">%</th>
+          <th rowspan="2" class="rep-col">SIGN. PROF</th>
+        </tr>
+        <tr>
+          <th class="academic-col">MAX</th><th class="academic-col">1 P</th><th class="academic-col">2 P</th>
+          <th class="academic-col">MAX</th><th class="academic-col">3 P</th><th class="academic-col">4 P</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set total_max_j1 = [0] %}
+        {% set total_max_e1 = [0] %}
+        {% set total_max_t1 = [0] %}
+        {% set total_max_j2 = [0] %}
+        {% set total_max_e2 = [0] %}
+        {% set total_max_t2 = [0] %}
+        {% set total_max_gen = [0] %}
+
+        {% set sub_p1 = [0] %}{% set sub_p2 = [0] %}{% set sub_exa1 = [0] %}{% set sub_t1 = [0] %}
+        {% set sub_p3 = [0] %}{% set sub_p4 = [0] %}{% set sub_exa2 = [0] %}{% set sub_t2 = [0] %}
+        {% set sub_gen = [0] %}
+
+        {% set grand_p1 = [0] %}{% set grand_p2 = [0] %}{% set grand_exa1 = [0] %}{% set grand_t1 = [0] %}
+        {% set grand_p3 = [0] %}{% set grand_p4 = [0] %}{% set grand_exa2 = [0] %}{% set grand_t2 = [0] %}
+        {% set grand_gen = [0] %}
+
+        {% for branch in branches %}
+          {% set branch_type = branch.type|default('branch') %}
+
+          {% if branch_type == 'domain' %}
+          <tr class="bulletin-domain-row">
+            <td colspan="19">{{ branch.domain or branch.name }}</td>
+          </tr>
+          {% elif branch_type == 'subdomain' %}
+          <tr class="bulletin-subdomain-row">
+            <td colspan="19">{{ branch.subdomain or branch.name }}</td>
+          </tr>
+          {% else %}
+          {% set is_total = 'total' in branch.name.lower() %}
+          {% set repechage = none %}
+
+          {% set branch_grades = grades_map.get(branch.id) or grades_map.get(branch.name) or {} %}
+          {% if is_total %}
+            {% set p1 = sub_p1[0] if sub_p1[0] > 0 else none %}
+            {% set p2 = sub_p2[0] if sub_p2[0] > 0 else none %}
+            {% set exa1 = sub_exa1[0] if sub_exa1[0] > 0 else none %}
+            {% set p3 = sub_p3[0] if sub_p3[0] > 0 else none %}
+            {% set p4 = sub_p4[0] if sub_p4[0] > 0 else none %}
+            {% set exa2 = sub_exa2[0] if sub_exa2[0] > 0 else none %}
+            {% set total1 = sub_t1[0] if sub_t1[0] > 0 else none %}
+            {% set total2 = sub_t2[0] if sub_t2[0] > 0 else none %}
+            {% set total_general = sub_gen[0] if sub_gen[0] > 0 else none %}
+
+            {% set _ = sub_p1.append(0) %}{% set _ = sub_p1.pop(0) %}
+            {% set _ = sub_p2.append(0) %}{% set _ = sub_p2.pop(0) %}
+            {% set _ = sub_exa1.append(0) %}{% set _ = sub_exa1.pop(0) %}
+            {% set _ = sub_t1.append(0) %}{% set _ = sub_t1.pop(0) %}
+            {% set _ = sub_p3.append(0) %}{% set _ = sub_p3.pop(0) %}
+            {% set _ = sub_p4.append(0) %}{% set _ = sub_p4.pop(0) %}
+            {% set _ = sub_exa2.append(0) %}{% set _ = sub_exa2.pop(0) %}
+            {% set _ = sub_t2.append(0) %}{% set _ = sub_t2.pop(0) %}
+            {% set _ = sub_gen.append(0) %}{% set _ = sub_gen.pop(0) %}
+          {% else %}
+            {% set p1 = branch_grades.get('1èP') if branch_grades else none %}
+            {% set p2 = branch_grades.get('2èP') if branch_grades else none %}
+            {% set exa1 = branch_grades.get('EXA1') if branch_grades else none %}
+            {% set p3 = branch_grades.get('3èP') if branch_grades else none %}
+            {% set p4 = branch_grades.get('4èP') if branch_grades else none %}
+            {% set exa2 = branch_grades.get('EXA2') if branch_grades else none %}
+            {% set repechage = branch_grades.get('REPECHAGE') if branch_grades else none %}
+
+            {% set total1 = ((p1 or 0) + (p2 or 0) + (exa1 or 0)) if branch_grades else none %}
+            {% set total2 = ((p3 or 0) + (p4 or 0) + (exa2 or 0)) if branch_grades else none %}
+            {% set total_general = (total1 + total2) if total1 is not none and total2 is not none else none %}
+          {% endif %}
+          
+          {% set max_p1 = branch.max_period_1|float if branch.max_period_1 else 0 %}
+          {% set max_e1 = branch.max_exam_1|float if branch.max_exam_1 else 0 %}
+          {% set max_j1 = max_p1 * 2 %}
+          {% set max_t1 = max_j1 + max_e1 %}
+          
+          {% set max_j2 = max_j1 %}
+          {% set max_e2 = max_e1 %}
+          {% set max_t2 = max_t1 %}
+          {% set branch_max_gen = max_t1 + max_t2 %}
+          {% set branch_percentage = (total_general / branch_max_gen * 100) if total_general is not none and branch_max_gen > 0 and not is_total else none %}
+
+          {% if not is_total %}
+            {% set _ = total_max_j1.append(total_max_j1.pop() + max_j1) %}
+            {% set _ = total_max_e1.append(total_max_e1.pop() + max_e1) %}
+            {% set _ = total_max_t1.append(total_max_t1.pop() + max_t1) %}
+            {% set _ = total_max_j2.append(total_max_j2.pop() + max_j2) %}
+            {% set _ = total_max_e2.append(total_max_e2.pop() + max_e2) %}
+            {% set _ = total_max_t2.append(total_max_t2.pop() + max_t2) %}
+            {% set _ = total_max_gen.append(total_max_gen.pop() + branch_max_gen) %}
+            
+            {% if p1 is not none %}{% set _ = sub_p1.append(sub_p1.pop() + p1) %}{% set _ = grand_p1.append(grand_p1.pop() + p1) %}{% endif %}
+            {% if p2 is not none %}{% set _ = sub_p2.append(sub_p2.pop() + p2) %}{% set _ = grand_p2.append(grand_p2.pop() + p2) %}{% endif %}
+            {% if exa1 is not none %}{% set _ = sub_exa1.append(sub_exa1.pop() + exa1) %}{% set _ = grand_exa1.append(grand_exa1.pop() + exa1) %}{% endif %}
+            {% if total1 is not none %}{% set _ = sub_t1.append(sub_t1.pop() + total1) %}{% set _ = grand_t1.append(grand_t1.pop() + total1) %}{% endif %}
+            {% if p3 is not none %}{% set _ = sub_p3.append(sub_p3.pop() + p3) %}{% set _ = grand_p3.append(grand_p3.pop() + p3) %}{% endif %}
+            {% if p4 is not none %}{% set _ = sub_p4.append(sub_p4.pop() + p4) %}{% set _ = grand_p4.append(grand_p4.pop() + p4) %}{% endif %}
+            {% if exa2 is not none %}{% set _ = sub_exa2.append(sub_exa2.pop() + exa2) %}{% set _ = grand_exa2.append(grand_exa2.pop() + exa2) %}{% endif %}
+            {% if total2 is not none %}{% set _ = sub_t2.append(sub_t2.pop() + total2) %}{% set _ = grand_t2.append(grand_t2.pop() + total2) %}{% endif %}
+            {% if total_general is not none %}{% set _ = sub_gen.append(sub_gen.pop() + total_general) %}{% set _ = grand_gen.append(grand_gen.pop() + total_general) %}{% endif %}
+          {% endif %}
+
+          <tr class="{{ 'fw-bold' if is_total else '' }}">
+            <td class="branch-name-cell">{{ branch.name }}</td>
+            <td class="academic-col"><strong>{{ display_score(branch.max_period_1) }}</strong></td>
+            <td class="academic-col">{{ display_score_with_check(p1, max_p1) }}</td>
+            <td class="academic-col">{{ display_score_with_check(p2, max_p1) }}</td>
+            <td class="exam-col"><strong>{{ display_score(branch.max_exam_1) }}</strong></td>
+            <td class="exam-col">{{ display_score_with_check(exa1, max_e1) }}</td>
+            <td class="tot-col" style="background-color: #f2f2f2;"><strong>{{ display_score(max_t1) if max_t1 > 0 else '' }}</strong></td>
+            <td class="tot-col"><strong>{{ display_score_with_check(total1, max_t1) }}</strong></td>
+            <td class="academic-col"><strong>{{ display_score(branch.max_period_1) }}</strong></td>
+            <td class="academic-col">{{ display_score_with_check(p3, max_p1) }}</td>
+            <td class="academic-col">{{ display_score_with_check(p4, max_p1) }}</td>
+            <td class="exam-col"><strong>{{ display_score(branch.max_exam_1) }}</strong></td>
+            <td class="exam-col">{{ display_score_with_check(exa2, max_e2) }}</td>
+            <td class="tot-col" style="background-color: #f2f2f2;"><strong>{{ display_score(max_t2) if max_t2 > 0 else '' }}</strong></td>
+            <td class="tot-col"><strong>{{ display_score_with_check(total2, max_t2) }}</strong></td>
+            <td class="totg-col" style="background-color: #e6e6e6;"><strong>{{ display_score(branch_max_gen) if branch_max_gen > 0 else '' }}</strong></td>
+            <td class="totg-col"><strong>{{ display_score_with_check(total_general, branch_max_gen) }}</strong></td>
+            <td class="rep-col">{{ display_score(repechage) if repechage is not none else '' }}</td>
+            <td class="rep-col"></td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+
+        <!-- MAXIMA GÉNÉRAUX -->
+        <tr class="fw-bold summary-row">
+          <td class="branch-name-cell">MAXIMA GÉNÉRAUX</td>
+          <td class="academic-col">{{ ((preview_totals.maxPeriod / 2)|int) if preview_totals else (total_max_j1[0] / 2)|int }}</td>
+          <td class="academic-col"></td>
+          <td class="academic-col"></td>
+          <td class="exam-col">{{ (preview_totals.maxExam|int) if preview_totals else total_max_e1[0]|int }}</td>
+          <td class="exam-col"></td>
+          <td class="tot-col" style="background-color: #f2f2f2;"><strong>{{ (preview_totals.semesterTotal|int) if preview_totals else total_max_t1[0]|int }}</strong></td>
+          <td class="tot-col"></td>
+          <td class="academic-col">{{ ((preview_totals.maxPeriod / 2)|int) if preview_totals else (total_max_j2[0] / 2)|int }}</td>
+          <td class="academic-col"></td>
+          <td class="academic-col"></td>
+          <td class="exam-col">{{ (preview_totals.maxExam|int) if preview_totals else total_max_e2[0]|int }}</td>
+          <td class="exam-col"></td>
+          <td class="tot-col" style="background-color: #f2f2f2;"><strong>{{ (preview_totals.semesterTotal|int) if preview_totals else total_max_t2[0]|int }}</strong></td>
+          <td class="tot-col"></td>
+          <td class="totg-col" style="background-color: #e6e6e6;"><strong>{{ (preview_totals.generalTotal|int) if preview_totals else total_max_gen[0]|int }}</strong></td>
+          <td class="totg-col"></td>
+          <td colspan="2" rowspan="6" class="decision-box">
+            <div style="margin-bottom: 1px;">- Passe (1)</div>
+            <div style="margin-bottom: 1px;">- Double (1)</div>
+            <div style="margin-bottom: 3px;">- A échoué (1)</div>
+            <div style="font-size: 10px;">Le ....../....../20....</div>
+            <div style="text-align: center; font-weight: bold; margin-top: 8px;">
+              Le Chef d'Établissement<br><br><br>
+              Sceau de l'École
+            </div>
+          </td>
+        </tr>
+
+        {% set summary_labels = [('TOTAUX', False), ('POURCENTAGE', False), ('PLACE/NBRE ÉLÈVES', True), ('APPLICATION', False), ('CONDUITE', False)] %}
+        {% for label, has_slashes in summary_labels %}
+        <tr class="fw-bold summary-row">
+          <td class="branch-name-cell">{{ label }}</td>
+          {% for j in range(15) %}
+            <td class="academic-col {{ 'black-cell' if j in [0,3,5,7,10,12] else '' }}">
+              {% if label == 'TOTAUX' %}
+                {% if j == 1 %}{{ display_score(grand_p1[0]) if grand_p1[0] > 0 else '' }}
+                {% elif j == 2 %}{{ display_score(grand_p2[0]) if grand_p2[0] > 0 else '' }}
+                {% elif j == 4 %}{{ display_score(grand_exa1[0]) if grand_exa1[0] > 0 else '' }}
+                {% elif j == 6 %}{{ display_score(grand_t1[0]) if grand_t1[0] > 0 else '' }}
+                {% elif j == 8 %}{{ display_score(grand_p3[0]) if grand_p3[0] > 0 else '' }}
+                {% elif j == 9 %}{{ display_score(grand_p4[0]) if grand_p4[0] > 0 else '' }}
+                {% elif j == 11 %}{{ display_score(grand_exa2[0]) if grand_exa2[0] > 0 else '' }}
+                {% elif j == 13 %}{{ display_score(grand_t2[0]) if grand_t2[0] > 0 else '' }}
+                {% endif %}
+              {% elif label == 'POURCENTAGE' %}
+                {% if j == 1 %}{{ ('%.2f'|format((grand_p1[0] / (total_max_j1[0]/2) * 100))) if total_max_j1[0] > 0 else '' }}
+                {% elif j == 2 %}{{ ('%.2f'|format((grand_p2[0] / (total_max_j1[0]/2) * 100))) if total_max_j1[0] > 0 else '' }}
+                {% elif j == 3 %}{{ ('%.2f'|format((grand_gen[0] / total_max_gen[0] * 100))) if total_max_gen[0] > 0 else '' }}
+                {% elif j == 4 %}{{ ('%.2f'|format((grand_exa1[0] / total_max_e1[0] * 100))) if total_max_e1[0] > 0 else '' }}
+                {% elif j == 6 %}{{ ('%.2f'|format((grand_t1[0] / total_max_t1[0] * 100))) if total_max_t1[0] > 0 else '' }}
+                {% elif j == 8 %}{{ ('%.2f'|format((grand_p3[0] / (total_max_j2[0]/2) * 100))) if total_max_j2[0] > 0 else '' }}
+                {% elif j == 9 %}{{ ('%.2f'|format((grand_p4[0] / (total_max_j2[0]/2) * 100))) if total_max_j2[0] > 0 else '' }}
+                {% elif j == 11 %}{{ ('%.2f'|format((grand_exa2[0] / total_max_e2[0] * 100))) if total_max_e2[0] > 0 else '' }}
+                {% elif j == 13 %}{{ ('%.2f'|format((grand_t2[0] / total_max_t2[0] * 100))) if total_max_t2[0] > 0 else '' }}
+                {% endif %}
+              {% elif label == 'PLACE/NBRE ÉLÈVES' %}
+                {% if j == 1 %}{{ student_ranks.get('1èP', '') }}
+                {% elif j == 2 %}{{ student_ranks.get('2èP', '') }}
+                {% elif j == 4 %}{{ student_ranks.get('EXA1', '') }}
+                {% elif j == 6 %}{{ student_ranks.get('semester1', '') }}
+                {% elif j == 8 %}{{ student_ranks.get('3èP', '') }}
+                {% elif j == 9 %}{{ student_ranks.get('4èP', '') }}
+                {% elif j == 11 %}{{ student_ranks.get('EXA2', '') }}
+                {% elif j == 13 %}{{ student_ranks.get('semester2', '') }}
+                {% else %}
+                  {{ ' / ' if has_slashes and j in [1,2,8,9] else '' }}
+                {% endif %}
+              {% elif label == 'APPLICATION' %}
+                {% if j == 1 %}{{ get_application_grade((grand_p1[0] / (total_max_j1[0]/2) * 100) if total_max_j1[0] > 0 else none) }}
+                {% elif j == 2 %}{{ get_application_grade((grand_p2[0] / (total_max_j1[0]/2) * 100) if total_max_j1[0] > 0 else none) }}
+                {% elif j == 8 %}{{ get_application_grade((grand_p3[0] / (total_max_j2[0]/2) * 100) if total_max_j2[0] > 0 else none) }}
+                {% elif j == 9 %}{{ get_application_grade((grand_p4[0] / (total_max_j2[0]/2) * 100) if total_max_j2[0] > 0 else none) }}
+                {% else %}
+                  {{ ' / ' if has_slashes and j in [1,2,8,9] else '' }}
+                {% endif %}
+              {% elif label == 'CONDUITE' %}
+                {% if j == 1 %}{{ (conducts or {}).get('1èP', '') }}
+                {% elif j == 2 %}{{ (conducts or {}).get('2èP', '') }}
+                {% elif j == 8 %}{{ (conducts or {}).get('3èP', '') }}
+                {% elif j == 9 %}{{ (conducts or {}).get('4èP', '') }}
+                {% endif %}
+              {% else %}
+                {{ ' / ' if has_slashes and j in [1,2,8,9] else '' }}
+              {% endif %}
+            </td>
+          {% endfor %}
+          <td class="totg-col">
+            {% if label == 'TOTAUX' %}{{ display_score(grand_gen[0]) if grand_gen[0] > 0 else '' }}{% elif label == 'POURCENTAGE' %}{{ ('%.2f'|format((grand_gen[0] / total_max_gen[0] * 100))) if total_max_gen[0] > 0 else '' }}{% elif label == 'PLACE/NBRE ÉLÈVES' %}{{ student_ranks.get('annual', '') }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+
+        <tr>
+          <td class="branch-name-cell" style="height: 22px;">Signature du Responsable</td>
+          <td colspan="14"></td>
+          <td colspan="4"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- FOOTER -->
+    <div style="border: 1px solid #000; border-top: none; margin-top: 0; padding: 4px; font-size: 11.5px; line-height: 1.18;">
+      <div style="margin-bottom: 4px;">
+        - L'élève ne pourra passer dans la classe supérieure s'il n'a subi avec succès un examen de repêchage en : 
+        {% if deliberation_result and deliberation_result.decision == 'PASSAGE APRES REPECHAGE' and deliberation_result.notes %}
+          <span style="font-weight: bold; text-transform: uppercase;">{{ deliberation_result.notes }}</span>
+        {% else %}
+          ..........................................
+        {% endif %}
+      </div>
+      <div style="margin-bottom: 3px;">- L'élève passe dans la classe supérieure (1)</div>
+      <div style="margin-bottom: 3px;">- L'élève double sa classe (1)</div>
+      <div style="margin-bottom: 4px;">- L'élève a échoué (1) <span style="float: right;">Fait à {{ school.city or '.......................' }}, le {{ today or '......./......./20.....' }}</span></div>
+      
+      <div style="display: flex; justify-content: space-between; margin-top: 5px; text-align: center; gap: 10px;">
+        <div style="flex: 1; font-weight: bold; text-decoration: underline;">Signature de l'élève</div>
+        <div style="flex: 1; font-weight: bold; text-decoration: underline;">Sceau de l'école</div>
+        <div style="flex: 1; font-weight: bold; text-decoration: underline;">Préfet des Études</div>
+        <div style="flex: 1; font-weight: bold; text-decoration: underline;">Chef d'Établissement</div>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; margin-top: 3px; text-align: center; gap: 10px;">
+        <div style="flex: 1;"></div>
+        <div style="flex: 1;"></div>
+        <div style="flex: 1; font-size: 9.5px;">{{ school.study_prefect_name or '.....................' }}</div>
+        <div style="flex: 1;"></div>
+      </div>
+      
+      <div style="margin-top: 5px; font-size: 11.5px; line-height: 1.18;">
+        (1) Biffer la mention inutile
+      </div>
+      <div style="font-size: 11.5px; line-height: 1.18;">
+        Note : le bulletin est sans valeur s'il est raturé ou surchargé
+        <span style="float: right;">{% if config and config.ige_number %}{{ config.ige_number }}{% else %}...........................{% endif %}</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

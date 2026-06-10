@@ -1,0 +1,1408 @@
+{% extends 'base.html' %}
+
+{% block title %}Secrétaire - gestion des notes verrouillées{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5 secretary-dashboard">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div>
+      <h2 class="mb-1">📋 Gestion des notes verrouillées par les professeurs</h2>
+      <small class="text-muted">Accès secrétaire à la gestion des cotes soumises.</small>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('secretary.conduite') }}" class="btn btn-success btn-sm fw-semibold shadow-sm">
+        <i class="fas fa-clipboard-check me-1"></i> Saisir la Conduite
+      </a>
+      <a href="{{ url_for('admin.school_reset') }}" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-rotate-left"></i> Réinitialisations école
+      </a>
+      <button type="button" id="backBtn" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left"></i> Retour à la page précédente
+      </button>
+    </div>
+  </div>
+  <hr>
+
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <a href="{{ url_for('secretary.conduite') }}" class="text-decoration-none">
+        <div class="card text-center h-100 border-success shadow-sm conduite-card">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center">
+            <div class="conduite-icon-circle mb-2">
+              <i class="fas fa-clipboard-check fa-2x text-white"></i>
+            </div>
+            <h5 class="card-title text-success fw-bold mb-1">Saisir la Conduite</h5>
+            <small class="text-muted">Cliquez pour saisir les cotes de conduite</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <h5 class="card-title">Notes verrouillées</h5>
+          <h3 class="text-danger">{{ submitted_grades_count }}</h3>
+          <small class="text-muted">En attente de révision</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <h5 class="card-title">Classes</h5>
+          <h3 class="text-primary">{{ sections|length }}</h3>
+          <small class="text-muted">Classes disponibles</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center h-100">
+        <div class="card-body">
+          <h5 class="card-title">Cours</h5>
+          <h3 class="text-success">{{ courses|length }}</h3>
+          <small class="text-muted">Total des cours</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4 secretary-notifications-card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <strong><i class="fas fa-bell"></i> Notifications du secrétariat</strong>
+        <div class="small text-muted">Soumissions de cotes et retours du secrétariat.</div>
+      </div>
+      <div class="d-flex flex-wrap align-items-center gap-2 secretary-notifications-actions">
+        <span id="notificationsCountBadge" class="badge {% if unread_notifications_count and unread_notifications_count > 0 %}bg-danger{% else %}bg-secondary{% endif %}">
+          {{ unread_notifications_count or 0 }}
+        </span>
+        <button type="button" id="refreshNotificationsBtn" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-sync-alt"></i> Actualiser
+        </button>
+        <button type="button" id="markAllNotificationsReadBtn" class="btn btn-outline-primary btn-sm" {% if not unread_notifications_count %}disabled{% endif %}>
+          Marquer tout comme lu
+        </button>
+      </div>
+    </div>
+    <div id="notificationsLiveAlert" class="px-3 pt-3" aria-live="polite"></div>
+    <div class="list-group list-group-flush" id="notificationsList">
+      {% if notifications %}
+        {% for notification in notifications %}
+          <div class="list-group-item d-flex justify-content-between align-items-start gap-3 notification-item {% if not notification.is_read %}notification-unread{% endif %}" data-notification-id="{{ notification.id }}" role="button" tabindex="0">
+            <div class="me-3">
+              <div class="fw-semibold">{{ notification.title }}</div>
+              <div class="small">{{ notification.message }}</div>
+              <div class="small text-muted mt-1">{{ notification.created_at.strftime('%d/%m/%Y %H:%M') if notification.created_at else '' }}</div>
+            </div>
+            {% if not notification.is_read %}
+              <span class="badge bg-primary">Nouveau</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="list-group-item text-muted" id="notificationsEmptyState">Aucune notification pour le moment.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>1. Sélectionner une section, un niveau et une classe</strong>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="sectionSelect" class="form-label">Section :</label>
+          <select class="form-select" id="sectionSelect">
+            <option value="">-- Sélectionner une section --</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="levelSelect" class="form-label">Niveau :</label>
+          <select class="form-select" id="levelSelect" disabled>
+            <option value="">-- Sélectionner un niveau --</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="classSelect" class="form-label">Classe :</label>
+          <select class="form-select" id="classSelect" disabled>
+            <option value="">-- Sélectionner une classe --</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="classInfo" class="small text-muted mt-3">
+        Sélectionnez une section, un niveau et une classe pour afficher les périodes et le déverrouillage collectif.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <strong>2. Périodes de la classe</strong>
+        <div id="classPeriodHint" class="small text-muted">Aucune classe sélectionnée.</div>
+      </div>
+      <button type="button" id="unlockClassPeriodBtn" class="btn btn-warning" disabled>
+        <i class="fas fa-unlock"></i> Déverrouiller la période de la classe
+      </button>
+    </div>
+    <div class="card-body">
+      <div id="classPeriodSummary" class="mb-3">
+        <div class="alert alert-info mb-0">
+          Sélectionnez une classe pour afficher le statut collectif des périodes.
+        </div>
+      </div>
+
+      <ul class="nav nav-tabs mb-3 secretary-period-tabs" role="tablist" id="periodTabs"></ul>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>3. Détail par cours (optionnel)</strong>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info mb-3">
+        Après avoir choisi une classe, sélectionnez un cours pour vérifier les cotes soumises et les modifier si nécessaire.
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <label for="courseSelect" class="form-label">Cours :</label>
+          <select class="form-select" id="courseSelect" disabled>
+            <option value="">-- Sélectionner un cours --</option>
+          </select>
+        </div>
+        <div class="col-md-6 mt-3 mt-md-0 d-none" id="secretaryExportButtons">
+          <div class="d-flex gap-2 w-100 flex-wrap h-100 align-items-end">
+            <a href="#" id="sec-export-fiche-vierge" class="btn btn-outline-info btn-sm flex-fill"><i class="fas fa-file-excel"></i> Fiche Vierge</a>
+            <a href="#" id="sec-export-fiche-remplie" class="btn btn-outline-info btn-sm flex-fill"><i class="fas fa-file-excel"></i> Fiche Remplie</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="courseInfo" class="mt-3"></div>
+
+      <div id="actionStatus" class="mt-3"></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="periodTabContent">
+    <div class="alert alert-info mb-0">
+      Sélectionnez une classe pour consulter les périodes.
+    </div>
+  </div>
+</div>
+
+<style>
+  .conduite-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    cursor: pointer;
+    border-width: 2px !important;
+  }
+
+  .conduite-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(25, 135, 84, 0.25) !important;
+  }
+
+  .conduite-icon-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #198754, #20c997);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.4);
+  }
+
+  .secretary-dashboard h2 {
+    font-size: clamp(1.2rem, 2.3vw, 1.9rem);
+  }
+
+  .secretary-dashboard .card-header strong {
+    font-size: 0.95rem;
+  }
+
+  .secretary-dashboard .card-body {
+    padding: 0.9rem;
+  }
+
+  .secretary-period-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .secretary-period-tabs .nav-item {
+    flex: 1 1 0;
+  }
+
+  .secretary-period-tabs .nav-link {
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .period-tab-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .period-summary-card {
+    min-height: 100%;
+    border-width: 1px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.04);
+  }
+
+  .period-summary-card.state-locked {
+    background: #f8d7da;
+    border-color: #f1aeb5;
+  }
+
+  .period-summary-card.state-partial {
+    background: #fff3cd;
+    border-color: #ffe69c;
+  }
+
+  .period-summary-card.state-open {
+    background: #dbeafe;
+    border-color: #bfdbfe;
+  }
+
+  .period-card-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .period-card-icon.locked {
+    background: #c82333;
+  }
+
+  .period-card-icon.partial {
+    background: #d39e00;
+  }
+
+  .period-card-icon.open {
+    background: #0d6efd;
+  }
+
+  .grade-cell {
+    position: relative;
+  }
+
+  .grade-input {
+    width: 100%;
+    padding: 0.25rem;
+  }
+
+  .save-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.75rem;
+  }
+
+  .locked-indicator {
+    font-weight: bold;
+  }
+
+  .submitted-info {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+
+  .secretary-grades-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .secretary-grades-table {
+    min-width: 820px;
+  }
+
+  .secretary-grades-table th,
+  .secretary-grades-table td {
+    white-space: nowrap;
+  }
+
+  .secretary-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  #actionStatus {
+    display: inline-block;
+  }
+
+  .secretary-notifications-actions {
+    min-width: 0;
+  }
+
+  .secretary-notifications-actions .badge {
+    min-width: 2.4rem;
+    text-align: center;
+  }
+
+  .notification-item {
+    cursor: pointer;
+    transition: background-color 0.18s ease, transform 0.18s ease;
+  }
+
+  .notification-item:hover {
+    transform: translateY(-1px);
+  }
+
+  .notification-unread {
+    background-color: #fff8e1;
+  }
+
+  .notification-unread .fw-semibold {
+    color: #7c2d12;
+  }
+
+  @media (max-width: 991.98px) {
+    .secretary-dashboard .card-body {
+      padding: 0.8rem;
+    }
+
+    .secretary-period-tabs .nav-link {
+      font-size: 0.9rem;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .secretary-grades-table {
+      min-width: 760px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .secretary-dashboard {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+
+    .secretary-dashboard h2 {
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+
+    .secretary-dashboard .row.mb-4 > [class*="col-"] {
+      margin-bottom: 0.75rem;
+    }
+
+    .secretary-period-tabs {
+      flex-direction: column;
+    }
+
+    .secretary-period-tabs .nav-item {
+      width: 100%;
+    }
+
+    .secretary-period-tabs .nav-link {
+      border-radius: 0.5rem;
+      white-space: normal;
+      font-size: 0.82rem;
+      padding: 0.42rem 0.5rem;
+    }
+
+    .secretary-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .secretary-actions .btn {
+      width: 100%;
+    }
+
+    .secretary-notifications-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .secretary-notifications-actions .btn {
+      flex: 1 1 auto;
+    }
+
+    #actionStatus {
+      display: block;
+      margin-left: 0 !important;
+      margin-top: 0.35rem;
+    }
+
+    #courseInfo {
+      font-size: 0.88rem;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .secretary-grades-table {
+      min-width: 700px;
+    }
+
+    .secretary-grades-table th,
+    .secretary-grades-table td {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.4rem;
+    }
+
+    .grade-input {
+      min-width: 72px;
+      font-size: 0.82rem;
+    }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const backBtn = document.getElementById('backBtn');
+  const sectionSelect = document.getElementById('sectionSelect');
+  const levelSelect = document.getElementById('levelSelect');
+  const classSelect = document.getElementById('classSelect');
+  const classInfo = document.getElementById('classInfo');
+  const classPeriodHint = document.getElementById('classPeriodHint');
+  const classPeriodSummary = document.getElementById('classPeriodSummary');
+  const periodTabs = document.getElementById('periodTabs');
+  const periodTabContent = document.getElementById('periodTabContent');
+  const unlockClassPeriodBtn = document.getElementById('unlockClassPeriodBtn');
+  const courseSelect = document.getElementById('courseSelect');
+  const courseInfo = document.getElementById('courseInfo');
+  const actionStatus = document.getElementById('actionStatus');
+  const notificationsList = document.getElementById('notificationsList');
+  const notificationsLiveAlert = document.getElementById('notificationsLiveAlert');
+  const notificationsCountBadge = document.getElementById('notificationsCountBadge');
+  const refreshNotificationsBtn = document.getElementById('refreshNotificationsBtn');
+  const markAllNotificationsReadBtn = document.getElementById('markAllNotificationsReadBtn');
+  const secExportFicheVierge = document.getElementById('sec-export-fiche-vierge');
+  const secExportFicheRemplie = document.getElementById('sec-export-fiche-remplie');
+  const secretaryExportButtons = document.getElementById('secretaryExportButtons');
+  
+  const periods = {{ periods|tojson }};
+  const secretaryBaseUrl = {{ url_for('secretary.dashboard')|tojson }};
+  const professorBaseUrl = secretaryBaseUrl.replace('/secretary', '/professor');
+  const adminDashboardUrl = {{ url_for('admin.dashboard')|tojson }};
+
+  let currentSectionName = '';
+  let currentLevel = '';
+  let currentClassId = null;
+  let currentClassLabel = '';
+  let currentCourseId = null;
+  let currentPeriod = null;
+  let currentCourses = [];
+  let classPeriodStatus = {};
+  let courseGradesByPeriod = {};
+  let notificationRefreshHandle = null;
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatNotificationDate(value) {
+    if (!value) {
+      return '';
+    }
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+
+    return parsedDate.toLocaleString('fr-FR');
+  }
+
+  function updateNotificationBadge(count) {
+    if (notificationsCountBadge) {
+      const unreadCount = Number(count || 0);
+      notificationsCountBadge.textContent = unreadCount;
+      notificationsCountBadge.classList.remove('bg-danger', 'bg-secondary');
+      notificationsCountBadge.classList.add(unreadCount > 0 ? 'bg-danger' : 'bg-secondary');
+    }
+
+    if (markAllNotificationsReadBtn) {
+      markAllNotificationsReadBtn.disabled = Number(count || 0) === 0;
+    }
+  }
+
+  function renderNotifications(notifications) {
+    if (!notificationsList) {
+      return;
+    }
+
+    if (!notifications || notifications.length === 0) {
+      notificationsList.innerHTML = '<div class="list-group-item text-muted" id="notificationsEmptyState">Aucune notification pour le moment.</div>';
+      return;
+    }
+
+    notificationsList.innerHTML = notifications.map((notification) => `
+      <div class="list-group-item d-flex justify-content-between align-items-start gap-3 notification-item ${notification.is_read ? '' : 'notification-unread'}" data-notification-id="${notification.id}" role="button" tabindex="0">
+        <div class="me-3">
+          <div class="fw-semibold">${escapeHtml(notification.title)}</div>
+          <div class="small">${escapeHtml(notification.message)}</div>
+          <div class="small text-muted mt-1">${escapeHtml(formatNotificationDate(notification.created_at))}</div>
+        </div>
+        ${notification.is_read ? '' : '<span class="badge bg-primary">Nouveau</span>'}
+      </div>
+    `).join('');
+  }
+
+  function renderNotificationHighlight(notifications) {
+    if (!notificationsLiveAlert) {
+      return;
+    }
+
+    const latestUnread = (notifications || []).find((notification) => !notification.is_read);
+    if (!latestUnread) {
+      notificationsLiveAlert.innerHTML = '';
+      return;
+    }
+
+    notificationsLiveAlert.innerHTML = `
+      <div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">
+        <strong>Nouvelle notification du secrétariat :</strong> ${escapeHtml(latestUnread.title)}<br>
+        <span class="small">${escapeHtml(latestUnread.message)}</span>
+      </div>
+    `;
+  }
+
+  async function loadNotifications() {
+    if (!notificationsList) {
+      return;
+    }
+
+    try {
+      const response = await fetch(buildSecretaryUrl('api/notifications?limit=10'), {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      const notifications = data.notifications || [];
+      renderNotifications(notifications);
+      renderNotificationHighlight(notifications);
+      updateNotificationBadge(data.unread_count || 0);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+      if (notificationsLiveAlert) {
+        notificationsLiveAlert.innerHTML = '<div class="alert alert-danger mb-0" role="alert">Impossible de charger les notifications.</div>';
+      }
+    }
+  }
+
+  async function markNotificationAsRead(notificationId) {
+    if (!notificationId) {
+      return;
+    }
+
+    const response = await fetch(buildSecretaryUrl(`api/notifications/${notificationId}/read`), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+  }
+
+  async function markAllNotificationsAsRead() {
+    const response = await fetch(buildSecretaryUrl('api/notifications/mark-all-read'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+  }
+
+  function buildSecretaryUrl(path = '') {
+    const base = secretaryBaseUrl.endsWith('/') ? secretaryBaseUrl : `${secretaryBaseUrl}/`;
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+    return `${base}${cleanPath}`;
+  }
+
+  function stateBadgeClass(state) {
+    if (state === 'locked') {
+      return 'bg-danger';
+    }
+    if (state === 'partial') {
+      return 'bg-warning text-dark';
+    }
+    return 'bg-secondary';
+  }
+
+  function stateLabel(state) {
+    if (state === 'locked') {
+      return 'Verrouillée';
+    }
+    if (state === 'partial') {
+      return 'Partielle';
+    }
+    return 'Ouverte';
+  }
+
+  function stateIcon(state) {
+    if (state === 'locked') {
+      return 'fa-lock';
+    }
+    if (state === 'partial') {
+      return 'fa-pencil-alt';
+    }
+    return 'fa-unlock';
+  }
+
+  function periodBadgeText(stat) {
+    const submittedCount = Number(stat?.submitted_count || 0);
+    const totalCount = Number(stat?.total_count || 0);
+    if (totalCount === 0) {
+      return 'Vide';
+    }
+    return `${submittedCount}/${totalCount}`;
+  }
+
+  function joinPeriods(list) {
+    return list.length ? list.join(', ') : 'Aucune';
+  }
+
+  function emptyPeriodStat(period) {
+    return {
+      period,
+      state: 'open',
+      submitted_count: 0,
+      total_count: 0,
+      courses_count: currentCourses.length || 0,
+    };
+  }
+
+  function getCoursePeriodStats() {
+    const stats = {};
+    periods.forEach((period) => {
+      const grades = courseGradesByPeriod[period] || [];
+      const submittedCount = grades.filter((grade) => grade.submitted).length;
+      const totalCount = grades.length;
+      let state = 'open';
+      if (totalCount > 0 && submittedCount === totalCount) {
+        state = 'locked';
+      } else if (submittedCount > 0) {
+        state = 'partial';
+      }
+      stats[period] = {
+        period,
+        state,
+        submitted_count: submittedCount,
+        total_count: totalCount,
+        courses_count: 1,
+      };
+    });
+    return stats;
+  }
+
+  function getActiveStats() {
+    return currentCourseId ? getCoursePeriodStats() : classPeriodStatus;
+  }
+
+  function renderClassSummaryCards() {
+    if (!currentClassId) {
+      return '<div class="alert alert-info mb-0">Sélectionnez une classe pour afficher le statut collectif des périodes.</div>';
+    }
+
+    const cards = periods.map((period) => {
+      const stat = classPeriodStatus[period] || emptyPeriodStat(period);
+      const badgeClass = stateBadgeClass(stat.state);
+      return `
+        <div class="col-sm-6 col-lg-4 col-xxl-2">
+          <div class="card period-summary-card state-${escapeHtml(stat.state)}">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <div class="period-card-icon ${escapeHtml(stat.state)}">
+                    <i class="fas ${stateIcon(stat.state)}"></i>
+                  </div>
+                  <strong class="d-block mt-2">${escapeHtml(period)}</strong>
+                  <span class="small text-uppercase fw-semibold">${escapeHtml(stateLabel(stat.state))}</span>
+                </div>
+                <span class="badge ${badgeClass}">${escapeHtml(periodBadgeText(stat))}</span>
+              </div>
+              <div class="small mt-3">Verrouillées : ${Number(stat.submitted_count || 0)}</div>
+              <div class="small text-muted">Total : ${Number(stat.total_count || 0)}</div>
+              <div class="small text-muted">Cours : ${Number(stat.courses_count || 0)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `<div class="row g-2">${cards}</div>`;
+  }
+
+  function renderClassPane(period, stat) {
+    const submittedCount = Number(stat?.submitted_count || 0);
+    const totalCount = Number(stat?.total_count || 0);
+    const coursesCount = Number(stat?.courses_count || 0);
+    const statusLabel = stateLabel(stat?.state || 'open');
+    const summaryTone = stat?.state === 'locked' ? 'danger' : stat?.state === 'partial' ? 'warning' : 'secondary';
+
+    return `
+      <div class="alert alert-light border mb-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <h5 class="mb-1">${escapeHtml(period)}</h5>
+            <div class="text-muted small">Déverrouillage collectif par classe.</div>
+          </div>
+          <span class="badge bg-${summaryTone}"><i class="fas ${stateIcon(stat?.state || 'open')} me-1"></i>${escapeHtml(statusLabel)}</span>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-md-4">
+            <div class="border rounded-3 p-2 h-100">
+              <div class="small text-muted">Notes verrouillées</div>
+              <div class="fs-5 fw-semibold">${submittedCount}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded-3 p-2 h-100">
+              <div class="small text-muted">Notes totales</div>
+              <div class="fs-5 fw-semibold">${totalCount}</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded-3 p-2 h-100">
+              <div class="small text-muted">Cours concernés</div>
+              <div class="fs-5 fw-semibold">${coursesCount}</div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-muted small">
+          ${totalCount === 0 ? 'Aucune note n’est encore saisie pour cette période dans cette classe.' : 'Sélectionnez un cours dans le bloc “Détail par cours” pour voir le tableau détaillé des cotes.'}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCoursePane(period, stat, grades) {
+    const submittedCount = Number(stat?.submitted_count || 0);
+    const totalCount = Number(stat?.total_count || 0);
+    const statusLabel = stateLabel(stat?.state || 'open');
+    const summaryTone = stat?.state === 'locked' ? 'danger' : stat?.state === 'partial' ? 'warning' : 'secondary';
+
+    return `
+      <div class="alert alert-light border mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <h5 class="mb-1">${escapeHtml(period)} - Détail du cours</h5>
+            <div class="text-muted small">Les cotes soumises restent visibles pour validation et modification.</div>
+          </div>
+          <span class="badge bg-${summaryTone}"><i class="fas ${stateIcon(stat?.state || 'open')} me-1"></i>${escapeHtml(statusLabel)} ${submittedCount}/${totalCount}</span>
+        </div>
+        <div class="mt-2 text-muted small">
+          ${grades.length ? 'Le tableau ci-dessous affiche les cotes soumises et déverrouillées de ce cours.' : 'Aucune note disponible pour cette période.'}
+        </div>
+      </div>
+      ${grades.length ? renderGradeTable(period, grades) : '<div class="alert alert-info mb-0">Aucune note disponible pour cette période.</div>'}
+    `;
+  }
+
+  function renderGradeTable(period, grades) {
+    return `
+      <div class="table-responsive secretary-grades-wrapper">
+        <table class="table table-bordered table-hover secretary-grades-table">
+          <thead class="table-light">
+            <tr>
+              <th>Élève</th>
+              <th>Note</th>
+              <th>Max</th>
+              <th>État</th>
+              <th>Verrouillée par</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${grades.map((grade) => {
+              const isLocked = Boolean(grade.submitted);
+              const stateBadge = isLocked
+                ? '<span class="locked-indicator badge bg-danger"><i class="fas fa-lock"></i> Verrouillée</span>'
+                : '<span class="locked-indicator badge bg-secondary"><i class="fas fa-unlock"></i> Déverrouillée</span>';
+              const submittedInfo = grade.submitted_at
+                ? `<div class="submitted-info">${isLocked ? 'Soumise le' : 'Dernière soumission le'} ${new Date(grade.submitted_at).toLocaleString('fr-FR')}</div>`
+                : '<div class="submitted-info">Aucune soumission enregistrée</div>';
+              const updateDisabled = isLocked ? '' : 'disabled title="Cette note est déverrouillée et revient au professeur."';
+
+              return `
+                <tr data-grade-id="${grade.grade_id}" class="${isLocked ? '' : 'table-light'}">
+                  <td>${escapeHtml(grade.student_name)}</td>
+                  <td>
+                    <div class="grade-cell">
+                      <input type="number" class="form-control form-control-sm grade-input"
+                             value="${grade.value ?? ''}" min="0" max="${grade.max_allowed}" step="0.01"
+                             data-grade-id="${grade.grade_id}" title="Max ${grade.max_allowed}" ${isLocked ? '' : 'disabled'}>
+                      <span class="save-badge badge bg-secondary" style="display:none;">Sauvegardé</span>
+                    </div>
+                  </td>
+                  <td><small class="text-muted">${grade.max_allowed}</small></td>
+                  <td>
+                    ${stateBadge}
+                    ${submittedInfo}
+                  </td>
+                  <td><small>${escapeHtml(grade.submitted_by_name)}</small></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-primary save-grade-btn" data-grade-id="${grade.grade_id}" ${updateDisabled}>
+                      <i class="fas fa-save"></i> Valider
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderPeriodView() {
+    if (!currentClassId) {
+      periodTabs.innerHTML = '';
+      periodTabContent.innerHTML = '<div class="alert alert-info mb-0">Sélectionnez une classe pour consulter les périodes.</div>';
+      unlockClassPeriodBtn.disabled = true;
+      submitBtn.disabled = true;
+      return;
+    }
+
+    const stats = getActiveStats();
+    const activePeriod = periods.includes(currentPeriod) ? currentPeriod : periods[0];
+    if (!periods.includes(currentPeriod)) {
+      currentPeriod = activePeriod;
+    }
+
+    periodTabs.innerHTML = periods.map((period, index) => {
+      const stat = stats[period] || emptyPeriodStat(period);
+      return `
+        <li class="nav-item" role="presentation">
+          <button class="nav-link ${period === activePeriod ? 'active' : ''}" id="period-tab-${index}" data-period="${escapeHtml(period)}" type="button" role="tab">
+            <span class="period-tab-label">
+              <span>${escapeHtml(period)}</span>
+              <span class="small fw-semibold">${escapeHtml(stateLabel(stat.state))}</span>
+              <span class="badge ${stateBadgeClass(stat.state)}">${escapeHtml(periodBadgeText(stat))}</span>
+            </span>
+          </button>
+        </li>
+      `;
+    }).join('');
+
+    periodTabContent.innerHTML = periods.map((period, index) => {
+      const active = period === activePeriod;
+      const stat = stats[period] || emptyPeriodStat(period);
+      return `
+        <div class="tab-pane fade ${active ? 'show active' : ''}" id="period-pane-${index}" role="tabpanel">
+          ${currentCourseId ? renderCoursePane(period, stat, courseGradesByPeriod[period] || []) : renderClassPane(period, stat)}
+        </div>
+      `;
+    }).join('');
+
+    updateActionButtons();
+  }
+
+  function updateActionButtons() {
+    const classStat = currentPeriod ? (classPeriodStatus[currentPeriod] || emptyPeriodStat(currentPeriod)) : emptyPeriodStat(currentPeriod || periods[0]);
+
+    unlockClassPeriodBtn.disabled = !currentClassId || !currentPeriod || Number(classStat.submitted_count || 0) === 0;
+  }
+
+  function setActionStatus(message, type) {
+    if (!message) {
+      actionStatus.innerHTML = '';
+      return;
+    }
+
+    const badgeClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    actionStatus.innerHTML = `<span class="badge ${badgeClass}">${escapeHtml(message)}</span>`;
+  }
+
+  function resetClassState() {
+    currentClassId = null;
+    currentClassLabel = '';
+    currentCourseId = null;
+    currentPeriod = null;
+    currentCourses = [];
+    classPeriodStatus = {};
+    courseGradesByPeriod = {};
+    classInfo.textContent = 'Sélectionnez une section, un niveau et une classe pour afficher les périodes et le déverrouillage collectif.';
+    classPeriodHint.textContent = 'Aucune classe sélectionnée.';
+    classPeriodSummary.innerHTML = '<div class="alert alert-info mb-0">Sélectionnez une classe pour afficher le statut collectif des périodes.</div>';
+    periodTabs.innerHTML = '';
+    periodTabContent.innerHTML = '<div class="alert alert-info mb-0">Sélectionnez une classe pour consulter les périodes.</div>';
+    courseSelect.innerHTML = '<option value="">-- Sélectionner un cours --</option>';
+    courseSelect.disabled = true;
+    courseInfo.innerHTML = '';
+    unlockClassPeriodBtn.disabled = true;
+    unlockClassPeriodBtn.title = '';
+    actionStatus.innerHTML = '';
+  }
+
+  async function loadSections() {
+    const response = await fetch(buildSecretaryUrl('api/sections'), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    sectionSelect.innerHTML = '<option value="">-- Sélectionner une section --</option>';
+    data.forEach((sectionName) => {
+      const option = document.createElement('option');
+      option.value = sectionName;
+      option.textContent = sectionName;
+      sectionSelect.appendChild(option);
+    });
+  }
+
+  async function loadLevels(sectionName) {
+    const response = await fetch(buildSecretaryUrl(`api/levels/${encodeURIComponent(sectionName)}`), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    levelSelect.innerHTML = '<option value="">-- Sélectionner un niveau --</option>';
+    data.forEach((level) => {
+      const option = document.createElement('option');
+      option.value = level;
+      option.textContent = level;
+      levelSelect.appendChild(option);
+    });
+    levelSelect.disabled = data.length === 0;
+  }
+
+  async function loadClasses(sectionName, level) {
+    const response = await fetch(buildSecretaryUrl(`api/classes/${encodeURIComponent(sectionName)}/${encodeURIComponent(level)}`), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    classSelect.innerHTML = '<option value="">-- Sélectionner une classe --</option>';
+    data.forEach((item) => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.label || item.class_name || `Classe ${item.id}`;
+      option.dataset.label = item.label || '';
+      option.dataset.name = item.name || '';
+      option.dataset.level = item.level || '';
+      option.dataset.className = item.class_name || '';
+      classSelect.appendChild(option);
+    });
+    classSelect.disabled = data.length === 0;
+  }
+
+  async function loadCoursesForClass(sectionId) {
+    const response = await fetch(buildSecretaryUrl(`api/courses?section_id=${sectionId}`), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    currentCourses = data || [];
+    courseSelect.innerHTML = '<option value="">-- Sélectionner un cours --</option>';
+    currentCourses.forEach((course) => {
+      const option = document.createElement('option');
+      option.value = course.id;
+      option.textContent = `${course.title} (${course.professor_name || 'Inconnu'})`;
+      option.dataset.professor = course.professor_name || 'Inconnu';
+      option.dataset.section = course.section_name || '';
+      option.dataset.level = course.level || '';
+      option.dataset.className = course.class_name || '';
+      courseSelect.appendChild(option);
+    });
+    courseSelect.disabled = currentCourses.length === 0;
+  }
+
+  async function loadClassPeriodStatus(sectionId) {
+    const response = await fetch(buildSecretaryUrl(`api/class-period-status/${sectionId}`), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    classPeriodStatus = data.periods || {};
+    currentClassId = data.section?.id || sectionId;
+    currentClassLabel = data.section?.label || currentClassLabel;
+    const lockedPeriods = periods.filter((period) => data.periods?.[period]?.state === 'locked');
+    const partialPeriods = periods.filter((period) => data.periods?.[period]?.state === 'partial');
+    const openPeriods = periods.filter((period) => data.periods?.[period]?.state === 'open');
+    classInfo.innerHTML = `
+      <strong>Classe sélectionnée :</strong> ${escapeHtml(currentClassLabel || 'Classe inconnue')}
+      <span class="text-muted">· ${Number(data.courses_count || 0)} cours disponibles</span>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <span class="badge bg-danger fs-6 py-2 px-3">Verrouillées : ${escapeHtml(joinPeriods(lockedPeriods))}</span>
+        <span class="badge bg-warning text-dark fs-6 py-2 px-3">En édition : ${escapeHtml(joinPeriods(partialPeriods))}</span>
+        <span class="badge bg-secondary fs-6 py-2 px-3">Ouvertes : ${escapeHtml(joinPeriods(openPeriods))}</span>
+      </div>
+    `;
+    classPeriodHint.textContent = `Déverrouillage collectif pour ${currentClassLabel || 'la classe sélectionnée'}.`;
+    unlockClassPeriodBtn.title = currentClassLabel ? `Déverrouiller la période pour ${currentClassLabel}` : '';
+  }
+
+  async function loadLockedGrades(courseId) {
+    const response = await fetch(buildSecretaryUrl(`api/locked-grades/${courseId}`), {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    courseGradesByPeriod = data || {};
+    renderPeriodView();
+  }
+
+  async function handleClassSelection(sectionId) {
+    if (!sectionId) {
+      resetClassState();
+      return;
+    }
+
+    currentClassId = parseInt(sectionId, 10);
+    currentCourseId = null;
+    currentPeriod = periods[0] || null;
+    currentCourses = [];
+    courseGradesByPeriod = {};
+    courseInfo.innerHTML = '';
+    courseSelect.innerHTML = '<option value="">-- Sélectionner un cours --</option>';
+    courseSelect.disabled = true;
+    setActionStatus('', 'success');
+    classPeriodSummary.innerHTML = '<div class="alert alert-secondary mb-0">Chargement de la classe...</div>';
+    periodTabs.innerHTML = '';
+    periodTabContent.innerHTML = '<div class="alert alert-secondary mb-0">Chargement des périodes...</div>';
+
+    await Promise.all([
+      loadClassPeriodStatus(currentClassId),
+      loadCoursesForClass(currentClassId),
+    ]);
+
+    classPeriodSummary.innerHTML = renderClassSummaryCards();
+    renderPeriodView();
+  }
+
+  function getSelectedClassOption() {
+    return classSelect.options[classSelect.selectedIndex];
+  }
+
+  function getSelectedCourseOption() {
+    return courseSelect.options[courseSelect.selectedIndex];
+  }
+
+  backBtn.addEventListener('click', function () {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.href = adminDashboardUrl;
+  });
+
+  sectionSelect.addEventListener('change', async function () {
+    currentSectionName = this.value || '';
+    currentLevel = '';
+    levelSelect.disabled = true;
+    levelSelect.innerHTML = '<option value="">-- Sélectionner un niveau --</option>';
+    classSelect.disabled = true;
+    classSelect.innerHTML = '<option value="">-- Sélectionner une classe --</option>';
+    resetClassState();
+
+    if (!currentSectionName) {
+      return;
+    }
+
+    try {
+      await loadLevels(currentSectionName);
+    } catch (error) {
+      console.error('Error loading levels:', error);
+      setActionStatus(`Erreur: ${error.message}`, 'danger');
+    }
+  });
+
+  levelSelect.addEventListener('change', async function () {
+    currentLevel = this.value || '';
+    classSelect.disabled = true;
+    classSelect.innerHTML = '<option value="">-- Sélectionner une classe --</option>';
+    resetClassState();
+
+    if (!currentSectionName || !currentLevel) {
+      return;
+    }
+
+    try {
+      await loadClasses(currentSectionName, currentLevel);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      setActionStatus(`Erreur: ${error.message}`, 'danger');
+    }
+  });
+
+  classSelect.addEventListener('change', async function () {
+    const classId = parseInt(this.value, 10);
+    const selectedOption = getSelectedClassOption();
+
+    if (!classId) {
+      resetClassState();
+      return;
+    }
+
+    currentClassLabel = selectedOption?.dataset?.label || selectedOption?.textContent || '';
+
+    try {
+      await handleClassSelection(classId);
+    } catch (error) {
+      console.error('Error loading class context:', error);
+      setActionStatus(`Erreur: ${error.message}`, 'danger');
+    }
+  });
+
+  courseSelect.addEventListener('change', async function () {
+    const courseId = parseInt(this.value, 10);
+
+    currentCourseId = null;
+    courseGradesByPeriod = {};
+    courseInfo.innerHTML = '';
+
+    if (secretaryExportButtons) {
+      if (courseId) {
+        secretaryExportButtons.classList.remove('d-none');
+      } else {
+        secretaryExportButtons.classList.add('d-none');
+      }
+    }
+
+    if (!courseId) {
+      renderPeriodView();
+      return;
+    }
+
+    currentCourseId = courseId;
+    const option = getSelectedCourseOption();
+    const professor = option?.dataset?.professor || 'Inconnu';
+    const section = option?.dataset?.section || currentSectionName || 'Inconnu';
+    const level = option?.dataset?.level || currentLevel || 'Inconnu';
+    const className = option?.dataset?.className || currentClassLabel || 'Inconnu';
+
+    courseInfo.innerHTML = `
+      <small class="text-muted">
+        <strong>Professeur :</strong> ${escapeHtml(professor)}
+        | <strong>Section :</strong> ${escapeHtml(section)}
+        | <strong>Niveau :</strong> ${escapeHtml(level)}
+        | <strong>Classe :</strong> ${escapeHtml(className)}
+      </small>
+    `;
+
+    try {
+      await loadLockedGrades(courseId);
+    } catch (error) {
+      console.error('Error loading locked grades:', error);
+      setActionStatus(`Erreur: ${error.message}`, 'danger');
+    }
+  });
+
+  periodTabs.addEventListener('click', function (event) {
+    const button = event.target.closest('[data-period]');
+    if (!button) {
+      return;
+    }
+    currentPeriod = button.dataset.period;
+    renderPeriodView();
+  });
+
+  document.body.addEventListener('click', async function(e) {
+    if (e.target.closest('.unlock-grade-btn')) {
+      const btn = e.target.closest('.unlock-grade-btn');
+      const gradeId = btn.dataset.gradeId;
+      await handleUnlockGrade(gradeId);
+    }
+  });
+
+  if (secExportFicheVierge) {
+    secExportFicheVierge.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (!currentCourseId) return;
+      const base = professorBaseUrl.endsWith('/') ? professorBaseUrl : `${professorBaseUrl}/`;
+      window.location.href = `${base}api/export-fiche-cotes?course_id=${currentCourseId}&filled=0`;
+    });
+  }
+
+  if (secExportFicheRemplie) {
+    secExportFicheRemplie.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (!currentCourseId) return;
+      const base = professorBaseUrl.endsWith('/') ? professorBaseUrl : `${professorBaseUrl}/`;
+      window.location.href = `${base}api/export-fiche-cotes?course_id=${currentCourseId}&filled=1`;
+    });
+  }
+
+  document.addEventListener('click', async function (event) {
+    const button = event.target.closest('.save-grade-btn');
+    if (!button) {
+      return;
+    }
+
+    const gradeId = button.dataset.gradeId;
+    const input = document.querySelector(`.grade-input[data-grade-id="${gradeId}"]`);
+    const value = input?.value;
+
+    if (!value || Number.isNaN(Number(value))) {
+      alert('Veuillez entrer une valeur valide.');
+      return;
+    }
+
+    try {
+      const maxAllowed = parseFloat(input.max || 20);
+      if (parseFloat(value) > maxAllowed) {
+        alert(`La note maximale pour cette période est ${maxAllowed}.`);
+        return;
+      }
+
+      const response = await fetch(buildSecretaryUrl(`api/update-grade/${gradeId}`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: parseFloat(value) })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        const badge = button.closest('tr')?.querySelector('.save-badge');
+        if (badge) {
+          badge.style.display = 'inline';
+          setTimeout(() => {
+            badge.style.display = 'none';
+          }, 2000);
+        }
+      } else {
+        alert(`Erreur: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Erreur lors de la sauvegarde.');
+    }
+  });
+
+  unlockClassPeriodBtn.addEventListener('click', async function () {
+    if (!currentClassId || !currentPeriod) {
+      alert('Veuillez sélectionner une classe et une période.');
+      return;
+    }
+
+    const classStat = classPeriodStatus[currentPeriod] || emptyPeriodStat(currentPeriod);
+    if (Number(classStat.submitted_count || 0) === 0) {
+      alert('Aucune note verrouillée n’est disponible pour cette période dans la classe sélectionnée.');
+      return;
+    }
+
+    const confirmed = confirm(`Êtes-vous sûr de vouloir déverrouiller toutes les notes de ${currentPeriod} pour ${currentClassLabel} ? Les professeurs pourront les modifier.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(buildSecretaryUrl(`api/unlock-class-period/${currentClassId}`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period: currentPeriod })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setActionStatus(result.message, 'success');
+        await loadClassPeriodStatus(currentClassId);
+        classPeriodSummary.innerHTML = renderClassSummaryCards();
+        if (currentCourseId) {
+          await loadLockedGrades(currentCourseId);
+        } else {
+          renderPeriodView();
+        }
+      } else {
+        setActionStatus(result.error, 'danger');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setActionStatus('Erreur de communication', 'danger');
+    }
+  });
+
+  if (refreshNotificationsBtn) {
+    refreshNotificationsBtn.addEventListener('click', function () {
+      loadNotifications();
+    });
+  }
+
+  if (markAllNotificationsReadBtn) {
+    markAllNotificationsReadBtn.addEventListener('click', async function () {
+      try {
+        await markAllNotificationsAsRead();
+        await loadNotifications();
+      } catch (error) {
+        console.error('Error marking notifications as read:', error);
+      }
+    });
+  }
+
+  if (notificationsList) {
+    notificationsList.addEventListener('click', async function (event) {
+      const item = event.target.closest('.notification-item');
+      if (!item || !item.dataset.notificationId) {
+        return;
+      }
+
+      try {
+        await markNotificationAsRead(item.dataset.notificationId);
+        await loadNotifications();
+      } catch (error) {
+        console.error('Error updating notification:', error);
+      }
+    });
+  }
+
+  loadNotifications();
+  notificationRefreshHandle = window.setInterval(function () {
+    loadNotifications();
+  }, 30000);
+
+  window.addEventListener('beforeunload', function () {
+    if (notificationRefreshHandle) {
+      window.clearInterval(notificationRefreshHandle);
+    }
+  });
+
+  loadSections().catch((error) => {
+    console.error('Error loading sections:', error);
+    setActionStatus(`Erreur: ${error.message}`, 'danger');
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+{% block title %}Abonnements & Assistance - JNC_Kalasi{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="dashboard-wrapper">
+  <aside class="sidebar">
+    <div class="sidebar-menu-group">
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+            <i class="fas fa-chart-line"></i>
+            <span>Tableau de Bord</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="sidebar-menu-group">
+      <h6 class="sidebar-group-title">Administration</h6>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.schools') }}" class="sidebar-menu-link">
+            <i class="fas fa-school"></i>
+            <span>Gestion des écoles</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+            <i class="fas fa-users-cog"></i>
+            <span>Admins des écoles</span>
+          </a>
+        </li>
+        <li class="sidebar-menu-item">
+          <a href="{{ url_for('admin.subscriptions_management') }}" class="sidebar-menu-link active">
+            <i class="fas fa-credit-card"></i>
+            <span>Abonnements & assistance</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="mb-4">
+      <h1 class="page-title"><i class="fas fa-credit-card" style="color:#3498db;"></i> Abonnements & Assistance à distance</h1>
+      <p class="text-muted mb-0">Activez/désactivez les écoles via abonnements, confirmez les paiements et suivez la maintenance à distance.</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="stat-card success">
+          <div class="stat-label">Écoles avec abonnement actif</div>
+          <div class="stat-value">{{ active_subscription_count }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card warning">
+          <div class="stat-label">Abonnements en attente paiement</div>
+          <div class="stat-value">{{ pending_subscription_count }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card danger">
+          <div class="stat-label">Tickets assistance ouverts</div>
+          <div class="stat-value">{{ open_support_count }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="card form-card">
+          <div class="card-header">
+            <strong><i class="fas fa-plus-circle me-2"></i>Nouvel abonnement</strong>
+          </div>
+          <div class="card-body">
+            <form method="post" class="row g-2">
+              <input type="hidden" name="form_type" value="subscription">
+              <div class="col-md-6">
+                <label class="form-label">École</label>
+                <select name="school_id" class="form-select" required>
+                  <option value="">Choisir...</option>
+                  {% for school in schools %}
+                  <option value="{{ school.id }}">{{ school.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Plan</label>
+                <input type="text" name="plan_name" class="form-control" placeholder="Ex: Premium Annuel" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Cycle</label>
+                <select name="billing_cycle" class="form-select">
+                  <option value="monthly">Mensuel</option>
+                  <option value="quarterly">Trimestriel</option>
+                  <option value="annual">Annuel</option>
+                  <option value="custom">Personnalisé</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Montant</label>
+                <input type="number" step="0.01" min="0" name="amount" class="form-control" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Devise</label>
+                <input type="text" name="currency" class="form-control" value="USD">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Début</label>
+                <input type="date" name="start_date" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fin</label>
+                <input type="date" name="end_date" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Statut initial</label>
+                <select name="status" class="form-select">
+                  <option value="pending_payment">En attente paiement</option>
+                  <option value="active">Actif</option>
+                  <option value="suspended">Suspendu</option>
+                  <option value="cancelled">Annulé</option>
+                </select>
+              </div>
+              <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                  <input type="checkbox" name="auto_renew" class="form-check-input" id="auto_renew">
+                  <label class="form-check-label" for="auto_renew">Renouvellement auto</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" rows="2" class="form-control" placeholder="Conditions, options, remarque..."></textarea>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary w-100" type="submit"><i class="fas fa-save me-1"></i>Enregistrer abonnement</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card form-card">
+          <div class="card-header">
+            <strong><i class="fas fa-headset me-2"></i>Nouvelle demande d'assistance</strong>
+          </div>
+          <div class="card-body">
+            <form method="post" class="row g-2">
+              <input type="hidden" name="form_type" value="support">
+              <div class="col-md-6">
+                <label class="form-label">École</label>
+                <select name="school_id" class="form-select" required>
+                  <option value="">Choisir...</option>
+                  {% for school in schools %}
+                  <option value="{{ school.id }}">{{ school.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Type</label>
+                <select name="request_type" class="form-select">
+                  <option value="maintenance">Maintenance</option>
+                  <option value="update">Mise à jour</option>
+                  <option value="incident">Incident</option>
+                  <option value="training">Assistance utilisateur</option>
+                  <option value="other">Autre</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Sujet</label>
+                <input type="text" name="subject" class="form-control" placeholder="Ex: Mise à jour module bulletins" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Contact préféré</label>
+                <input type="text" name="preferred_contact" class="form-control" placeholder="+243..., email...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Outil distant</label>
+                <input type="text" name="remote_tool" class="form-control" placeholder="AnyDesk, TeamViewer...">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Planification</label>
+                <input type="datetime-local" name="scheduled_at" class="form-control">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <textarea name="description" rows="3" class="form-control" placeholder="Décrire le besoin de maintenance / mise à jour"></textarea>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-secondary w-100" type="submit"><i class="fas fa-paper-plane me-1"></i>Créer ticket assistance</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="fas fa-school me-2"></i>Statut abonnement par école</strong>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>École</th>
+                <th>Statut école</th>
+                <th>Abonnement actif</th>
+                <th>Dernier abonnement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for school in schools %}
+              {% set snap = subscription_snapshots.get(school.id) %}
+              <tr>
+                <td>{{ school.name }}</td>
+                <td>
+                  {% if school.is_active %}
+                  <span class="badge bg-success">Active</span>
+                  {% else %}
+                  <span class="badge bg-danger">Inactive</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if snap and snap.active %}
+                    <span class="badge bg-success">Actif</span>
+                    <div class="small text-muted">{{ snap.active.plan_name }} (jusqu'au {{ snap.active.end_date.strftime('%d/%m/%Y') }})</div>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">Aucun actif</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if snap and snap.latest %}
+                    <div class="small"><strong>{{ snap.latest.plan_name }}</strong></div>
+                    <div class="small text-muted">{{ snap.latest.start_date.strftime('%d/%m/%Y') }} - {{ snap.latest.end_date.strftime('%d/%m/%Y') }}</div>
+                    <div class="small">Statut: {{ snap.latest.status }}</div>
+                  {% else %}
+                    <span class="text-muted small">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <strong><i class="fas fa-file-signature me-2"></i>Abonnements</strong>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>École</th>
+                <th>Plan</th>
+                <th>Période</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in subscriptions %}
+              <tr>
+                <td>{{ sub.school.name if sub.school else '-' }}</td>
+                <td>{{ sub.plan_name }}<div class="small text-muted">{{ sub.billing_cycle }}</div></td>
+                <td>{{ sub.start_date.strftime('%d/%m/%Y') }} - {{ sub.end_date.strftime('%d/%m/%Y') }}</td>
+                <td>{{ '%.2f'|format(sub.amount or 0) }} {{ sub.currency }}</td>
+                <td><span class="badge bg-info text-dark">{{ sub.status }}</span></td>
+                <td style="min-width: 320px;">
+                  <form method="post" action="{{ url_for('admin.update_subscription_status', subscription_id=sub.id) }}" class="d-flex gap-1 mb-1">
+                    <select name="status" class="form-select form-select-sm">
+                      <option value="pending_payment" {% if sub.status == 'pending_payment' %}selected{% endif %}>En attente</option>
+                      <option value="active" {% if sub.status == 'active' %}selected{% endif %}>Actif</option>
+                      <option value="suspended" {% if sub.status == 'suspended' %}selected{% endif %}>Suspendu</option>
+                      <option value="expired" {% if sub.status == 'expired' %}selected{% endif %}>Expiré</option>
+                      <option value="cancelled" {% if sub.status == 'cancelled' %}selected{% endif %}>Annulé</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" type="submit">Maj</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.add_subscription_payment', subscription_id=sub.id) }}" class="d-flex gap-1">
+                    <input type="number" step="0.01" min="0" name="amount" class="form-control form-control-sm" value="{{ sub.amount or 0 }}">
+                    <input type="text" name="reference" class="form-control form-control-sm" placeholder="Réf">
+                    <input type="date" name="paid_on" class="form-control form-control-sm">
+                    <input type="hidden" name="payment_status" value="confirmed">
+                    <button class="btn btn-sm btn-success" type="submit">Paiement</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+              {% if not subscriptions %}
+              <tr><td colspan="6" class="text-center text-muted py-3">Aucun abonnement enregistré.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <strong><i class="fas fa-receipt me-2"></i>Paiements récents d'abonnement</strong>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>École</th>
+                <th>Abonnement</th>
+                <th>Montant</th>
+                <th>Référence</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pay in recent_payments %}
+              <tr>
+                <td>{{ pay.paid_on.strftime('%d/%m/%Y') if pay.paid_on else '-' }}</td>
+                <td>{{ pay.school.name if pay.school else '-' }}</td>
+                <td>#{{ pay.subscription_id }}</td>
+                <td>{{ '%.2f'|format(pay.amount or 0) }} {{ pay.currency }}</td>
+                <td>{{ pay.reference or '-' }}</td>
+                <td><span class="badge bg-secondary">{{ pay.status }}</span></td>
+              </tr>
+              {% endfor %}
+              {% if not recent_payments %}
+              <tr><td colspan="6" class="text-center text-muted py-3">Aucun paiement enregistré.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <strong><i class="fas fa-headset me-2"></i>Tickets assistance à distance</strong>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>École</th>
+                <th>Type</th>
+                <th>Sujet</th>
+                <th>Planifié</th>
+                <th>Statut</th>
+                <th>Mise à jour</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ticket in support_tickets %}
+              <tr>
+                <td>{{ ticket.school.name if ticket.school else '-' }}</td>
+                <td>{{ ticket.request_type }}</td>
+                <td>
+                  <div>{{ ticket.subject }}</div>
+                  {% if ticket.description %}
+                  <div class="small text-muted">{{ ticket.description }}</div>
+                  {% endif %}
+                </td>
+                <td>{{ ticket.scheduled_at.strftime('%d/%m/%Y %H:%M') if ticket.scheduled_at else '-' }}</td>
+                <td><span class="badge bg-info text-dark">{{ ticket.status }}</span></td>
+                <td style="min-width: 320px;">
+                  <form method="post" action="{{ url_for('admin.update_support_ticket_status', ticket_id=ticket.id) }}" class="d-flex gap-1 mb-1">
+                    <select name="status" class="form-select form-select-sm">
+                      <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Ouvert</option>
+                      <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>En cours</option>
+                      <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>Résolu</option>
+                      <option value="cancelled" {% if ticket.status == 'cancelled' %}selected{% endif %}>Annulé</option>
+                    </select>
+                    <input type="text" name="remote_tool" class="form-control form-control-sm" value="{{ ticket.remote_tool or '' }}" placeholder="Outil">
+                    <button type="submit" class="btn btn-sm btn-primary">Maj</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.update_support_ticket_status', ticket_id=ticket.id) }}" class="d-flex gap-1">
+                    <input type="hidden" name="status" value="{{ ticket.status }}">
+                    <input type="text" name="resolution_notes" class="form-control form-control-sm" placeholder="Note de résolution">
+                    <button type="submit" class="btn btn-sm btn-secondary">Note</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+              {% if not support_tickets %}
+              <tr><td colspan="6" class="text-center text-muted py-3">Aucun ticket d'assistance.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+

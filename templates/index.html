@@ -1,0 +1,519 @@
+{% extends 'base.html' %}
+{% block title %}Accueil - JNC_Kalasi{% endblock %}
+{% block content %}
+<style>
+  .left-watermark {
+    position: fixed;
+    left: 0;
+    top: 72px;
+    bottom: 0;
+    width: min(30vw, 340px);
+    background-image: url("{{ url_for('static', filename='sweet.png') }}");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: left center;
+    opacity: 0.24;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .right-watermark {
+    position: fixed;
+    right: 0;
+    top: 72px;
+    bottom: 0;
+    width: min(30vw, 340px);
+    background-image: url("{{ url_for('static', filename='img/cahier.jpg') }}");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: right center;
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Hero Section */
+  .hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="20" fill="white" opacity="0.1"/><circle cx="80" cy="80" r="30" fill="white" opacity="0.05"/></svg>');
+    opacity: 0.5;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+    margin: 0 auto;
+    animation: fadeInDown 0.8s ease-out;
+    padding: 0 10px;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .hero .tagline {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+    opacity: 0.95;
+  }
+
+  /* Features Section */
+  .features {
+    padding: 25px 20px;
+    background-color: #f8f9fa;
+  }
+
+  .features h2 {
+    text-align: center;
+    font-size: 1.6rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 700;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .feature-card {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    text-align: center;
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .feature-icon {
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+    color: #667eea;
+  }
+
+  .feature-card h3 {
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .feature-card p {
+    color: #666;
+    line-height: 1.3;
+    font-size: 0.8rem;
+  }
+
+  /* About Section */
+  .about {
+    padding: 20px;
+    background: white;
+    display: none;
+  }
+
+  .about-content {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .about h2 {
+    font-size: 1.6rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .about-box {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #667eea;
+    animation: fadeInLeft 0.6s ease-out;
+  }
+
+  .about p {
+    color: #555;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+  }
+
+  .about p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Roles Section */
+  .roles {
+    padding: 25px 20px;
+    background-color: #f8f9fa;
+  }
+
+  .roles h2 {
+    text-align: center;
+    font-size: 1.6rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 700;
+  }
+
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .role-card {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    border-top: 3px solid;
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  .role-card.school-admin {
+    border-top-color: #f39c12;
+  }
+
+  .role-card.secretary {
+    border-top-color: #3498db;
+  }
+
+  .role-card.discipline {
+    border-top-color: #16a085;
+  }
+
+  .role-card.professor {
+    border-top-color: #9b59b6;
+  }
+
+  .role-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  }
+
+  .role-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 0.65rem;
+  }
+
+  .role-card.school-admin .role-badge {
+    background: #f39c1220;
+    color: #f39c12;
+  }
+
+  .role-card.secretary .role-badge {
+    background: #3498db20;
+    color: #3498db;
+  }
+
+  .role-card.discipline .role-badge {
+    background: #16a08520;
+    color: #16a085;
+  }
+
+  .role-card.professor .role-badge {
+    background: #9b59b620;
+    color: #9b59b6;
+  }
+
+  .role-card h4 {
+    font-size: 0.85rem;
+    color: #333;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .role-card ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .role-card li {
+    color: #666;
+    padding: 1px 0;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .role-card li:before {
+    content: '✓';
+    margin-right: 10px;
+    color: inherit;
+    font-weight: bold;
+  }
+
+  /* CTA Section */
+  .cta {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta h2 {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .cta p {
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    opacity: 0.95;
+  }
+
+  .btn-cta {
+    display: inline-block;
+    background: white;
+    color: #667eea;
+    padding: 10px 30px;
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-cta:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    color: #764ba2;
+  }
+
+  /* Animations */
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .left-watermark {
+      width: 40vw;
+      opacity: 0.16;
+    }
+    .right-watermark {
+      width: 40vw;
+      opacity: 0.08;
+    }
+
+    .hero h1 {
+      font-size: 1.8rem;
+    }
+
+    .hero .tagline {
+      font-size: 0.85rem;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .roles-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .features h2,
+    .roles h2,
+    .cta h2 {
+      font-size: 1.4rem;
+    }
+
+    .cta p {
+      font-size: 0.85rem;
+    }
+  }
+</style>
+
+<div class="left-watermark" aria-hidden="true"></div>
+<div class="right-watermark" aria-hidden="true"></div>
+
+<!-- Hero Section -->
+<div class="hero">
+  <div class="hero-content">
+    <h1>🎓 JNC_Kalasi</h1>
+    <p class="tagline">Plateforme Complète de Gestion Scolaire Moderne</p>
+    <p style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0;">Gérez efficacement vos écoles, utilisateurs, élèves et paiements en un seul endroit</p>
+  </div>
+</div>
+
+<!-- About Section -->
+<div class="about">
+  <div class="about-content">
+    <h2>À propos de JNC_Kalasi</h2>
+    <div class="about-box">
+      <p>
+        <strong>JNC_Kalasi</strong> est une plateforme de gestion scolaire moderne et complète, conçue pour simplifier l'administration des écoles. Elle offre une solution intégrée pour gérer les écoles, les utilisateurs, les élèves, les cours, les notes, les paiements et bien plus encore.
+      </p>
+      <p>
+        La plateforme utilise une <strong>architecture multi-niveaux</strong> avec une gestion granulaire des permissions. Chaque niveau d'administration (Administrateur d'école, Secrétaire, Discipline, Professeur) dispose d'un accès spécifique adapté à ses responsabilités.
+      </p>
+      <p>
+        Grâce à son système d'<strong>isolation complète par école</strong>, chaque établissement dispose de ses propres données, paramètres et utilisateurs, garantissant la confidentialité et la sécurité des informations.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Features Section -->
+<div class="features">
+  <h2>✨ Fonctionnalités Principales</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🏫</div>
+      <h3>Gestion d'Écoles</h3>
+      <p>Créez et gérez plusieurs écoles avec des paramètres indépendants et isolés pour chacune.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <h3>Gestion des Utilisateurs</h3>
+      <p>Créez et gérez les utilisateurs avec des rôles et permissions spécifiques par école.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📚</div>
+      <h3>Gestion des Élèves</h3>
+      <p>Enregistrez et suivez les informations complètes des élèves, sections et courses.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💰</div>
+      <h3>Gestion des Paiements</h3>
+      <p>Enregistrez et suivez les paiements des frais scolaires avec historique complet.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Saisie des Notes</h3>
+      <p>Les professeurs peuvent saisir et gérer les notes des élèves facilement.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <h3>Sécurité & Permissions</h3>
+      <p>Système de permissions granulaires assurant la confidentialité des données.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Roles Section -->
+<div class="roles">
+  <h2>👔 Les Différents Rôles</h2>
+  <div class="roles-grid">
+    <div class="role-card school-admin">
+      <span class="role-badge">🟡 ADMIN ÉCOLE</span>
+      <h4>Administrateur d'École</h4>
+      <ul>
+        <li>Gérer une école spécifique</li>
+        <li>Modifier les informations de l'école</li>
+        <li>Créer secrétaires et professeurs</li>
+        <li>Gérer élèves et paiements</li>
+      </ul>
+    </div>
+    <div class="role-card secretary">
+      <span class="role-badge">🔵 SECRÉTAIRE</span>
+      <h4>Secrétaire</h4>
+      <ul>
+        <li>Inscrire les élèves</li>
+        <li>Centralise cotes des professeurs</li>
+        <li>Saisie cotes par classe/niveau/cours</li>
+        <li>Visualiser cotes par période</li>
+        <li>Imprimer bulletins élèves</li>
+        <li>Accès données de l'école</li>
+      </ul>
+    </div>
+    <div class="role-card discipline">
+      <span class="role-badge">🟢 DISCIPLINE</span>
+      <h4>Discipline</h4>
+      <ul>
+        <li>Suivre la présence des élèves par date</li>
+        <li>Consulter les absences sur une période</li>
+        <li>Saisir la conduite des élèves</li>
+        <li>Suivre la discipline par classe</li>
+      </ul>
+    </div>
+    <div class="role-card professor">
+      <span class="role-badge">💜 PROFESSEUR</span>
+      <h4>Professeur</h4>
+      <ul>
+        <li>Voir ses cours et élèves</li>
+        <li>Saisir les notes des élèves</li>
+        <li>Interface AJAX simple</li>
+        <li>Gestion pédagogique</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- CTA Section -->
+<div class="cta">
+  <h2>Prêt à Commencer ?</h2>
+  <p>Connectez-vous maintenant pour accéder à la plateforme de gestion scolaire</p>
+  <a href="{{ url_for('auth.login') }}" class="btn-cta">Se Connecter →</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+﻿{% extends 'base.html' %}
+{% block title %}Administration - Modifier professeur{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">Modifier professeur</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Nom complet</label>
+            <input type="text" name="full_name" class="form-control" value="{{ professor.full_name }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nom d'utilisateur</label>
+            <input type="text" name="username" class="form-control" value="{{ professor.username }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ professor.email or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nouveau mot de passe (optionnel)</label>
+            <input type="password" name="password" class="form-control" placeholder="Laisser vide pour conserver l’actuel">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{{ url_for('admin.professors') }}" class="btn btn-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+﻿{% extends 'base.html' %}
+{% block title %}Modifier l'école{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Modifier les informations de l'école</h5>
+        </div>
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="name" class="form-label">Nom de l'école *</label>
+              <input type="text" class="form-control" id="name" name="name" value="{{ school.name }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="address" class="form-label">Adresse</label>
+              <textarea class="form-control" id="address" name="address" rows="3">{{ school.address or '' }}</textarea>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="province" class="form-label">PROVINCE</label>
+                <input type="text" class="form-control" id="province" name="province" value="{{ school.province or '' }}">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="city" class="form-label">VILLE</label>
+                <input type="text" class="form-control" id="city" name="city" value="{{ school.city or '' }}">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="commune" class="form-label">COMMUNE</label>
+                <input type="text" class="form-control" id="commune" name="commune" value="{{ school.commune or '' }}">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Téléphone</label>
+                <input type="tel" class="form-control" id="phone" name="phone" value="{{ school.phone or '' }}">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" value="{{ school.email or '' }}">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-8 mb-3">
+                <label for="bulletin_school_name" class="form-label">ECOLE (affiché sur bulletin)</label>
+                <input type="text" class="form-control" id="bulletin_school_name" name="bulletin_school_name" value="{{ school.bulletin_school_name or school.name or '' }}">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="school_code" class="form-label">CODE</label>
+                <input type="text" class="form-control" id="school_code" name="school_code" value="{{ school.school_code or '' }}">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="study_prefect_name" class="form-label">PRÉFET DES ÉTUDES</label>
+                <input type="text" class="form-control" id="study_prefect_name" name="study_prefect_name" value="{{ school.study_prefect_name or '' }}" placeholder="Nom du Préfet des Études">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Logo actuel</label>
+              <div>
+                {% if school.logo %}
+                <img src="{{ school.logo }}" alt="Logo" style="max-height: 60px; border: 1px solid #ddd; padding: 4px;">
+                {% else %}
+                <span class="text-muted">Aucun logo</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="logo_file" class="form-label">Nouveau logo (fichier)</label>
+              <input type="file" class="form-control" id="logo_file" name="logo_file" accept=".png,.jpg,.jpeg,.webp">
+            </div>
+            <div class="mb-3">
+              <label for="logo" class="form-label">Logo (URL ou chemin, optionnel)</label>
+              <input type="text" class="form-control" id="logo" name="logo" value="{{ school.logo or '' }}">
+            </div>
+            <div class="mb-3">
+              <label for="slogan" class="form-label">Slogan de l'école</label>
+              <input type="text" class="form-control" id="slogan" name="slogan" value="{{ school.slogan or '' }}" placeholder="Ex: L'excellence au service de l'?ducation">
+            </div>
+            <div class="mb-3">
+              <label for="ministry" class="form-label">Ministère de tutelle (Affiché sur les bulletins) *</label>
+              <input type="text" class="form-control" id="ministry" name="ministry" value="{{ school.ministry or 'MINISTERE DE L\'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE' }}" required>
+            </div>
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Retour</a>
+              <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

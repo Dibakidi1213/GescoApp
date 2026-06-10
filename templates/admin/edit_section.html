@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% block title %}Administration - Modifier Section{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; background: white; margin-bottom: 2rem;">
+      <div class="card-header" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 1.5rem 2rem;">
+        <h4 class="mb-1" style="font-weight: 700;"><i class="fas fa-edit me-2"></i>Modifier la section</h4>
+        <p class="mb-0 small opacity-90">Configurez les niveaux et classes de la section <strong>{{ section.name }}</strong></p>
+      </div>
+      <div class="card-body" style="padding: 2.5rem;">
+        <form id="editSectionForm" onsubmit="event.preventDefault();">
+          
+          <!-- Nom de section -->
+          <div class="form-section mb-4" style="border-bottom: 1px solid #e9ecef; padding-bottom: 1.5rem;">
+            <div class="section-header mb-3">
+              <h5 style="font-weight: 600; color: #2c3e50;"><i class="fas fa-signature text-primary me-2"></i>Nom de la Section</h5>
+            </div>
+            <div class="row">
+              <div class="col-md-8">
+                <input type="text" id="section_name_input" class="form-control form-control-lg" value="{{ section.name }}" placeholder="Ex: EDUCATION DE BASE, LATIN PHILO..." required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Niveaux et Classes Management -->
+          <div class="form-section mb-4" style="border-bottom: 1px solid #e9ecef; padding-bottom: 1.5rem;">
+            <div class="section-header mb-3">
+              <h5 style="font-weight: 600; color: #2c3e50;"><i class="fas fa-graduation-cap text-primary me-2"></i>Structure des Niveaux et Classes</h5>
+              <p class="text-muted small mb-0">Chaque niveau dispose de ses propres classes de manière indépendante.</p>
+            </div>
+            
+            <!-- Hierarchy List Container -->
+            <div class="hierarchy-container" id="hierarchy-list" style="display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; min-height: 100px;">
+              <!-- Rendu dynamiquement en JS -->
+            </div>
+
+            <!-- Add New Level Form -->
+            <div class="row g-3 mt-4 align-items-end">
+              <div class="col-md-6">
+                <label for="new_level" class="form-label fw-bold">Ajouter un nouveau niveau</label>
+                <select id="new_level" class="form-select">
+                  <option value="">-- Sélectionnez un niveau --</option>
+                  {% for level_option in available_levels %}
+                  <option>{{ level_option }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <button type="button" class="btn btn-success w-100 py-2 fw-semibold" onclick="addNewLevel()">
+                  <i class="fas fa-plus-circle me-1"></i> Ajouter ce niveau
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Info Box -->
+          <div class="alert alert-info mt-4" style="background-color: #e3f2fd; border-left: 4px solid #2196F3; color: #0d47a1;">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Structure :</strong> Une section doit comporter au moins un niveau, et chaque niveau doit contenir au moins une classe pour être sauvegardé.
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="form-actions d-flex gap-3 mt-4">
+            <button type="button" class="btn btn-primary-modern flex-grow-1 py-3 fw-bold text-uppercase" onclick="saveConfiguration()" style="background: #3498db; border: none; color: white; border-radius: 8px;">
+              <i class="fas fa-save me-2"></i>Enregistrer les modifications
+            </button>
+            <a href="{{ url_for('admin.sections') }}" class="btn btn-outline-secondary px-4 py-3 fw-semibold" style="border-radius: 8px;">
+              Annuler
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn-primary-modern:hover {
+    background: #2980b9 !important;
+  }
+  .level-item {
+    background: white;
+    border-left: 4px solid #3498db;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  .level-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  .level-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .classes-for-level {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    min-height: 35px;
+    align-items: center;
+  }
+  .badge-removable {
+    background-color: #e8f4fd;
+    color: #2b82c9;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 0.85rem;
+    border-radius: 30px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    border: 1px solid #d0e7f9;
+  }
+  .badge-removable:hover {
+    background-color: #fce8e6;
+    color: #e74c3c;
+    border-color: #fad1cc;
+  }
+  .add-class-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    max-width: 300px;
+  }
+  .add-class-form select {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+  }
+  .add-class-form button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+</style>
+
+<script>
+  // Charger la configuration existante transmise depuis le backend
+  // Format : { "7ème": ["A", "B"], "8ème": ["A"] }
+  const sectionConfig = {{ section_config | tojson | safe }};
+
+  function updateHierarchyDisplay() {
+    const hierarchyList = document.getElementById('hierarchy-list');
+    const levels = Object.keys(sectionConfig).sort();
+
+    if (levels.length === 0) {
+      hierarchyList.innerHTML = '<span class="text-muted small">Aucun niveau configuré. Ajoutez un niveau ci-dessous.</span>';
+      return;
+    }
+
+    hierarchyList.innerHTML = levels.map(level => {
+      const classes = sectionConfig[level] || [];
+      const classesHTML = classes.length === 0 
+        ? '<span class="text-muted small">Aucune classe pour ce niveau</span>'
+        : classes.sort().map(cls => `
+            <span class="badge badge-removable" onclick="removeClass('${level}', '${cls}')" title="Cliquez pour supprimer la classe ${cls}">
+              <i class="fas fa-chair"></i> Classe ${cls}
+              <i class="fas fa-times"></i>
+            </span>
+          `).join('');
+
+      return `
+        <div class="level-item">
+          <div class="level-header">
+            <div class="level-title">
+              <i class="fas fa-graduation-cap text-primary"></i>
+              ${level}
+            </div>
+            <div>
+              <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeLevel('${level}')">
+                <i class="fas fa-trash me-1"></i> Supprimer le niveau
+              </button>
+            </div>
+          </div>
+          
+          <div class="classes-for-level">
+            ${classesHTML}
+          </div>
+
+          <div class="add-class-form">
+            <select id="class-select-${level}" class="form-select form-select-sm">
+              <option value="">Ajouter une classe</option>
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+              <option>D</option>
+              <option>E</option>
+              <option>F</option>
+              <option>G</option>
+              <option>H</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-info text-white" onclick="addClassToLevel('${level}')">
+              <i class="fas fa-plus"></i> Ajouter
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function addNewLevel() {
+    const levelSelect = document.getElementById('new_level');
+    const level = levelSelect.value;
+    if (!level) {
+      alert('Veuillez sélectionner un niveau');
+      return;
+    }
+
+    if (sectionConfig[level]) {
+      alert(`Le niveau ${level} est déjà configuré.`);
+      return;
+    }
+
+    sectionConfig[level] = [];
+    levelSelect.value = '';
+    updateHierarchyDisplay();
+  }
+
+  function removeLevel(level) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le niveau ${level} et toutes ses classes ? Les élèves inscrits dans ce niveau seront également supprimés.`)) {
+      delete sectionConfig[level];
+      updateHierarchyDisplay();
+    }
+  }
+
+  function addClassToLevel(level) {
+    const classSelect = document.getElementById(`class-select-${level}`);
+    const cls = classSelect.value;
+
+    if (!cls) {
+      alert('Veuillez sélectionner une classe');
+      return;
+    }
+
+    if (sectionConfig[level].includes(cls)) {
+      alert(`La classe ${cls} est déjà configurée pour le niveau ${level}`);
+      return;
+    }
+
+    sectionConfig[level].push(cls);
+    classSelect.value = '';
+    updateHierarchyDisplay();
+  }
+
+  function removeClass(level, cls) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer la classe ${cls} du niveau ${level} ? Les élèves inscrits dans cette classe seront supprimés.`)) {
+      sectionConfig[level] = sectionConfig[level].filter(c => c !== cls);
+      updateHierarchyDisplay();
+    }
+  }
+
+  function saveConfiguration() {
+    const sectionName = document.getElementById('section_name_input').value.trim();
+    if (!sectionName) {
+      alert('Veuillez spécifier le nom de la section.');
+      return;
+    }
+
+    const levels = Object.keys(sectionConfig);
+    if (levels.length === 0) {
+      alert('Veuillez ajouter au moins un niveau.');
+      return;
+    }
+
+    // Vérifier que chaque niveau possède au moins une classe
+    for (const level of levels) {
+      if (!sectionConfig[level] || sectionConfig[level].length === 0) {
+        alert(`Veuillez ajouter au moins une classe pour le niveau ${level}.`);
+        return;
+      }
+    }
+
+    // Requête AJAX pour sauvegarder les modifications
+    fetch(window.location.pathname, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: sectionName,
+        config: sectionConfig
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Redirection vers l'index de gestion des sections
+        window.location.href = "{{ url_for('admin.sections') }}";
+      } else {
+        alert('Erreur: ' + (data.error || 'Impossible de sauvegarder'));
+      }
+    })
+    .catch(error => {
+      console.error('Erreur:', error);
+      alert('Erreur de communication avec le serveur.');
+    });
+  }
+
+  // Initialisation à l'affichage de la page
+  document.addEventListener('DOMContentLoaded', function() {
+    updateHierarchyDisplay();
+  });
+</script>
+{% endblock %}

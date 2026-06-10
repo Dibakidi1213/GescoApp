@@ -1,0 +1,2 @@
+﻿ALTER TABLE grades
+  ADD COLUMN period VARCHAR(30) NOT NULL DEFAULT 'P1' AFTER course_id;

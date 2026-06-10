@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('gescoapp.db')
+cursor = conn.cursor()
+cursor.execute("PRAGMA table_info(bulletin_branches)")
+print("bulletin_branches:", cursor.fetchall())
+cursor.execute("PRAGMA table_info(deliberation_criteria)")
+print("deliberation_criteria:", cursor.fetchall())
+cursor.execute("PRAGMA table_info(deliberation_results)")
+print("deliberation_results:", cursor.fetchall())
+conn.close()
