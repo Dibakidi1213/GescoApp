@@ -3,7 +3,7 @@ from flask_login import current_user
 from models import db, Grade, Student, Teacher, Subject, Class, AuditLog
 from roles import professeur_required
 from forms import GradeForm
-from auth import token_required
+from roles import login_required as token_required
 
 professeur_bp = Blueprint('professeur', __name__)
 
@@ -44,7 +44,7 @@ def load_grades():
         return jsonify({'message': 'Paramètres manquants'}), 400
 
     # SÉCURITÉ: Vérifier que le professeur est bien assigné à cette classe/matière
-    user = g.effective_user
+    user = g.current_user
     assignment = Teacher.query.filter_by(user_id=user.id, class_id=class_id, subject_id=subject_id).first()
     if not assignment:
         return jsonify({'message': 'Accès non autorisé à ce cours'}), 403
@@ -87,7 +87,7 @@ def save_grades():
     grades_data = data.get('grades')
     is_submit = data.get('submit', False)
 
-    user = g.effective_user
+    user = g.current_user
     teacher_profile = Teacher.query.filter_by(user_id=user.id, class_id=class_id, subject_id=subject_id).first()
 
     if not teacher_profile:

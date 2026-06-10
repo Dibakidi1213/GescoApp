@@ -37,23 +37,37 @@ class SchoolPlatformTestCase(unittest.TestCase):
         db.session.add(school)
         db.session.commit()
 
-        # Enregistrement
-        resp = self.client.post('/api/auth/register', json={
-            'username': 'admin_test',
-            'password': 'password123',
-            'role': 'admin',
-            'school_id': school.id
-        })
+        # Comme register() est maintenant protégé, on crée le premier admin manuellement
+        admin = User(username='superadmin', email='super@test.com', role='admin', school_id=school.id)
+        admin.set_password('Admin1234')
+        db.session.add(admin)
+        db.session.commit()
+
+        # Login SuperAdmin pour obtenir un token
+        resp = self.client.post('/api/auth/login', json={'username': 'superadmin', 'password': 'Admin1234'})
+        token = resp.get_json()['access_token']
+
+        # Enregistrement d'un nouvel utilisateur via API avec le token
+        resp = self.client.post('/api/auth/register',
+            json={
+                'username': 'admin_test',
+                'email': 'admin2@test.com',
+                'password': 'Password123',
+                'role': 'admin',
+                'school_id': school.id
+            },
+            headers={'Authorization': f'Bearer {token}'}
+        )
         self.assertEqual(resp.status_code, 201)
 
-        # Login
+        # Login du nouvel utilisateur
         resp = self.client.post('/api/auth/login', json={
             'username': 'admin_test',
-            'password': 'password123'
+            'password': 'Password123'
         })
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
-        self.assertIn('token', data)
+        self.assertIn('access_token', data)
         self.assertEqual(data['role'], 'admin')
 
 if __name__ == '__main__':

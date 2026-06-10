@@ -8,3 +8,7 @@ python-dotenv==1.0.0
 psycopg2-binary==2.9.9
 email-validator==2.1.0.post1
 reportlab==4.0.8
+Flask-Limiter==3.5.0
+Flask-Mail==0.9.1
+pyotp==2.9.0
+zxcvbn==4.4.28

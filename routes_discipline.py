@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, g
 from models import db, Attendance, Conduct, Incident, Class, Student, AuditLog
 from roles import discipline_required
 from forms import AttendanceForm, ConductForm, IncidentForm
-from auth import token_required
+from roles import login_required as token_required
 from datetime import datetime
 
 discipline_bp = Blueprint('discipline', __name__)
@@ -12,7 +12,7 @@ discipline_bp = Blueprint('discipline', __name__)
 @discipline_required
 def get_sections():
     """Récupère les sections uniques de l'école."""
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     sections = db.session.query(Class.section).filter_by(school_id=school_id).distinct().all()
     return jsonify([s.section for s in sections if s.section]), 200
 
@@ -21,7 +21,7 @@ def get_sections():
 @discipline_required
 def get_levels():
     """Récupère les niveaux pour une section donnée."""
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     section = request.args.get('section')
     query = db.session.query(Class.level).filter_by(school_id=school_id)
     if section:
@@ -34,7 +34,7 @@ def get_levels():
 @discipline_required
 def get_classes():
     """Récupère les classes pour une section et un niveau donnés."""
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     section = request.args.get('section')
     level = request.args.get('level')
     query = Class.query.filter_by(school_id=school_id)
@@ -79,7 +79,7 @@ def record_bulk_attendance():
     except ValueError:
         return jsonify({'message': 'Format de date invalide (AAAA-MM-JJ)'}), 400
 
-    user = g.effective_user
+    user = g.current_user
     for att in attendances:
         # On met à jour si ça existe déjà pour cet élève et cette date
         record = Attendance.query.filter_by(
@@ -120,7 +120,7 @@ def record_attendance():
     data = request.get_json()
     form = AttendanceForm(data=data, meta={'csrf': False})
     if form.validate():
-        user = g.effective_user
+        user = g.current_user
         new_attendance = Attendance(
             student_id=form.student_id.data,
             class_id=form.class_id.data,
@@ -140,7 +140,7 @@ def record_conduct():
     data = request.get_json()
     form = ConductForm(data=data, meta={'csrf': False})
     if form.validate():
-        user = g.effective_user
+        user = g.current_user
         new_conduct = Conduct(
             student_id=form.student_id.data,
             type=form.type.data,
@@ -160,7 +160,7 @@ def record_incident():
     data = request.get_json()
     form = IncidentForm(data=data, meta={'csrf': False})
     if form.validate():
-        user = g.effective_user
+        user = g.current_user
         new_incident = Incident(
             student_id=form.student_id.data,
             category=form.category.data,

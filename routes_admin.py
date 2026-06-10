@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, g
 from models import db, School, Class, User, Subject, Teacher, Student, AuditLog
 from roles import admin_required
 from forms import SchoolForm, ClassForm, UserForm
-from auth import token_required
+from roles import login_required as token_required
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -11,7 +11,7 @@ admin_bp = Blueprint('admin', __name__)
 @admin_required
 def get_dashboard_stats():
     """Récupère les statistiques pour le tableau de bord admin."""
-    user = g.effective_user
+    user = g.current_user
     school_id = user.school_id
 
     if not school_id:
@@ -67,7 +67,7 @@ def manage_classes():
         return jsonify({'errors': form.errors}), 400
 
     # GET
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     classes = Class.query.filter_by(school_id=school_id).all()
     return jsonify([{
         'id': c.id,
@@ -118,7 +118,7 @@ def manage_attributions():
         return jsonify({'message': 'Attribution réussie', 'id': new_teacher.id}), 201
 
     # GET - Liste des attributions pour l'école
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     attributions = Teacher.query.join(User).filter(User.school_id == school_id).all()
     return jsonify([{
         'id': t.id,
@@ -132,7 +132,7 @@ def manage_attributions():
 @admin_required
 def get_audit_logs():
     """Récupère les journaux d'audit de l'école."""
-    school_id = g.effective_user.school_id
+    school_id = g.current_user.school_id
     logs = AuditLog.query.join(User).filter(User.school_id == school_id).order_by(AuditLog.timestamp.desc()).all()
     return jsonify([{
         'id': log.id,

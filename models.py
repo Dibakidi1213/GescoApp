@@ -7,14 +7,22 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 
 class User(db.Model, UserMixin):
-    """Modèle pour les utilisateurs de la plateforme."""
+    """Modèle pour les utilisateurs de la plateforme avec sécurité renforcée."""
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(20), nullable=False) # admin, secretaire, professeur, discipline
+    role = db.Column(db.String(20), nullable=False)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Sécurité supplémentaire
+    is_2fa_enabled = db.Column(db.Boolean, default=False)
+    two_factor_secret = db.Column(db.String(32))
+    last_password_change = db.Column(db.DateTime, default=datetime.utcnow)
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    last_login_attempt = db.Column(db.DateTime)
 
     # Relation avec le profil professeur si applicable
     teacher_profile = db.relationship('Teacher', backref='user', uselist=False)
