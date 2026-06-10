@@ -1,0 +1,131 @@
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+from flask_bcrypt import Bcrypt
+from datetime import datetime
+
+db = SQLAlchemy()
+bcrypt = Bcrypt()
+
+class User(db.Model, UserMixin):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(20), nullable=False) # admin, secretaire, professeur, discipline
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relation un-à-un vers Teacher si l'utilisateur est un professeur
+    teacher_profile = db.relationship('Teacher', backref='user', uselist=False)
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
+
+class School(db.Model):
+    __tablename__ = 'schools'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    address = db.Column(db.String(200))
+    logo = db.Column(db.String(200))
+    config_json = db.Column(db.JSON)
+    year_start = db.Column(db.Integer)
+    year_end = db.Column(db.Integer)
+
+    users = db.relationship('User', backref='school', lazy=True)
+    classes = db.relationship('Class', backref='school', lazy=True)
+
+class Class(db.Model):
+    __tablename__ = 'classes'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    level = db.Column(db.String(20))
+    capacity = db.Column(db.Integer)
+
+    students = db.relationship('Student', backref='current_class', lazy=True)
+    subjects = db.relationship('Subject', backref='class_level', lazy=True)
+
+class Student(db.Model):
+    __tablename__ = 'students'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    birth_date = db.Column(db.Date)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
+    parent_phone = db.Column(db.String(20))
+    parent_email = db.Column(db.String(100))
+
+    grades = db.relationship('Grade', backref='student', lazy=True)
+    attendance = db.relationship('Attendance', backref='student', lazy=True)
+    conduct = db.relationship('Conduct', backref='student', lazy=True)
+    incidents = db.relationship('Incident', backref='student', lazy=True)
+    bulletins = db.relationship('Bulletin', backref='student', lazy=True)
+
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    coefficient = db.Column(db.Float, default=1.0)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
+
+class Teacher(db.Model):
+    __tablename__ = 'teachers'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
+
+    grades = db.relationship('Grade', backref='teacher', lazy=True)
+
+class Grade(db.Model):
+    __tablename__ = 'grades'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
+    value = db.Column(db.Float, nullable=False)
+    period = db.Column(db.String(50)) # e.g., Trimestre 1, Semestre 1
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    validated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+class Attendance(db.Model):
+    __tablename__ = 'attendance'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False) # present, absent, retard
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Conduct(db.Model):
+    __tablename__ = 'conduct'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    type = db.Column(db.String(50)) # Bonus, Malus
+    severity = db.Column(db.Integer)
+    description = db.Column(db.Text)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Incident(db.Model):
+    __tablename__ = 'incidents'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    category = db.Column(db.String(50))
+    description = db.Column(db.Text)
+    evidence = db.Column(db.String(200)) # Path to file/image
+    severity = db.Column(db.String(20))
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Bulletin(db.Model):
+    __tablename__ = 'bulletins'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    period = db.Column(db.String(50))
+    generated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    pdf_path = db.Column(db.String(200))
