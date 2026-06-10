@@ -20,6 +20,7 @@ def saisie_cotes_page():
         subj = Subject.query.get(t.subject_id)
         if cls.id not in classes:
             classes[cls.id] = {
+                'id': cls.id,
                 'name': cls.name,
                 'level': cls.level,
                 'section': cls.section,
@@ -41,6 +42,12 @@ def load_grades():
 
     if not class_id or not subject_id:
         return jsonify({'message': 'Paramètres manquants'}), 400
+
+    # SÉCURITÉ: Vérifier que le professeur est bien assigné à cette classe/matière
+    user = g.effective_user
+    assignment = Teacher.query.filter_by(user_id=user.id, class_id=class_id, subject_id=subject_id).first()
+    if not assignment:
+        return jsonify({'message': 'Accès non autorisé à ce cours'}), 403
 
     students = Student.query.filter_by(class_id=class_id).all()
     subject = Subject.query.get(subject_id)
@@ -94,8 +101,9 @@ def save_grades():
         ).first()
 
         if grade:
-            if grade.status == 'submitted' and not is_submit:
-                 continue # Ne pas modifier si déjà soumis sauf si on resoumet ? (souvent verrouillé)
+            # SÉCURITÉ: Ne pas modifier si déjà soumis par le prof ou validé par le secrétaire
+            if grade.status == 'submitted' or grade.status == 'validated':
+                 continue
             grade.value = item['value']
             grade.status = 'submitted' if is_submit else 'draft'
         else:
