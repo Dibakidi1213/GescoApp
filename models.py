@@ -57,6 +57,7 @@ class Student(db.Model):
     __tablename__ = 'students'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    gender = db.Column(db.String(10)) # M ou F
     birth_date = db.Column(db.Date)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
     parent_phone = db.Column(db.String(20))

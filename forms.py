@@ -42,6 +42,7 @@ class SubjectForm(FlaskForm):
 class StudentForm(FlaskForm):
     """Formulaire pour les élèves."""
     name = StringField('Nom complet', validators=[DataRequired(), Length(max=100)])
+    gender = SelectField('Sexe', choices=[('M', 'Masculin'), ('F', 'Féminin')], validators=[Optional()])
     birth_date = DateField('Date de naissance', validators=[Optional()])
     class_id = IntegerField('ID Classe', validators=[Optional()])
     parent_phone = StringField('Téléphone parent', validators=[Optional(), Length(max=20)])

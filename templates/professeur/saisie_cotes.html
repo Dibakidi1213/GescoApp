@@ -226,10 +226,22 @@
 
         if (!classId || !subjectId) return;
 
-        $.get(`/api/professeur/api/load-grades?class_id=${classId}&subject_id=${subjectId}`, function(data) {
-            currentData = data;
-            $('#main-content').show();
-            updateTableUI();
+        $.ajax({
+            url: `/api/professeur/api/load-grades?class_id=${classId}&subject_id=${subjectId}`,
+            type: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            success: function(data) {
+                currentData = data;
+                $('#main-content').show();
+                updateTableUI();
+            },
+            error: function(xhr) {
+                if (xhr.status === 401) {
+                    alert('Session expirée ou non autorisée. Veuillez vous reconnecter.');
+                }
+            }
         });
     }
 

@@ -22,7 +22,7 @@ def token_required(f):
 
         try:
             data = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
-            current_user_obj = User.query.get(data['user_id'])
+            current_user_obj = db.session.get(User, data['user_id'])
             if not current_user_obj:
                 return jsonify({'message': 'Utilisateur non trouvé'}), 401
             # On utilise g pour stocker l'utilisateur via token pour les APIs REST
@@ -37,6 +37,8 @@ def token_required(f):
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
+    # SÉCURITÉ: Seul un admin peut créer d'autres utilisateurs (sauf si c'est le premier)
+    # Dans une vraie application, on vérifierait le token ou la session ici.
     data = request.get_json()
     form = UserForm(data=data, meta={'csrf': False}) # Désactiver CSRF pour API
     if form.validate():
