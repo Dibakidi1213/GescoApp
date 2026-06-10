@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Saisie des notes et des présences{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .period-tabs {
+        margin-bottom: 15px;
+    }
+    .btn-period {
+        border-radius: 4px;
+        margin: 2px;
+        min-width: 150px;
+        border: 1px solid #1a4d8c;
+    }
+    .btn-period.active {
+        background-color: #1a4d8c;
+        color: white;
+    }
+    .table-container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    .total-col {
+        background-color: #fffde7;
+        font-weight: bold;
+    }
+    .general-total {
+        background-color: #fff9c4;
+        font-weight: bold;
+    }
+    .percentage-col {
+        background-color: #fff9c4;
+        font-weight: bold;
+    }
+    .notification-badge {
+        background-color: #d35400;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h4 class="mb-3">Saisie des notes et des présences</h4>
+
+<div class="filter-section">
+    <h6>Filtres de sélection</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Section</label>
+            <select id="section-select" class="form-select">
+                <option value="">-- Section --</option>
+                {% for id, cls in classes.items() %}
+                <option value="{{ cls.section }}">{{ cls.section }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Niveau</label>
+            <select id="level-select" class="form-select">
+                <option value="">-- Niveau --</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Classe</label>
+            <select id="class-select" class="form-select">
+                <option value="">-- Classe --</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Cours</label>
+            <select id="subject-select" class="form-select">
+                <option value="">-- Cours --</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="instruction-banner">
+    <strong>Instruction :</strong> Sélectionnez une section, un niveau, une classe et un cours pour commencer la saisie des notes.
+</div>
+
+<div id="main-content" style="display:none;">
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="d-flex flex-wrap period-tabs">
+                <div class="nav nav-pills" id="pills-tab" role="tablist">
+                    <button class="btn btn-outline-primary btn-period active" data-period="1èP">1èP</button>
+                    <button class="btn btn-outline-primary btn-period" data-period="2èP">2èP</button>
+                    <button class="btn btn-outline-primary btn-period" data-period="EXA1">EXA1</button>
+                    <button class="btn btn-outline-primary btn-period" data-period="3èP">3èP</button>
+                    <button class="btn btn-outline-primary btn-period" data-period="4èP">4èP</button>
+                    <button class="btn btn-outline-primary btn-period" data-period="EXA2">EXA2</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-success"><i class="fas fa-bell"></i> Notifications <span class="notification-badge">9</span></button>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <button id="save-draft" class="btn btn-primary me-2">Sauvegarder (Brouillon — pas de transmission)</button>
+        <button id="submit-period" class="btn btn-warning">Soumettre la période au bulletin</button>
+        <p class="text-muted small mt-2">Remarque : Enregistrer le brouillon sauvegarde les notes pour vous uniquement. Seule l'action Soumettre la période verrouille les notes et notifie le secrétariat.</p>
+    </div>
+
+    <div class="table-container">
+        <h6 id="current-course-info">Cours : | Période : </h6>
+
+        <div class="alert alert-primary py-2" id="maxima-info">
+            Maxima du bulletin : 1èP=0, 2èP=0, EXA1=0, 3èP=0, 4èP=0, EXA2=0
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ÉLÈVE</th>
+                        <th width="80">1èP</th>
+                        <th width="80">2èP</th>
+                        <th width="80">EXA1</th>
+                        <th width="100" class="total-col">TOTAL 1</th>
+                        <th width="80">3èP</th>
+                        <th width="80">4èP</th>
+                        <th width="80">EXA2</th>
+                        <th width="100" class="total-col">TOTAL 2</th>
+                        <th width="120" class="general-total">TOTAL GÉNÉRAL</th>
+                        <th width="60" class="percentage-col">%</th>
+                    </tr>
+                </thead>
+                <tbody id="students-table-body">
+                    <!-- Rempli par JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 p-3 bg-light border rounded">
+            <h6>Formules de calcul :</h6>
+            <ul class="mb-0 small">
+                <li>Total 1: 1èP + 2èP + EXA1</li>
+                <li>Total 2: 3èP + 4èP + EXA2</li>
+                <li>Total Général: Total 1 + Total 2</li>
+                <li>Pourcentage: (Total Général / somme des maxima) × 100</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const classesData = {{ classes|tojson }};
+    let currentData = null;
+    let selectedPeriod = '1èP';
+
+    $(document).ready(function() {
+        // Filtres dynamiques
+        $('#section-select').change(function() {
+            const section = $(this).val();
+            const levelSelect = $('#level-select');
+            levelSelect.empty().append('<option value="">-- Niveau --</option>');
+
+            const addedLevels = new Set();
+            for (const id in classesData) {
+                if (classesData[id].section === section && !addedLevels.has(classesData[id].level)) {
+                    levelSelect.append(`<option value="${classesData[id].level}">${classesData[id].level}</option>`);
+                    addedLevels.add(classesData[id].level);
+                }
+            }
+        });
+
+        $('#level-select').change(function() {
+            const section = $('#section-select').val();
+            const level = $(this).val();
+            const classSelect = $('#class-select');
+            classSelect.empty().append('<option value="">-- Classe --</option>');
+
+            for (const id in classesData) {
+                if (classesData[id].section === section && classesData[id].level === level) {
+                    classSelect.append(`<option value="${id}">${classesData[id].name}</option>`);
+                }
+            }
+        });
+
+        $('#class-select').change(function() {
+            const classId = $(this).val();
+            const subjectSelect = $('#subject-select');
+            subjectSelect.empty().append('<option value="">-- Cours --</option>');
+
+            if (classesData[classId]) {
+                classesData[classId].subjects.forEach(s => {
+                    subjectSelect.append(`<option value="${s.id}">${s.name}</option>`);
+                });
+            }
+        });
+
+        $('#subject-select').change(loadGrades);
+
+        $('.btn-period').click(function() {
+            $('.btn-period').removeClass('active');
+            $(this).addClass('active');
+            selectedPeriod = $(this).data('period');
+            updateTableUI();
+        });
+
+        $('#save-draft').click(() => saveGrades(false));
+        $('#submit-period').click(() => saveGrades(true));
+    });
+
+    function loadGrades() {
+        const classId = $('#class-select').val();
+        const subjectId = $('#subject-select').val();
+
+        if (!classId || !subjectId) return;
+
+        $.get(`/api/professeur/api/load-grades?class_id=${classId}&subject_id=${subjectId}`, function(data) {
+            currentData = data;
+            $('#main-content').show();
+            updateTableUI();
+        });
+    }
+
+    function updateTableUI() {
+        if (!currentData) return;
+
+        const subjectName = $('#subject-select option:selected').text();
+        $('#current-course-info').text(`Cours : ${subjectName} | Période : ${selectedPeriod}`);
+
+        const m = currentData.maxima;
+        $('#maxima-info').text(`Maxima du bulletin pour "${subjectName}" : 1èP=${m['1èP']}, 2èP=${m['2èP']}, EXA1=${m['EXA1']}, 3èP=${m['3èP']}, 4èP=${m['4èP']}, EXA2=${m['EXA2']}`);
+
+        const tbody = $('#students-table-body');
+        tbody.empty();
+
+        currentData.students.forEach(student => {
+            const g = student.grades;
+            const t1 = (parseFloat(g['1èP']) || 0) + (parseFloat(g['2èP']) || 0) + (parseFloat(g['EXA1']) || 0);
+            const t2 = (parseFloat(g['3èP']) || 0) + (parseFloat(g['4èP']) || 0) + (parseFloat(g['EXA2']) || 0);
+            const total = t1 + t2;
+            const sumMax = Object.values(m).reduce((a, b) => a + b, 0);
+            const perc = sumMax > 0 ? (total / sumMax * 100).toFixed(1) : 0;
+
+            let row = `<tr>
+                <td>${student.student_name}</td>
+                ${['1èP', '2èP', 'EXA1'].map(p => `<td><input type="number" class="form-control form-control-sm grade-input" data-student-id="${student.student_id}" data-period="${p}" value="${g[p] || ''}" ${selectedPeriod !== p ? 'readonly' : ''}></td>`).join('')}
+                <td class="total-col">${t1}</td>
+                ${['3èP', '4èP', 'EXA2'].map(p => `<td><input type="number" class="form-control form-control-sm grade-input" data-student-id="${student.student_id}" data-period="${p}" value="${g[p] || ''}" ${selectedPeriod !== p ? 'readonly' : ''}></td>`).join('')}
+                <td class="total-col">${t2}</td>
+                <td class="general-total">${total}</td>
+                <td class="percentage-col">${perc}%</td>
+            </tr>`;
+            tbody.append(row);
+        });
+    }
+
+    function saveGrades(isSubmit) {
+        const classId = $('#class-select').val();
+        const subjectId = $('#subject-select').val();
+
+        const grades = [];
+        $(`.grade-input[data-period="${selectedPeriod}"]`).each(function() {
+            grades.push({
+                student_id: $(this).data('student-id'),
+                value: $(this).val() || 0
+            });
+        });
+
+        const payload = {
+            class_id: parseInt(classId),
+            subject_id: parseInt(subjectId),
+            period: selectedPeriod,
+            grades: grades,
+            submit: isSubmit
+        };
+
+        $.ajax({
+            url: '/api/professeur/api/save-grades',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token') // À adapter selon le stockage du token
+            },
+            success: function(response) {
+                alert(response.message);
+                loadGrades(); // Recharger pour mettre à jour les totaux
+            },
+            error: function(xhr) {
+                alert('Erreur: ' + (xhr.responseJSON?.message || 'Erreur inconnue'));
+            }
+        });
+    }
+</script>
+{% endblock %}

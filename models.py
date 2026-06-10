@@ -15,7 +15,6 @@ class User(db.Model, UserMixin):
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relation un-à-un vers Teacher si l'utilisateur est un professeur
     teacher_profile = db.relationship('Teacher', backref='user', uselist=False)
 
     def set_password(self, password):
@@ -42,7 +41,8 @@ class Class(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
-    level = db.Column(db.String(20))
+    level = db.Column(db.String(20)) # e.g., 1ère, 2ème
+    section = db.Column(db.String(50)) # e.g., Scientifique, Littéraire
     capacity = db.Column(db.Integer)
 
     students = db.relationship('Student', backref='current_class', lazy=True)
@@ -70,6 +70,14 @@ class Subject(db.Model):
     coefficient = db.Column(db.Float, default=1.0)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
 
+    # Maxima par période pour le bulletin
+    max_1p = db.Column(db.Float, default=20.0)
+    max_2p = db.Column(db.Float, default=20.0)
+    max_exa1 = db.Column(db.Float, default=40.0)
+    max_3p = db.Column(db.Float, default=20.0)
+    max_4p = db.Column(db.Float, default=20.0)
+    max_exa2 = db.Column(db.Float, default=40.0)
+
 class Teacher(db.Model):
     __tablename__ = 'teachers'
     id = db.Column(db.Integer, primary_key=True)
@@ -86,7 +94,8 @@ class Grade(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
     value = db.Column(db.Float, nullable=False)
-    period = db.Column(db.String(50)) # e.g., Trimestre 1, Semestre 1
+    period = db.Column(db.String(20)) # 1èP, 2èP, EXA1, 3èP, 4èP, EXA2
+    status = db.Column(db.String(20), default='draft') # draft, submitted, validated
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
     validated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
