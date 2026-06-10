@@ -6,6 +6,12 @@ from datetime import datetime
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
+# Table d'association Many-to-Many entre Parents (Utilisateurs) et Élèves
+parent_student = db.Table('parent_student',
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('student_id', db.Integer, db.ForeignKey('students.id'), primary_key=True)
+)
+
 class User(db.Model, UserMixin):
     """Modèle pour les utilisateurs de la plateforme avec sécurité renforcée."""
     __tablename__ = 'users'
@@ -76,6 +82,22 @@ class Student(db.Model):
     conduct = db.relationship('Conduct', backref='student', lazy=True)
     incidents = db.relationship('Incident', backref='student', lazy=True)
     bulletins = db.relationship('Bulletin', backref='student', lazy=True)
+
+    # Parents liés à cet élève
+    parents = db.relationship('User', secondary=parent_student, backref=db.backref('children', lazy='dynamic'))
+
+class Message(db.Model):
+    """Modèle pour la messagerie entre professeurs et parents."""
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    read_at = db.Column(db.DateTime)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
 
 class Subject(db.Model):
     """Modèle pour les matières/cours."""

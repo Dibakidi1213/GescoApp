@@ -7,6 +7,7 @@ from routes_admin import admin_bp
 from routes_professeur import professeur_bp
 from routes_secretaire import secretaire_bp
 from routes_discipline import discipline_bp
+from routes_mobile import mobile_bp
 from middleware import limiter
 from flask_mail import Mail
 import os
@@ -45,6 +46,7 @@ def create_app(config_class=Config):
     app.register_blueprint(professeur_bp, url_prefix='/api/professeur')
     app.register_blueprint(secretaire_bp, url_prefix='/api/secretaire')
     app.register_blueprint(discipline_bp, url_prefix='/api/discipline')
+    app.register_blueprint(mobile_bp, url_prefix='/api/mobile')
 
     @app.route('/')
     def index():
