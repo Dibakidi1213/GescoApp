@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from models import db, School, Class, User, Subject, Teacher, Student
+from models import db, School, Class, User, Subject, Teacher, Student, AuditLog
 from roles import admin_required
 from forms import SchoolForm, ClassForm, UserForm
 from auth import token_required
@@ -126,3 +126,19 @@ def manage_attributions():
         'subject_name': Subject.query.get(t.subject_id).name,
         'class_name': Class.query.get(t.class_id).name
     } for t in attributions]), 200
+
+@admin_bp.route('/audit-logs', methods=['GET'])
+@token_required
+@admin_required
+def get_audit_logs():
+    """Récupère les journaux d'audit de l'école."""
+    school_id = g.effective_user.school_id
+    logs = AuditLog.query.join(User).filter(User.school_id == school_id).order_by(AuditLog.timestamp.desc()).all()
+    return jsonify([{
+        'id': log.id,
+        'user': log.user.username,
+        'action': log.action,
+        'details': log.details,
+        'ip': log.ip_address,
+        'timestamp': log.timestamp.isoformat()
+    } for log in logs]), 200

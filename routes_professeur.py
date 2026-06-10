@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, g, render_template
 from flask_login import current_user
-from models import db, Grade, Student, Teacher, Subject, Class
+from models import db, Grade, Student, Teacher, Subject, Class, AuditLog
 from roles import professeur_required
 from forms import GradeForm
 from auth import token_required
@@ -118,4 +118,15 @@ def save_grades():
             db.session.add(grade)
 
     db.session.commit()
+
+    # Audit log
+    audit = AuditLog(
+        user_id=user.id,
+        action='SAVE_GRADES',
+        details=f"Sauvegarde des notes pour class_id={class_id}, subject_id={subject_id}, période={period}",
+        ip_address=request.remote_addr
+    )
+    db.session.add(audit)
+    db.session.commit()
+
     return jsonify({'message': 'Notes sauvegardées avec succès'}), 200

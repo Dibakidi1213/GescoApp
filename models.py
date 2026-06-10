@@ -153,3 +153,13 @@ class Bulletin(db.Model):
     generated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
     pdf_path = db.Column(db.String(200))
+
+class AuditLog(db.Model):
+    """Modèle pour les journaux d'audit et de sécurité."""
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    action = db.Column(db.String(100), nullable=False) # Ex: LOGIN, GRADE_UPDATE, DELETE_STUDENT
+    details = db.Column(db.Text)
+    ip_address = db.Column(db.String(45))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)

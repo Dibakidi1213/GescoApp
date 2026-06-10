@@ -2,11 +2,21 @@ import jwt
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app, g
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User
+from models import db, User, AuditLog
 from forms import LoginForm, UserForm
 from functools import wraps
 
 auth_bp = Blueprint('auth', __name__)
+
+def log_audit(user_id, action, details):
+    audit = AuditLog(
+        user_id=user_id,
+        action=action,
+        details=details,
+        ip_address=request.remote_addr
+    )
+    db.session.add(audit)
+    db.session.commit()
 
 def token_required(f):
     @wraps(f)
@@ -64,6 +74,7 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
+            log_audit(user.id, 'LOGIN', f'Utilisateur {user.username} s\'est connecté.')
 
             token = jwt.encode({
                 'user_id': user.id,
@@ -82,6 +93,7 @@ def login():
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
+    log_audit(current_user.id, 'LOGOUT', f'Utilisateur {current_user.username} s\'est déconnecté.')
     logout_user()
     return jsonify({'message': 'Déconnexion réussie'}), 200
 

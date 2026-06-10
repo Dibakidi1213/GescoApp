@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g, send_file
-from models import db, Student, Grade, Bulletin, Class, Subject, User
+from models import db, Student, Grade, Bulletin, Class, Subject, User, AuditLog
 from roles import secretaire_required
 from forms import StudentForm
 from auth import token_required
@@ -69,6 +69,16 @@ def validate_grades():
         grade.validated_by = user.id
 
     db.session.commit()
+
+    audit = AuditLog(
+        user_id=user.id,
+        action='VALIDATE_GRADES',
+        details=f"{len(grades)} notes validées",
+        ip_address=request.remote_addr
+    )
+    db.session.add(audit)
+    db.session.commit()
+
     return jsonify({'message': f'{len(grades)} notes validées'}), 200
 
 @secretaire_bp.route('/bulletins/generate', methods=['POST'])
@@ -160,6 +170,14 @@ def generate_bulletin():
         pdf_path=filepath
     )
     db.session.add(new_bulletin)
+
+    audit = AuditLog(
+        user_id=g.effective_user.id,
+        action='GENERATE_BULLETIN',
+        details=f"Bulletin généré pour l'élève ID {student_id}, période {period}",
+        ip_address=request.remote_addr
+    )
+    db.session.add(audit)
     db.session.commit()
 
     return jsonify({'message': 'Bulletin généré', 'url': f'/api/secretaire/bulletins/download/{new_bulletin.id}'}), 201

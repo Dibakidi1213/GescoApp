@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from models import db, Attendance, Conduct, Incident, Class, Student
+from models import db, Attendance, Conduct, Incident, Class, Student, AuditLog
 from roles import discipline_required
 from forms import AttendanceForm, ConductForm, IncidentForm
 from auth import token_required
@@ -101,6 +101,16 @@ def record_bulk_attendance():
             db.session.add(new_att)
 
     db.session.commit()
+
+    audit = AuditLog(
+        user_id=user.id,
+        action='BULK_ATTENDANCE',
+        details=f"Présences enregistrées pour la classe ID {class_id}, date {date_str}",
+        ip_address=request.remote_addr
+    )
+    db.session.add(audit)
+    db.session.commit()
+
     return jsonify({'message': 'Présences enregistrées avec succès'}), 201
 
 @discipline_bp.route('/attendance', methods=['POST'])
@@ -159,6 +169,14 @@ def record_incident():
             recorded_by=user.id
         )
         db.session.add(new_incident)
+
+        audit = AuditLog(
+            user_id=user.id,
+            action='RECORD_INCIDENT',
+            details=f"Incident '{form.category.data}' enregistré pour l'élève ID {form.student_id.data}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(audit)
         db.session.commit()
         return jsonify({'message': 'Incident enregistré'}), 201
     return jsonify({'errors': form.errors}), 400
