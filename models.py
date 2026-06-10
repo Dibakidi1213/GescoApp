@@ -104,6 +104,8 @@ class Subject(db.Model):
     __tablename__ = 'subjects'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    domain = db.Column(db.String(100)) # Ex: DOMAINE DES SCIENCES
+    sub_domain = db.Column(db.String(100)) # Ex: Sous domaine des mathématiques
     coefficient = db.Column(db.Float, default=1.0)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
 

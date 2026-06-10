@@ -1,13 +1,13 @@
-from flask import Blueprint, request, jsonify, g, send_file
+from flask import Blueprint, request, jsonify, g, send_file, Response
 from models import db, Student, Grade, Bulletin, Class, Subject, User, AuditLog
 from roles import secretaire_required
 from forms import StudentForm
 from roles import login_required as token_required
+from pdf_generator import PDFGenerator
+import io
+import zipfile
 from datetime import datetime
 import os
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
 
 secretaire_bp = Blueprint('secretaire', __name__)
 
@@ -81,110 +81,59 @@ def validate_grades():
 
     return jsonify({'message': f'{len(grades)} notes validées'}), 200
 
-@secretaire_bp.route('/bulletins/generate', methods=['POST'])
+@secretaire_bp.route('/bulletins/generate-official', methods=['POST'])
 @token_required
 @secretaire_required
-def generate_bulletin():
-    """Génération réelle d'un bulletin PDF avec ReportLab."""
+def generate_official_bulletin():
+    """Génère le bulletin officiel RDC au format PDF."""
     data = request.get_json()
     student_id = data.get('student_id')
-    period = data.get('period')
 
     student = Student.query.get_or_404(student_id)
-    school = student.current_class.school
+    class_obj = student.current_class
+    school = class_obj.school
+    subjects = Subject.query.filter_by(class_id=class_obj.id).all()
+    grades = Grade.query.filter_by(student_id=student.id).all()
 
-    # Création du dossier si inexistant
-    upload_dir = 'uploads/bulletins'
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+    pdf_content = PDFGenerator.generate_bulletin(student, subjects, grades, school, class_obj)
 
-    filename = f"bulletin_{student_id}_{period}.pdf"
-    filepath = os.path.join(upload_dir, filename)
+    if not pdf_content:
+        return jsonify({'error': 'Erreur lors de la génération du PDF'}), 500
 
-    # Logique ReportLab
-    c = canvas.Canvas(filepath, pagesize=A4)
-    width, height = A4
+    # Sauvegarde optionnelle sur le serveur
+    filename = f"bulletin_officiel_{student_id}.pdf"
+    filepath = PDFGenerator.save_pdf(pdf_content, filename)
 
-    # Header
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(width/2, height - 50, school.name.upper())
-    c.setFont("Helvetica", 12)
-    c.drawCentredString(width/2, height - 70, school.address or "")
-
-    c.line(50, height - 80, width - 50, height - 80)
-
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, height - 120, f"BULLETIN DE NOTES - {period}")
-    c.setFont("Helvetica", 12)
-    c.drawString(50, height - 140, f"Élève: {student.name}")
-    c.drawString(50, height - 160, f"Classe: {student.current_class.name}")
-
-    # Tableau des notes
-    y = height - 200
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(50, y, "MATIÈRE")
-    c.drawString(300, y, "NOTE")
-    c.drawString(400, y, "MAXIMA")
-    c.line(50, y-5, width-50, y-5)
-
-    y -= 20
-    subjects = Subject.query.filter_by(class_id=student.class_id).all()
-    total_obtained = 0
-    total_max = 0
-
-    c.setFont("Helvetica", 10)
-    for sub in subjects:
-        grade = Grade.query.filter_by(student_id=student.id, subject_id=sub.id, period=period).first()
-        val = grade.value if grade else 0
-
-        # Maxima dynamique selon période
-        max_attr = f"max_{period.lower().replace('è', '')}"
-        max_val = getattr(sub, max_attr, 10.0)
-
-        c.drawString(50, y, sub.name)
-        c.drawString(300, y, str(val))
-        c.drawString(400, y, str(max_val))
-
-        total_obtained += val
-        total_max += max_val
-        y -= 15
-        if y < 50: # Nouvelle page simplifiée
-            c.showPage()
-            y = height - 50
-
-    c.line(50, y, width-50, y)
-    y -= 20
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y, "TOTAL")
-    c.drawString(300, y, f"{total_obtained} / {total_max}")
-    percentage = (total_obtained / total_max * 100) if total_max > 0 else 0
-    c.drawString(450, y, f"{percentage:.2f}%")
-
-    c.save()
-
-    # Enregistrer dans la DB
-    new_bulletin = Bulletin(
-        student_id=student_id,
-        period=period,
+    # Enregistrement dans la base de données
+    bulletin = Bulletin(
+        student_id=student.id,
+        period="Année Complète",
         generated_by=g.current_user.id,
         pdf_path=filepath
     )
-    db.session.add(new_bulletin)
-
-    audit = AuditLog(
-        user_id=g.current_user.id,
-        action='GENERATE_BULLETIN',
-        details=f"Bulletin généré pour l'élève ID {student_id}, période {period}",
-        ip_address=request.remote_addr
-    )
-    db.session.add(audit)
+    db.session.add(bulletin)
     db.session.commit()
 
-    return jsonify({'message': 'Bulletin généré', 'url': f'/api/secretaire/bulletins/download/{new_bulletin.id}'}), 201
+    return Response(pdf_content, mimetype='application/pdf',
+                    headers={'Content-Disposition': f'attachment;filename={filename}'})
 
-@secretaire_bp.route('/bulletins/download/<int:bulletin_id>', methods=['GET'])
+@secretaire_bp.route('/bulletins/export-class/<int:class_id>', methods=['GET'])
 @token_required
 @secretaire_required
-def download_bulletin(bulletin_id):
-    bulletin = Bulletin.query.get_or_404(bulletin_id)
-    return send_file(bulletin.pdf_path, as_attachment=True)
+def export_class_bulletins(class_id):
+    """Exporte tous les bulletins d'une classe dans un fichier ZIP."""
+    class_obj = Class.query.get_or_404(class_id)
+    students = class_obj.students
+    school = class_obj.school
+    subjects = Subject.query.filter_by(class_id=class_id).all()
+
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w') as zf:
+        for student in students:
+            grades = Grade.query.filter_by(student_id=student.id).all()
+            pdf_content = PDFGenerator.generate_bulletin(student, subjects, grades, school, class_obj)
+            if pdf_content:
+                zf.writestr(f"bulletin_{student.name.replace(' ', '_')}.pdf", pdf_content)
+
+    memory_file.seek(0)
+    return send_file(memory_file, download_name=f"bulletins_{class_obj.name}.zip", as_attachment=True)

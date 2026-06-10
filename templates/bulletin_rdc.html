@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulletin - {{ student.name }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .header img {
+            width: 50px;
+        }
+        .title {
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 2px;
+            text-align: center;
+        }
+        .left-align {
+            text-align: left;
+        }
+        .domain-row {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: left;
+        }
+        .subdomain-row {
+            background-color: #f9f9f9;
+            font-style: italic;
+            text-align: left;
+        }
+        .info-table {
+            border: none;
+            margin-bottom: 10px;
+        }
+        .info-table td {
+            border: none;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ school_logo }}" alt="Drapeau RDC" style="float: left;">
+        <img src="{{ school_logo }}" alt="Logo Ecole" style="float: right;">
+        <div>RÉPUBLIQUE DÉMOCRATIQUE DU CONGO</div>
+        <div>MINISTÈRE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE</div>
+        <div class="title">BULLETIN DE LA {{ class_obj.name }} - ANNEE SCOLAIRE {{ school.year_start }}-{{ school.year_end }}</div>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td>N° ID : [_________________]</td>
+            <td>ELEVE : <strong>{{ student.name }}</strong></td>
+            <td>SEXE : {{ student.gender }}</td>
+        </tr>
+        <tr>
+            <td>PROVINCE : {{ school.address }}</td>
+            <td>NE(E) A : {{ student.birth_date }}</td>
+            <td>LE : __________</td>
+        </tr>
+        <tr>
+            <td>ECOLE : {{ school.name }}</td>
+            <td>CLASSE : {{ class_obj.name }}</td>
+            <td>N° PERM : __________</td>
+        </tr>
+    </table>
+
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2">BRANCHES</th>
+                <th colspan="4">PREMIER SEMESTRE</th>
+                <th colspan="4">SECOND SEMESTRE</th>
+                <th rowspan="2">TOT. G</th>
+                <th colspan="2">EXAMEN DE REP.</th>
+                <th rowspan="2">SIG. PRF</th>
+            </tr>
+            <tr>
+                <th>1P</th>
+                <th>2P</th>
+                <th>EXAM</th>
+                <th>TOTAL</th>
+                <th>3P</th>
+                <th>4P</th>
+                <th>EXAM</th>
+                <th>TOTAL</th>
+                <th>%</th>
+                <th>SIGN.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for domain, sub_domains in data.items() %}
+            <tr class="domain-row">
+                <td colspan="13">{{ domain }}</td>
+            </tr>
+            {% for sub_domain, branches in sub_domains.items() %}
+            {% if sub_domain %}
+            <tr class="subdomain-row">
+                <td colspan="13">{{ sub_domain }}</td>
+            </tr>
+            {% endif %}
+            {% for branch in branches %}
+            <tr>
+                <td class="left-align">{{ branch.name }}</td>
+                <td>{{ branch.p1 or '' }}</td>
+                <td>{{ branch.p2 or '' }}</td>
+                <td>{{ branch.exa1 or '' }}</td>
+                <td><strong>{{ branch.total1 or '' }}</strong></td>
+                <td>{{ branch.p3 or '' }}</td>
+                <td>{{ branch.p4 or '' }}</td>
+                <td>{{ branch.exa2 or '' }}</td>
+                <td><strong>{{ branch.total2 or '' }}</strong></td>
+                <td>{{ branch.grand_total or '' }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
