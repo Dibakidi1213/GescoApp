@@ -10,8 +10,8 @@
         }
         body {
             font-family: 'Times New Roman', serif;
-            font-size: 9pt;
-            line-height: 1.2;
+            font-size: 8pt;
+            line-height: 1.1;
             color: black;
         }
         .header-table {
@@ -22,22 +22,22 @@
         .header-center {
             text-align: center;
             font-weight: bold;
+            font-size: 10pt;
         }
-        .logo-drc {
-            width: 60px;
-        }
-        .logo-emblem {
-            width: 60px;
-        }
+        .logo-drc { width: 50px; }
+        .logo-emblem { width: 50px; }
+
         .id-box {
             border: 1px solid black;
             display: inline-block;
-            width: 15px;
-            height: 15px;
+            width: 12px;
+            height: 12px;
             text-align: center;
             margin-right: -1px;
             font-family: monospace;
+            font-size: 8pt;
         }
+
         .info-container {
             width: 100%;
             border: 1px solid black;
@@ -48,13 +48,10 @@
             border-collapse: collapse;
         }
         .info-table td {
-            border: none;
-            padding: 2px 5px;
+            padding: 1px 5px;
             vertical-align: top;
         }
-        .border-left {
-            border-left: 1px solid black ! crises;
-        }
+
         .main-table {
             width: 100%;
             border-collapse: collapse;
@@ -63,63 +60,33 @@
             border: 1px solid black;
             text-align: center;
             padding: 1px;
-            font-size: 8pt;
         }
-        .branch-name {
-            text-align: left;
-            padding-left: 5px !important;
-            font-weight: normal;
-        }
-        .maxima-row {
-            font-weight: bold;
-            background-color: #f2f2f2;
-        }
-        .maxima-generaux {
-            font-weight: bold;
-            text-align: left;
-            padding-left: 5px;
-        }
-        .footer-table {
-            width: 100%;
-            margin-top: 10px;
-            font-size: 8pt;
-        }
-        .footer-table td {
-            border: none;
-            vertical-align: top;
-        }
-        .signature-box {
-            height: 60px;
-        }
-        .decision-box {
-            border: 1px solid black;
-            padding: 5px;
-            margin-top: 5px;
-        }
-        .watermark {
-            position: absolute;
-            top: 30%;
-            left: 10%;
-            width: 80%;
-            opacity: 0.1;
-            z-index: -1;
-        }
+        .branch-column { text-align: left; padding-left: 5px; width: 25%; }
+
+        .domain-row { background-color: #555; color: white; font-weight: bold; text-transform: uppercase; }
+        .subdomain-row { background-color: #ddd; font-weight: bold; font-style: italic; }
+        .soustotal-row { font-weight: bold; }
+        .maxima-generaux { background-color: #eee; font-weight: bold; }
+
+        .footer-table { width: 100%; margin-top: 5px; }
+        .decision-box { border: 1px solid black; padding: 3px; margin-top: 5px; font-size: 7pt; }
+        .signature-box { height: 40px; }
     </style>
 </head>
 <body>
     <table class="header-table">
         <tr>
-            <td width="15%"><img src="{{ drc_flag_url }}" class="logo-drc"></td>
+            <td width="10%"><img src="{{ drc_flag_url }}" class="logo-drc"></td>
             <td class="header-center">
                 REPUBLIQUE DEMOCRATIQUE DU CONGO<br>
-                MINISTERE DE L'EDUCATION NATIONALE<br>
-                ET NOUVELLE CITOYENNETE
+                MINISTERE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE<br>
+                ET TECHNIQUE
             </td>
-            <td width="15%" style="text-align: right;"><img src="{{ drc_emblem_url }}" class="logo-emblem"></td>
+            <td width="10%" style="text-align: right;"><img src="{{ drc_emblem_url }}" class="logo-emblem"></td>
         </tr>
     </table>
 
-    <div style="margin-bottom: 5px;">
+    <div style="margin-bottom: 2px;">
         <strong>N° ID</strong>
         {% for i in range(27) %}<span class="id-box"></span>{% endfor %}
     </div>
@@ -127,110 +94,128 @@
     <div class="info-container">
         <table class="info-table">
             <tr>
-                <td width="50%">
-                    PROVINCE EDUCATIONNELLE : <strong>{{ school.province or '................................' }}</strong><br>
+                <td width="50%" style="border-right: 1px solid black;">
+                    PROVINCE : <strong>{{ school.province or '................................' }}</strong><br>
                     VILLE : <strong>{{ school.ville or '................................' }}</strong><br>
-                    COMMUNE / TERR. (1) : <strong>{{ school.commune or '................................' }}</strong><br>
+                    COMMUNE : <strong>{{ school.commune or '................................' }}</strong><br>
                     ECOLE : <strong>{{ school.name }}</strong><br>
-                    CODE :
-                    {% for i in range(10) %}<span class="id-box"></span>{% endfor %}
+                    CODE : {% for i in range(10) %}<span class="id-box"></span>{% endfor %}
                 </td>
-                <td style="border-left: 1px solid black;">
-                    ELEVE : <strong>{{ student.name }}</strong><br>
-                    SEXE : <strong>{{ student.gender }}</strong><br>
+                <td>
+                    ELEVE : <strong>{{ student.name }}</strong> SEXE : <strong>{{ student.gender }}</strong><br>
                     NE(E) A : <strong>{{ student.birth_place or '................' }}</strong> LE <strong>{{ student.birth_date or '..../..../........' }}</strong><br>
                     CLASSE : <strong>{{ class_obj.name }}</strong><br>
-                    N° PERM :
-                    {% for i in range(7) %}<span class="id-box"></span>{% endfor %}
+                    N°PERM : {% for i in range(7) %}<span class="id-box"></span>{% endfor %}
                 </td>
             </tr>
         </table>
     </div>
 
-    <div style="text-align: center; font-weight: bold; margin-bottom: 5px; font-size: 10pt;">
-        BULLETIN DE L'ELEVE : {{ section_name | upper }} ({{ class_obj.level }} ANNEE)<br>
-        ANNEE SCOLAIRE {{ school.year_start }} - {{ school.year_end }}
+    <div style="text-align: center; font-weight: bold; margin-bottom: 2px;">
+        {{ title | upper }} ANNEE SCOLAIRE 20{{ school.year_start % 100 }} - 20{{ school.year_end % 100 }}
     </div>
 
     <table class="main-table">
         <thead>
             <tr>
-                <th rowspan="3" width="30%">BRANCHES</th>
-                <th colspan="4">PREMIER SEMESTRE</th>
-                <th colspan="4">SECOND SEMESTRE</th>
-                <th rowspan="3">T.G.</th>
+                <th rowspan="3" class="branch-column">BRANCHES</th>
+                <th colspan="5">PREMIER SEMESTRE</th>
+                <th colspan="5">SECOND SEMESTRE</th>
+                <th rowspan="3">TOT.G</th>
                 <th colspan="2">EXAMEN DE REPECHAGE</th>
             </tr>
             <tr>
-                <th colspan="2">TRAV. JOURNAL.</th>
-                <th rowspan="2">EXAM.</th>
-                <th rowspan="2">TOT.</th>
-                <th colspan="2">TRAV. JOURNAL.</th>
-                <th rowspan="2">EXAM.</th>
-                <th rowspan="2">TOT.</th>
+                <th colspan="3">TRAVAUX JOURNAL.</th>
+                <th rowspan="2">MAX EXAM</th>
+                <th rowspan="2">MAX TOT</th>
+                <th colspan="3">TRAVAUX JOURNAL.</th>
+                <th rowspan="2">MAX EXAM</th>
+                <th rowspan="2">MAX TOT</th>
                 <th rowspan="2">%</th>
-                <th rowspan="2">SIGN. PROF.</th>
+                <th rowspan="2">SIGN. PROF</th>
             </tr>
             <tr>
-                <th>1ère P.</th>
-                <th>2ème P.</th>
-                <th>3ème P.</th>
-                <th>4ème P.</th>
+                <th>MAX</th>
+                <th>1<sup>ère</sup> P</th>
+                <th>2<sup>ème</sup> P</th>
+                <th>MAX</th>
+                <th>3<sup>ème</sup> P</th>
+                <th>4<sup>ème</sup> P</th>
             </tr>
         </thead>
         <tbody>
-            {% for domain_data in processed_data %}
-            <tr class="maxima-row">
-                <td class="branch-name">MAXIMA</td>
-                <td>{{ domain_data.max_p }}</td>
-                <td>{{ domain_data.max_p }}</td>
-                <td>{{ domain_data.max_e }}</td>
-                <td>{{ domain_data.max_t }}</td>
-                <td>{{ domain_data.max_p }}</td>
-                <td>{{ domain_data.max_p }}</td>
-                <td>{{ domain_data.max_e }}</td>
-                <td>{{ domain_data.max_t }}</td>
-                <td>{{ domain_data.max_g }}</td>
+            {% for domain in domains %}
+            <tr class="domain-row">
+                <td colspan="14">{{ domain.name }}</td>
+            </tr>
+            {% for sd in domain.sub_domains %}
+            {% if sd.name %}
+            <tr class="subdomain-row">
+                <td colspan="14">{{ sd.name }}</td>
+            </tr>
+            {% endif %}
+
+            {% for branch in sd.branches %}
+            <tr>
+                <td class="branch-column">{{ branch.name }}</td>
+                <td>{{ branch.max_p }}</td>
+                <td>{{ branch.p1 or '' }}</td>
+                <td>{{ branch.p2 or '' }}</td>
+                <td>{{ branch.max_e }}</td>
+                <td>{{ branch.max_t }}</td>
+                <td>{{ branch.max_p }}</td>
+                <td>{{ branch.p3 or '' }}</td>
+                <td>{{ branch.p4 or '' }}</td>
+                <td>{{ branch.max_e }}</td>
+                <td>{{ branch.max_t }}</td>
+                <td>{{ branch.tg or '' }}</td>
                 <td></td>
                 <td></td>
             </tr>
-            {% for branch in domain_data.branches %}
-            <tr>
-                <td class="branch-name">{{ branch.name }}</td>
-                <td>{{ branch.p1 or '' }}</td>
-                <td>{{ branch.p2 or '' }}</td>
-                <td>{{ branch.exa1 or '' }}</td>
-                <td style="font-weight: bold;">{{ branch.tot1 or '' }}</td>
-                <td>{{ branch.p3 or '' }}</td>
-                <td>{{ branch.p4 or '' }}</td>
-                <td>{{ branch.exa2 or '' }}</td>
-                <td style="font-weight: bold;">{{ branch.tot2 or '' }}</td>
-                <td style="font-weight: bold;">{{ branch.tg or '' }}</td>
+            {% endfor %}
+
+            <tr class="soustotal-row">
+                <td class="branch-column">Sous total</td>
+                <td>{{ sd.max_p }}</td>
+                <td>{{ sd.p1 or '' }}</td>
+                <td>{{ sd.p2 or '' }}</td>
+                <td>{{ sd.max_e }}</td>
+                <td>{{ sd.max_t }}</td>
+                <td>{{ sd.max_p }}</td>
+                <td>{{ sd.p3 or '' }}</td>
+                <td>{{ sd.p4 or '' }}</td>
+                <td>{{ sd.max_e }}</td>
+                <td>{{ sd.max_t }}</td>
+                <td>{{ sd.tg or '' }}</td>
                 <td></td>
                 <td></td>
             </tr>
             {% endfor %}
             {% endfor %}
 
-            <tr class="maxima-row">
-                <td class="maxima-generaux">MAXIMA GENERAUX</td>
+            <tr class="maxima-generaux">
+                <td class="branch-column">MAXIMA GENERAUX</td>
                 <td>{{ totals.max_p }}</td>
-                <td>{{ totals.max_p }}</td>
+                <td></td>
+                <td></td>
                 <td>{{ totals.max_e }}</td>
                 <td>{{ totals.max_t }}</td>
                 <td>{{ totals.max_p }}</td>
-                <td>{{ totals.max_p }}</td>
+                <td></td>
+                <td></td>
                 <td>{{ totals.max_e }}</td>
                 <td>{{ totals.max_t }}</td>
                 <td>{{ totals.max_g }}</td>
                 <td colspan="2"></td>
             </tr>
             <tr style="font-weight: bold;">
-                <td class="maxima-generaux">TOTAUX</td>
+                <td class="branch-column">TOTAUX</td>
+                <td></td>
                 <td>{{ totals.p1 }}</td>
                 <td>{{ totals.p2 }}</td>
                 <td>{{ totals.exa1 }}</td>
                 <td>{{ totals.tot1 }}</td>
+                <td></td>
                 <td>{{ totals.p3 }}</td>
                 <td>{{ totals.p4 }}</td>
                 <td>{{ totals.exa2 }}</td>
@@ -238,100 +223,40 @@
                 <td>{{ totals.tg }}</td>
                 <td colspan="2"></td>
             </tr>
-            <tr style="font-weight: bold;">
-                <td class="maxima-generaux">POURCENTAGE</td>
-                <td>{{ totals.pct_p1 }}%</td>
-                <td>{{ totals.pct_p2 }}%</td>
-                <td>{{ totals.pct_exa1 }}%</td>
-                <td>{{ totals.pct_tot1 }}%</td>
-                <td>{{ totals.pct_p3 }}%</td>
-                <td>{{ totals.pct_p4 }}%</td>
-                <td>{{ totals.pct_exa2 }}%</td>
-                <td>{{ totals.pct_tot2 }}%</td>
+            <tr>
+                <td class="branch-column">POURCENTAGE</td>
+                <td colspan="5" style="text-align: center;">{{ totals.pct_tot1 }}%</td>
+                <td colspan="5" style="text-align: center;">{{ totals.pct_tot2 }}%</td>
                 <td>{{ totals.pct_tg }}%</td>
                 <td colspan="2"></td>
             </tr>
             <tr>
-                <td class="maxima-generaux">PLACE/NBRE D'ELEVES</td>
-                <td>{{ ranking.p1 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.p2 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.exa1 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.tot1 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.p3 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.p4 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.exa2 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.tot2 }}/{{ ranking.count }}</td>
-                <td>{{ ranking.tg }}/{{ ranking.count }}</td>
+                <td class="branch-column">PLACE/NBRE ELEVES</td>
+                <td colspan="2">{{ ranking.p1 }} / {{ ranking.count }}</td>
+                <td colspan="2">{{ ranking.p2 }} / {{ ranking.count }}</td>
+                <td>{{ ranking.tot1 }} / {{ ranking.count }}</td>
+                <td colspan="2">{{ ranking.p3 }} / {{ ranking.count }}</td>
+                <td colspan="2">{{ ranking.p4 }} / {{ ranking.count }}</td>
+                <td>{{ ranking.tot2 }} / {{ ranking.count }}</td>
+                <td>{{ ranking.tg }} / {{ ranking.count }}</td>
                 <td colspan="2"></td>
-            </tr>
-            <tr>
-                <td class="maxima-generaux">APPLICATION</td>
-                <td>{{ application.p1 }}</td>
-                <td>{{ application.p2 }}</td>
-                <td></td>
-                <td></td>
-                <td>{{ application.p3 }}</td>
-                <td>{{ application.p4 }}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td colspan="2"></td>
-            </tr>
-            <tr>
-                <td class="maxima-generaux">CONDUITE</td>
-                <td>{{ conduite.p1 }}</td>
-                <td>{{ conduite.p2 }}</td>
-                <td></td>
-                <td></td>
-                <td>{{ conduite.p3 }}</td>
-                <td>{{ conduite.p4 }}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td colspan="2"></td>
-            </tr>
-            <tr>
-                <td class="maxima-generaux">SIGN. DU RESPONSABLE</td>
-                <td colspan="4"></td>
-                <td colspan="4"></td>
-                <td colspan="3"></td>
             </tr>
         </tbody>
     </table>
 
     <div class="decision-box">
-        - L'élève ne pourra passer dans la classe supérieure s'il n'a subi avec succès un examen de repêchage en ....................................................................... (1)<br>
+        - L'élève ne pourra dans la classe supérieure s'il n'a subi avec succès un examen de repêchage en .......................................................................<br>
         - L'élève passe dans la classe supérieure (1)<br>
         - L'élève double sa classe (1)<br>
-        <div style="text-align: right; margin-top: 5px;">
-            Fait à ........................., le ..../..../20....
-        </div>
+        <div style="text-align: right;">Fait à ........................., le ..../..../20....</div>
     </div>
 
     <table class="footer-table">
         <tr>
-            <td width="33%" align="center">
-                <strong>Signature de l'élève</strong><br>
-                <div class="signature-box"></div>
-            </td>
-            <td width="33%" align="center">
-                <strong>Sceau de l'école</strong><br>
-                <div class="signature-box"></div>
-            </td>
-            <td width="33%" align="center">
-                <strong>Chef d'Etablissement</strong><br>
-                Nom et signature<br>
-                <div class="signature-box"></div>
-            </td>
+            <td width="33%" align="center"><strong>Signature de l'élève</strong><div class="signature-box"></div></td>
+            <td width="33%" align="center"><strong>Sceau de l'école</strong><div class="signature-box"></div></td>
+            <td width="33%" align="center"><strong>Le chef d'Etablissement<br>Nom et signature</strong><div class="signature-box"></div></td>
         </tr>
     </table>
-
-    <div style="font-size: 7pt; margin-top: 5px;">
-        (1) Biffer la mention inutile.<br>
-        Note importante : Le bulletin est sans valeur s'il est raturé ou surchargé.<br>
-        <div style="text-align: center; font-style: italic; font-weight: bold;">
-            Interdiction formelle de reproduire ce bulletin sous peine des sanctions prévues par la loi.
-        </div>
-    </div>
 </body>
 </html>
