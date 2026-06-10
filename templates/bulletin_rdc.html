@@ -6,138 +6,332 @@
     <style>
         @page {
             size: A4;
-            margin: 1cm;
+            margin: 0.5cm;
         }
         body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
+            font-family: 'Times New Roman', serif;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: black;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .header img {
-            width: 50px;
-        }
-        .title {
-            font-weight: bold;
-            font-size: 14px;
-            text-decoration: underline;
-        }
-        table {
+        .header-table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
+            border: none;
+            margin-bottom: 5px;
         }
-        th, td {
-            border: 1px solid black;
-            padding: 2px;
+        .header-center {
             text-align: center;
-        }
-        .left-align {
-            text-align: left;
-        }
-        .domain-row {
-            background-color: #f0f0f0;
             font-weight: bold;
-            text-align: left;
         }
-        .subdomain-row {
-            background-color: #f9f9f9;
-            font-style: italic;
-            text-align: left;
+        .logo-drc {
+            width: 60px;
+        }
+        .logo-emblem {
+            width: 60px;
+        }
+        .id-box {
+            border: 1px solid black;
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            text-align: center;
+            margin-right: -1px;
+            font-family: monospace;
+        }
+        .info-container {
+            width: 100%;
+            border: 1px solid black;
+            margin-bottom: 5px;
         }
         .info-table {
-            border: none;
-            margin-bottom: 10px;
+            width: 100%;
+            border-collapse: collapse;
         }
         .info-table td {
             border: none;
+            padding: 2px 5px;
+            vertical-align: top;
+        }
+        .border-left {
+            border-left: 1px solid black ! crises;
+        }
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .main-table th, .main-table td {
+            border: 1px solid black;
+            text-align: center;
+            padding: 1px;
+            font-size: 8pt;
+        }
+        .branch-name {
             text-align: left;
+            padding-left: 5px !important;
+            font-weight: normal;
+        }
+        .maxima-row {
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+        .maxima-generaux {
+            font-weight: bold;
+            text-align: left;
+            padding-left: 5px;
+        }
+        .footer-table {
+            width: 100%;
+            margin-top: 10px;
+            font-size: 8pt;
+        }
+        .footer-table td {
+            border: none;
+            vertical-align: top;
+        }
+        .signature-box {
+            height: 60px;
+        }
+        .decision-box {
+            border: 1px solid black;
+            padding: 5px;
+            margin-top: 5px;
+        }
+        .watermark {
+            position: absolute;
+            top: 30%;
+            left: 10%;
+            width: 80%;
+            opacity: 0.1;
+            z-index: -1;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="{{ school_logo }}" alt="Drapeau RDC" style="float: left;">
-        <img src="{{ school_logo }}" alt="Logo Ecole" style="float: right;">
-        <div>RÉPUBLIQUE DÉMOCRATIQUE DU CONGO</div>
-        <div>MINISTÈRE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE</div>
-        <div class="title">BULLETIN DE LA {{ class_obj.name }} - ANNEE SCOLAIRE {{ school.year_start }}-{{ school.year_end }}</div>
-    </div>
-
-    <table class="info-table">
+    <table class="header-table">
         <tr>
-            <td>N° ID : [_________________]</td>
-            <td>ELEVE : <strong>{{ student.name }}</strong></td>
-            <td>SEXE : {{ student.gender }}</td>
-        </tr>
-        <tr>
-            <td>PROVINCE : {{ school.address }}</td>
-            <td>NE(E) A : {{ student.birth_date }}</td>
-            <td>LE : __________</td>
-        </tr>
-        <tr>
-            <td>ECOLE : {{ school.name }}</td>
-            <td>CLASSE : {{ class_obj.name }}</td>
-            <td>N° PERM : __________</td>
+            <td width="15%"><img src="{{ drc_flag_url }}" class="logo-drc"></td>
+            <td class="header-center">
+                REPUBLIQUE DEMOCRATIQUE DU CONGO<br>
+                MINISTERE DE L'EDUCATION NATIONALE<br>
+                ET NOUVELLE CITOYENNETE
+            </td>
+            <td width="15%" style="text-align: right;"><img src="{{ drc_emblem_url }}" class="logo-emblem"></td>
         </tr>
     </table>
 
-    <table>
+    <div style="margin-bottom: 5px;">
+        <strong>N° ID</strong>
+        {% for i in range(27) %}<span class="id-box"></span>{% endfor %}
+    </div>
+
+    <div class="info-container">
+        <table class="info-table">
+            <tr>
+                <td width="50%">
+                    PROVINCE EDUCATIONNELLE : <strong>{{ school.province or '................................' }}</strong><br>
+                    VILLE : <strong>{{ school.ville or '................................' }}</strong><br>
+                    COMMUNE / TERR. (1) : <strong>{{ school.commune or '................................' }}</strong><br>
+                    ECOLE : <strong>{{ school.name }}</strong><br>
+                    CODE :
+                    {% for i in range(10) %}<span class="id-box"></span>{% endfor %}
+                </td>
+                <td style="border-left: 1px solid black;">
+                    ELEVE : <strong>{{ student.name }}</strong><br>
+                    SEXE : <strong>{{ student.gender }}</strong><br>
+                    NE(E) A : <strong>{{ student.birth_place or '................' }}</strong> LE <strong>{{ student.birth_date or '..../..../........' }}</strong><br>
+                    CLASSE : <strong>{{ class_obj.name }}</strong><br>
+                    N° PERM :
+                    {% for i in range(7) %}<span class="id-box"></span>{% endfor %}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="text-align: center; font-weight: bold; margin-bottom: 5px; font-size: 10pt;">
+        BULLETIN DE L'ELEVE : {{ section_name | upper }} ({{ class_obj.level }} ANNEE)<br>
+        ANNEE SCOLAIRE {{ school.year_start }} - {{ school.year_end }}
+    </div>
+
+    <table class="main-table">
         <thead>
             <tr>
-                <th rowspan="2">BRANCHES</th>
+                <th rowspan="3" width="30%">BRANCHES</th>
                 <th colspan="4">PREMIER SEMESTRE</th>
                 <th colspan="4">SECOND SEMESTRE</th>
-                <th rowspan="2">TOT. G</th>
-                <th colspan="2">EXAMEN DE REP.</th>
-                <th rowspan="2">SIG. PRF</th>
+                <th rowspan="3">T.G.</th>
+                <th colspan="2">EXAMEN DE REPECHAGE</th>
             </tr>
             <tr>
-                <th>1P</th>
-                <th>2P</th>
-                <th>EXAM</th>
-                <th>TOTAL</th>
-                <th>3P</th>
-                <th>4P</th>
-                <th>EXAM</th>
-                <th>TOTAL</th>
-                <th>%</th>
-                <th>SIGN.</th>
+                <th colspan="2">TRAV. JOURNAL.</th>
+                <th rowspan="2">EXAM.</th>
+                <th rowspan="2">TOT.</th>
+                <th colspan="2">TRAV. JOURNAL.</th>
+                <th rowspan="2">EXAM.</th>
+                <th rowspan="2">TOT.</th>
+                <th rowspan="2">%</th>
+                <th rowspan="2">SIGN. PROF.</th>
+            </tr>
+            <tr>
+                <th>1ère P.</th>
+                <th>2ème P.</th>
+                <th>3ème P.</th>
+                <th>4ème P.</th>
             </tr>
         </thead>
         <tbody>
-            {% for domain, sub_domains in data.items() %}
-            <tr class="domain-row">
-                <td colspan="13">{{ domain }}</td>
+            {% for domain_data in processed_data %}
+            <tr class="maxima-row">
+                <td class="branch-name">MAXIMA</td>
+                <td>{{ domain_data.max_p }}</td>
+                <td>{{ domain_data.max_p }}</td>
+                <td>{{ domain_data.max_e }}</td>
+                <td>{{ domain_data.max_t }}</td>
+                <td>{{ domain_data.max_p }}</td>
+                <td>{{ domain_data.max_p }}</td>
+                <td>{{ domain_data.max_e }}</td>
+                <td>{{ domain_data.max_t }}</td>
+                <td>{{ domain_data.max_g }}</td>
+                <td></td>
+                <td></td>
             </tr>
-            {% for sub_domain, branches in sub_domains.items() %}
-            {% if sub_domain %}
-            <tr class="subdomain-row">
-                <td colspan="13">{{ sub_domain }}</td>
-            </tr>
-            {% endif %}
-            {% for branch in branches %}
+            {% for branch in domain_data.branches %}
             <tr>
-                <td class="left-align">{{ branch.name }}</td>
+                <td class="branch-name">{{ branch.name }}</td>
                 <td>{{ branch.p1 or '' }}</td>
                 <td>{{ branch.p2 or '' }}</td>
                 <td>{{ branch.exa1 or '' }}</td>
-                <td><strong>{{ branch.total1 or '' }}</strong></td>
+                <td style="font-weight: bold;">{{ branch.tot1 or '' }}</td>
                 <td>{{ branch.p3 or '' }}</td>
                 <td>{{ branch.p4 or '' }}</td>
                 <td>{{ branch.exa2 or '' }}</td>
-                <td><strong>{{ branch.total2 or '' }}</strong></td>
-                <td>{{ branch.grand_total or '' }}</td>
-                <td></td>
+                <td style="font-weight: bold;">{{ branch.tot2 or '' }}</td>
+                <td style="font-weight: bold;">{{ branch.tg or '' }}</td>
                 <td></td>
                 <td></td>
             </tr>
             {% endfor %}
             {% endfor %}
-            {% endfor %}
+
+            <tr class="maxima-row">
+                <td class="maxima-generaux">MAXIMA GENERAUX</td>
+                <td>{{ totals.max_p }}</td>
+                <td>{{ totals.max_p }}</td>
+                <td>{{ totals.max_e }}</td>
+                <td>{{ totals.max_t }}</td>
+                <td>{{ totals.max_p }}</td>
+                <td>{{ totals.max_p }}</td>
+                <td>{{ totals.max_e }}</td>
+                <td>{{ totals.max_t }}</td>
+                <td>{{ totals.max_g }}</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr style="font-weight: bold;">
+                <td class="maxima-generaux">TOTAUX</td>
+                <td>{{ totals.p1 }}</td>
+                <td>{{ totals.p2 }}</td>
+                <td>{{ totals.exa1 }}</td>
+                <td>{{ totals.tot1 }}</td>
+                <td>{{ totals.p3 }}</td>
+                <td>{{ totals.p4 }}</td>
+                <td>{{ totals.exa2 }}</td>
+                <td>{{ totals.tot2 }}</td>
+                <td>{{ totals.tg }}</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr style="font-weight: bold;">
+                <td class="maxima-generaux">POURCENTAGE</td>
+                <td>{{ totals.pct_p1 }}%</td>
+                <td>{{ totals.pct_p2 }}%</td>
+                <td>{{ totals.pct_exa1 }}%</td>
+                <td>{{ totals.pct_tot1 }}%</td>
+                <td>{{ totals.pct_p3 }}%</td>
+                <td>{{ totals.pct_p4 }}%</td>
+                <td>{{ totals.pct_exa2 }}%</td>
+                <td>{{ totals.pct_tot2 }}%</td>
+                <td>{{ totals.pct_tg }}%</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td class="maxima-generaux">PLACE/NBRE D'ELEVES</td>
+                <td>{{ ranking.p1 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.p2 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.exa1 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.tot1 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.p3 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.p4 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.exa2 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.tot2 }}/{{ ranking.count }}</td>
+                <td>{{ ranking.tg }}/{{ ranking.count }}</td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td class="maxima-generaux">APPLICATION</td>
+                <td>{{ application.p1 }}</td>
+                <td>{{ application.p2 }}</td>
+                <td></td>
+                <td></td>
+                <td>{{ application.p3 }}</td>
+                <td>{{ application.p4 }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td class="maxima-generaux">CONDUITE</td>
+                <td>{{ conduite.p1 }}</td>
+                <td>{{ conduite.p2 }}</td>
+                <td></td>
+                <td></td>
+                <td>{{ conduite.p3 }}</td>
+                <td>{{ conduite.p4 }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td colspan="2"></td>
+            </tr>
+            <tr>
+                <td class="maxima-generaux">SIGN. DU RESPONSABLE</td>
+                <td colspan="4"></td>
+                <td colspan="4"></td>
+                <td colspan="3"></td>
+            </tr>
         </tbody>
     </table>
+
+    <div class="decision-box">
+        - L'élève ne pourra passer dans la classe supérieure s'il n'a subi avec succès un examen de repêchage en ....................................................................... (1)<br>
+        - L'élève passe dans la classe supérieure (1)<br>
+        - L'élève double sa classe (1)<br>
+        <div style="text-align: right; margin-top: 5px;">
+            Fait à ........................., le ..../..../20....
+        </div>
+    </div>
+
+    <table class="footer-table">
+        <tr>
+            <td width="33%" align="center">
+                <strong>Signature de l'élève</strong><br>
+                <div class="signature-box"></div>
+            </td>
+            <td width="33%" align="center">
+                <strong>Sceau de l'école</strong><br>
+                <div class="signature-box"></div>
+            </td>
+            <td width="33%" align="center">
+                <strong>Chef d'Etablissement</strong><br>
+                Nom et signature<br>
+                <div class="signature-box"></div>
+            </td>
+        </tr>
+    </table>
+
+    <div style="font-size: 7pt; margin-top: 5px;">
+        (1) Biffer la mention inutile.<br>
+        Note importante : Le bulletin est sans valeur s'il est raturé ou surchargé.<br>
+        <div style="text-align: center; font-style: italic; font-weight: bold;">
+            Interdiction formelle de reproduire ce bulletin sous peine des sanctions prévues par la loi.
+        </div>
+    </div>
 </body>
 </html>

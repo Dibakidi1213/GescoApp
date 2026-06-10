@@ -45,6 +45,10 @@ class School(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200))
+    province = db.Column(db.String(100))
+    ville = db.Column(db.String(100))
+    commune = db.Column(db.String(100))
+    code = db.Column(db.String(20))
     logo = db.Column(db.String(200))
     config_json = db.Column(db.JSON) # Pour stocker des paramètres spécifiques
     year_start = db.Column(db.Integer) # Ex: 2023
@@ -73,6 +77,8 @@ class Student(db.Model):
     name = db.Column(db.String(100), nullable=False)
     gender = db.Column(db.String(10)) # M ou F
     birth_date = db.Column(db.Date)
+    birth_place = db.Column(db.String(100))
+    permanent_id = db.Column(db.String(20))
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
     parent_phone = db.Column(db.String(20))
     parent_email = db.Column(db.String(100))

@@ -36,9 +36,11 @@ def manage_students():
             new_student = Student(
                 name=form.name.data,
                 birth_date=form.birth_date.data,
+                birth_place=data.get('birth_place'),
                 class_id=form.class_id.data,
                 parent_phone=form.parent_phone.data,
-                parent_email=form.parent_email.data
+                parent_email=form.parent_email.data,
+                permanent_id=data.get('permanent_id')
             )
             db.session.add(new_student)
             db.session.commit()
@@ -89,25 +91,18 @@ def generate_official_bulletin():
     data = request.get_json()
     student_id = data.get('student_id')
 
-    student = Student.query.get_or_404(student_id)
-    class_obj = student.current_class
-    school = class_obj.school
-    subjects = Subject.query.filter_by(class_id=class_obj.id).all()
-    grades = Grade.query.filter_by(student_id=student.id).all()
-
-    pdf_content = PDFGenerator.generate_bulletin(student, subjects, grades, school, class_obj)
+    pdf_content = PDFGenerator.generate_bulletin(student_id)
 
     if not pdf_content:
         return jsonify({'error': 'Erreur lors de la génération du PDF'}), 500
 
-    # Sauvegarde optionnelle sur le serveur
     filename = f"bulletin_officiel_{student_id}.pdf"
     filepath = PDFGenerator.save_pdf(pdf_content, filename)
 
     # Enregistrement dans la base de données
     bulletin = Bulletin(
-        student_id=student.id,
-        period="Année Complète",
+        student_id=student_id,
+        period="Année Scolaire",
         generated_by=g.current_user.id,
         pdf_path=filepath
     )
@@ -124,14 +119,11 @@ def export_class_bulletins(class_id):
     """Exporte tous les bulletins d'une classe dans un fichier ZIP."""
     class_obj = Class.query.get_or_404(class_id)
     students = class_obj.students
-    school = class_obj.school
-    subjects = Subject.query.filter_by(class_id=class_id).all()
 
     memory_file = io.BytesIO()
     with zipfile.ZipFile(memory_file, 'w') as zf:
         for student in students:
-            grades = Grade.query.filter_by(student_id=student.id).all()
-            pdf_content = PDFGenerator.generate_bulletin(student, subjects, grades, school, class_obj)
+            pdf_content = PDFGenerator.generate_bulletin(student.id)
             if pdf_content:
                 zf.writestr(f"bulletin_{student.name.replace(' ', '_')}.pdf", pdf_content)
 
