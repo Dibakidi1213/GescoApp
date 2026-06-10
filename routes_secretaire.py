@@ -1,131 +1,78 @@
-from flask import Blueprint, request, jsonify, g, send_file, Response
-from models import db, Student, Grade, Bulletin, Class, Subject, User, AuditLog
-from roles import secretaire_required
-from forms import StudentForm
-from roles import login_required as token_required
-from pdf_generator import PDFGenerator
-import io
-import zipfile
-from datetime import datetime
+from flask import Blueprint, render_template, request, jsonify, send_file, g
+from models import db, Student, Grade, Subject, Bulletin, Class, School, Teacher
+from roles import secretaire_required, login_required as token_required
+from pdf_generator import generate_bulletin_pdf
+from dashboard_utils import DashboardUtils
 import os
 
 secretaire_bp = Blueprint('secretaire', __name__)
 
-@secretaire_bp.route('/dashboard', methods=['GET'])
+@secretaire_bp.route('/dashboard')
 @token_required
 @secretaire_required
 def dashboard():
-    """Statistiques pour le tableau de bord secrétaire."""
-    school_id = g.current_user.school_id
-    total_students = Student.query.join(Class).filter(Class.school_id == school_id).count()
-    pending_grades = Grade.query.filter_by(status='submitted').count()
+    """Rendu de la page dashboard secrétaire."""
+    return render_template('dashboards/secretaire.html')
 
-    return jsonify({
-        'total_students': total_students,
-        'pending_grades_to_validate': pending_grades
-    }), 200
-
-@secretaire_bp.route('/students', methods=['GET', 'POST'])
+@secretaire_bp.route('/dashboard/stats', methods=['GET'])
 @token_required
 @secretaire_required
-def manage_students():
-    if request.method == 'POST':
-        data = request.get_json()
-        form = StudentForm(data=data, meta={'csrf': False})
-        if form.validate():
-            new_student = Student(
-                name=form.name.data,
-                birth_date=form.birth_date.data,
-                birth_place=data.get('birth_place'),
-                class_id=form.class_id.data,
-                parent_phone=form.parent_phone.data,
-                parent_email=form.parent_email.data,
-                permanent_id=data.get('permanent_id')
-            )
-            db.session.add(new_student)
-            db.session.commit()
-            return jsonify({'message': 'Étudiant ajouté', 'id': new_student.id}), 201
-        return jsonify({'errors': form.errors}), 400
-
+def get_dashboard_stats():
+    """API pour les statistiques du secrétaire."""
     school_id = g.current_user.school_id
-    students = Student.query.join(Class).filter(Class.school_id == school_id).all()
-    return jsonify([{
-        'id': s.id,
-        'name': s.name,
-        'class_name': s.current_class.name if s.current_class else 'N/A',
-        'parent_phone': s.parent_phone
-    } for s in students]), 200
+    period = request.args.get('period', '1èP')
+    stats = DashboardUtils.generate_secretaire_stats(school_id, period)
+    return jsonify(stats)
 
-@secretaire_bp.route('/grades/validate', methods=['POST'])
+@secretaire_bp.route('/bulletins/generate', methods=['POST'])
+@token_required
+@secretaire_required
+def generate_bulletins():
+    data = request.get_json()
+    student_id = data.get('student_id')
+    period = data.get('period')
+
+    # Récupération des données nécessaires
+    student = Student.query.get(student_id)
+    school = School.query.get(g.current_user.school_id)
+    class_obj = Class.query.get(student.class_id)
+
+    # On génère le PDF
+    pdf_path = f"bulletins/bulletin_{student_id}_{period}.pdf"
+    os.makedirs('bulletins', exist_ok=True)
+
+    if generate_bulletin_pdf(student_id, period, pdf_path):
+        # Enregistrer en DB
+        bulletin = Bulletin(
+            student_id=student_id,
+            period=period,
+            generated_by=g.current_user.id,
+            pdf_path=pdf_path
+        )
+        db.session.add(bulletin)
+        db.session.commit()
+        return jsonify({'message': 'Bulletin généré', 'path': pdf_path}), 200
+
+    return jsonify({'message': 'Erreur lors de la génération'}), 500
+
+@secretaire_bp.route('/bulletins/download/<int:bulletin_id>')
+@token_required
+@secretaire_required
+def download_bulletin(bulletin_id):
+    bulletin = Bulletin.query.get_or_404(bulletin_id)
+    return send_file(bulletin.pdf_path, as_attachment=True)
+
+@secretaire_bp.route('/validate-grades', methods=['POST'])
 @token_required
 @secretaire_required
 def validate_grades():
-    """Validation par le secrétaire des notes soumises par les professeurs."""
     data = request.get_json()
     grade_ids = data.get('grade_ids', [])
 
-    user = g.current_user
-    grades = Grade.query.filter(Grade.id.in_(grade_ids)).all()
-    for grade in grades:
-        grade.status = 'validated'
-        grade.validated_by = user.id
+    Grade.query.filter(Grade.id.in_(grade_ids)).update({
+        'status': 'validated',
+        'validated_by': g.current_user.id
+    }, synchronize_session=False)
 
     db.session.commit()
-
-    audit = AuditLog(
-        user_id=user.id,
-        action='VALIDATE_GRADES',
-        details=f"{len(grades)} notes validées",
-        ip_address=request.remote_addr
-    )
-    db.session.add(audit)
-    db.session.commit()
-
-    return jsonify({'message': f'{len(grades)} notes validées'}), 200
-
-@secretaire_bp.route('/bulletins/generate-official', methods=['POST'])
-@token_required
-@secretaire_required
-def generate_official_bulletin():
-    """Génère le bulletin officiel RDC au format PDF."""
-    data = request.get_json()
-    student_id = data.get('student_id')
-
-    pdf_content = PDFGenerator.generate_bulletin(student_id)
-
-    if not pdf_content:
-        return jsonify({'error': 'Erreur lors de la génération du PDF'}), 500
-
-    filename = f"bulletin_officiel_{student_id}.pdf"
-    filepath = PDFGenerator.save_pdf(pdf_content, filename)
-
-    # Enregistrement dans la base de données
-    bulletin = Bulletin(
-        student_id=student_id,
-        period="Année Scolaire",
-        generated_by=g.current_user.id,
-        pdf_path=filepath
-    )
-    db.session.add(bulletin)
-    db.session.commit()
-
-    return Response(pdf_content, mimetype='application/pdf',
-                    headers={'Content-Disposition': f'attachment;filename={filename}'})
-
-@secretaire_bp.route('/bulletins/export-class/<int:class_id>', methods=['GET'])
-@token_required
-@secretaire_required
-def export_class_bulletins(class_id):
-    """Exporte tous les bulletins d'une classe dans un fichier ZIP."""
-    class_obj = Class.query.get_or_404(class_id)
-    students = class_obj.students
-
-    memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w') as zf:
-        for student in students:
-            pdf_content = PDFGenerator.generate_bulletin(student.id)
-            if pdf_content:
-                zf.writestr(f"bulletin_{student.name.replace(' ', '_')}.pdf", pdf_content)
-
-    memory_file.seek(0)
-    return send_file(memory_file, download_name=f"bulletins_{class_obj.name}.zip", as_attachment=True)
+    return jsonify({'message': f'{len(grade_ids)} notes validées'}), 200

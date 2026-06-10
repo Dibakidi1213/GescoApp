@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+<div class="container py-4">
+    <h2>Analyse Disciplinaire</h2>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Typologie des Incidents</div>
+                <div class="chart-container">
+                    <canvas id="incidentTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Absences par Jour de la Semaine</div>
+                <div class="chart-container">
+                    <canvas id="absencesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/chart_configs.js') }}"></script>
+<script>
+    let charts = {};
+    async function updateDashboard() {
+        const stats = await fetch("{{ url_for('discipline.get_dashboard_stats') }}").then(r => r.json());
+
+        const ctxType = document.getElementById('incidentTypeChart').getContext('2d');
+        if(charts.type) charts.type.destroy();
+        charts.type = DashboardManager.createPieChart(ctxType, stats.incident_types.labels, stats.incident_types.data);
+
+        const dayLabels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+        const dayData = new Array(7).fill(0);
+        stats.absences_heatmap.forEach(item => {
+            dayData[item.day] += item.count;
+        });
+
+        const ctxAbs = document.getElementById('absencesChart').getContext('2d');
+        if(charts.abs) charts.abs.destroy();
+        charts.abs = DashboardManager.createBarChart(ctxAbs, dayLabels, dayData, 'Nombre d\'absences', DashboardManager.colors.danger);
+    }
+    document.addEventListener('DOMContentLoaded', updateDashboard);
+</script>
+{% endblock %}

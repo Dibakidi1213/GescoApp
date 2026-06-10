@@ -142,3 +142,22 @@ def get_audit_logs():
         'ip': log.ip_address,
         'timestamp': log.timestamp.isoformat()
     } for log in logs]), 200
+
+from dashboard_utils import DashboardUtils
+from flask import render_template
+
+@admin_bp.route('/dashboard')
+@token_required
+@admin_required
+def dashboard():
+    """Rendu de la page dashboard admin."""
+    return render_template('dashboards/admin.html')
+
+@admin_bp.route('/api/stats')
+@token_required
+@admin_required
+def get_stats():
+    """API pour récupérer les données JSON du dashboard."""
+    school_id = g.current_user.school_id
+    stats = DashboardUtils.generate_admin_stats(school_id)
+    return jsonify(stats), 200

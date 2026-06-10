@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between">
+        <h2>Mes Statistiques d'Enseignement</h2>
+        <a href="{{ url_for('professeur.saisie_cotes') }}" class="btn btn-primary">Saisie des Notes</a>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="stat-label">Brouillons à soumettre</div>
+                <div class="stat-value text-warning" id="pending-count">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">Moyenne par Cours / Classe</div>
+                <div class="chart-container">
+                    <canvas id="subjectChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/chart_configs.js') }}"></script>
+<script>
+    let charts = {};
+    async function updateDashboard() {
+        const stats = await fetch("{{ url_for('professeur.get_dashboard_stats') }}").then(r => r.json());
+        document.getElementById('pending-count').innerText = stats.pending_submissions;
+
+        const labels = stats.subjects.map(s => s.label);
+        const data = stats.subjects.map(s => s.avg);
+
+        const ctx = document.getElementById('subjectChart').getContext('2d');
+        if(charts.subj) charts.subj.destroy();
+        charts.subj = DashboardManager.createBarChart(ctx, labels, data, 'Moyenne du Cours');
+    }
+    document.addEventListener('DOMContentLoaded', updateDashboard);
+</script>
+{% endblock %}

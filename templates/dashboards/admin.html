@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Tableau de Bord - Administrateur</h2>
+        <button class="btn btn-outline-primary" onclick="updateDashboard()">
+            <i class="fas fa-sync-alt"></i> Actualiser
+        </button>
+    </div>
+
+    <!-- Statistiques Rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="stat-label">Notes en attente</div>
+                <div class="stat-value" id="pending-grades">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="stat-label">Incidents Critiques</div>
+                <div class="stat-value text-danger" id="critical-incidents">-</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="stat-label">Taux Présence Global</div>
+                <div class="stat-value text-success" id="attendance-rate">- %</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="stat-label">Moyenne Générale</div>
+                <div class="stat-value text-info" id="global-avg">- / 20</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">Évolution des Moyennes par Période</div>
+                <div class="chart-container">
+                    <canvas id="periodChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Répartition des Présences</div>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Conduite Moyenne par Classe</div>
+                <div class="chart-container">
+                    <canvas id="conductChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Tendance des Incidents (30j)</div>
+                <div class="chart-container">
+                    <canvas id="incidentChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/chart_configs.js') }}"></script>
+<script>
+    let charts = {};
+
+    async function updateDashboard() {
+        const stats = await fetch("{{ url_for('admin.get_dashboard_stats') }}").then(r => r.json());
+
+        document.getElementById('pending-grades').innerText = stats.alerts.pending_grades;
+        document.getElementById('critical-incidents').innerText = stats.alerts.critical_incidents;
+
+        const avg = stats.period_evolution.data.slice(-1)[0] || 0;
+        document.getElementById('global-avg').innerText = avg + " / 20";
+
+        const ctxPeriod = document.getElementById('periodChart').getContext('2d');
+        if(charts.period) charts.period.destroy();
+        charts.period = DashboardManager.createLineChart(ctxPeriod, stats.period_evolution.labels, stats.period_evolution.data, 'Moyenne');
+
+        const ctxAttendance = document.getElementById('attendanceChart').getContext('2d');
+        if(charts.attendance) charts.attendance.destroy();
+        charts.attendance = DashboardManager.createPieChart(ctxAttendance, stats.attendance_dist.labels, stats.attendance_dist.data);
+
+        const ctxConduct = document.getElementById('conductChart').getContext('2d');
+        if(charts.conduct) charts.conduct.destroy();
+        charts.conduct = DashboardManager.createBarChart(ctxConduct, stats.conduct_by_class.labels, stats.conduct_by_class.data, 'Indice Sévérité', DashboardManager.colors.warning);
+
+        const ctxIncident = document.getElementById('incidentChart').getContext('2d');
+        if(charts.incident) charts.incident.destroy();
+        charts.incident = DashboardManager.createLineChart(ctxIncident, stats.incident_trend.labels, stats.incident_trend.data, 'Nombre d\'incidents');
+    }
+
+    document.addEventListener('DOMContentLoaded', updateDashboard);
+    setInterval(updateDashboard, 300000);
+</script>
+{% endblock %}
