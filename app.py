@@ -8,8 +8,8 @@ from routes.admin import admin_bp
 from routes.professeur import professeur_bp
 from routes.secretaire import secretaire_bp
 from routes.discipline import discipline_bp
-from routes_mobile import mobile_bp
-from routes_ia import ia_bp
+from routes.mobile import mobile_bp
+from routes.ia import ia_bp
 from middleware import limiter
 from flask_mail import Mail
 import os

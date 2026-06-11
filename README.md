@@ -14,8 +14,8 @@ Plateforme complète de gestion scolaire développée avec Flask, incluant la ge
 
 1. **Cloner le repository**
    ```bash
-   git clone https://github.com/votre-user/jnc-kalasi.git
-   cd jnc-kalasi
+   git clone https://github.com/votre-user/JNC_KALASI.git
+   cd jnc_kalasi
    ```
 
 2. **Lancer le script de setup**

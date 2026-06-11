@@ -6,7 +6,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-a-changer-en-prod'
 
     # Base de données
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance/school.db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance/jnc_kalasi.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Sécurité & JWT

@@ -9,8 +9,8 @@
 2. Ouvrez un **Bash Console**.
 3. Clonez le projet :
    ```bash
-   git clone https://github.com/votre-user/jnc-kalasi.git
-   cd jnc-kalasi
+   git clone https://github.com/votre-user/JNC_KALASI.git
+   cd jnc_kalasi
    ```
 4. Lancez le script de setup :
    ```bash
@@ -22,9 +22,9 @@
 2. Cliquez sur **Add a new web app**.
 3. Choisissez **Manual Configuration** (Python 3.12).
 4. Configurez les chemins :
-   - **Source code**: `/home/votreusername/jnc-kalasi`
-   - **Working directory**: `/home/votreusername/jnc-kalasi`
-   - **Virtualenv**: `/home/votreusername/jnc-kalasi/venv`
+   - **Source code**: `/home/votreusername/jnc_kalasi`
+   - **Working directory**: `/home/votreusername/jnc_kalasi`
+   - **Virtualenv**: `/home/votreusername/jnc_kalasi/venv`
 
 ## 4. Variables d'Environnement
 Dans l'onglet Web, section "Environment variables" (ou via un fichier .env si vous utilisez python-dotenv) :
@@ -38,7 +38,7 @@ Modifiez le fichier WSGI (`/var/www/votreusername_pythonanywhere_com_wsgi.py`) :
 import sys
 import os
 
-path = '/home/votreusername/jnc-kalasi'
+path = '/home/votreusername/jnc_kalasi'
 if path not in sys.path:
     sys.path.append(path)
 
@@ -56,5 +56,5 @@ Si vous utilisez PostgreSQL sur PythonAnywhere :
 ## 7. Backups Automatiques
 Allez dans l'onglet **Tasks** et ajoutez une tâche quotidienne :
 ```bash
-/home/votreusername/jnc-kalasi/scripts/backup.sh
+/home/votreusername/jnc_kalasi/scripts/backup.sh
 ```

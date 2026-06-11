@@ -8,8 +8,8 @@ mkdir -p $BACKUP_DIR
 echo "--- Début du backup ($DATE) ---"
 
 # Cas SQLite
-if [ -f "instance/school.db" ]; then
-    cp instance/school.db "$BACKUP_DIR/school_backup_$DATE.db"
+if [ -f "instance/jnc_kalasi.db" ]; then
+    cp instance/jnc_kalasi.db "$BACKUP_DIR/jnc_kalasi_backup_$DATE.db"
     echo "[OK] Backup SQLite effectué"
 fi
 
