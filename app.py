@@ -1,12 +1,13 @@
 from flask import Flask, jsonify, render_template
 from config import Config
 from models import db, User, bcrypt
+from flask_migrate import Migrate
 from flask_login import LoginManager
-from auth import auth_bp
-from routes_admin import admin_bp
-from routes_professeur import professeur_bp
-from routes_secretaire import secretaire_bp
-from routes_discipline import discipline_bp
+from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.professeur import professeur_bp
+from routes.secretaire import secretaire_bp
+from routes.discipline import discipline_bp
 from routes_mobile import mobile_bp
 from routes_ia import ia_bp
 from middleware import limiter
@@ -19,6 +20,7 @@ def create_app(config_class=Config):
 
     # Initialisation des extensions
     db.init_app(app)
+    migrate = Migrate(app, db)
     bcrypt.init_app(app)
     limiter.init_app(app)
     mail = Mail(app)

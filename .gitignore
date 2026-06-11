@@ -1,7 +1,13 @@
 __pycache__/
-*.pyc
-instance/
+*.py[cod]
+*.class
 .env
+.venv
 venv/
+instance/
+bulletins/
 *.db
-uploads/
+*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/

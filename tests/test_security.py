@@ -40,7 +40,7 @@ class SecurityTestCase(unittest.TestCase):
 
     def test_password_complexity(self):
         """Vérifie que la complexité est appliquée (via la route change-password par exemple)."""
-        from auth import validate_password_complexity
+        from routes.auth import validate_password_complexity
 
         valid, _ = validate_password_complexity('short')
         self.assertFalse(valid)
