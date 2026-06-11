@@ -12,7 +12,7 @@ def generate_bulletin_pdf(student_id, period=None, output_path=None):
     """
     student = Student.query.get(student_id)
     if not student: return None
-    class_obj = Student.query.get(student_id).class_level # via relationship or id
+    class_obj = Student.query.get(student_id).current_class # via relationship or id
     if not class_obj: class_obj = Class.query.get(student.class_id)
 
     school = class_obj.school

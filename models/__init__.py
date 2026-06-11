@@ -19,7 +19,7 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(20), nullable=False) # admin, secretaire, professeur, discipline, parent
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -29,30 +29,26 @@ class User(db.Model, UserMixin):
     last_password_change = db.Column(db.DateTime, default=datetime.utcnow)
     failed_login_attempts = db.Column(db.Integer, default=0)
     last_login_attempt = db.Column(db.DateTime)
-
-    # Relation avec le profil professeur si applicable
-    teacher_profile = db.relationship('Teacher', backref='user', uselist=False)
-
     def set_password(self, password):
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
 
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)
 
 class School(db.Model):
-    """Modèle pour les écoles."""
+    """Modèle pour une école enregistrée sur la plateforme."""
     __tablename__ = 'schools'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    address = db.Column(db.String(200))
-    province = db.Column(db.String(100))
-    ville = db.Column(db.String(100))
-    commune = db.Column(db.String(100))
-    code = db.Column(db.String(20))
-    logo = db.Column(db.String(200))
-    config_json = db.Column(db.JSON) # Pour stocker des paramètres spécifiques
-    year_start = db.Column(db.Integer) # Ex: 2023
-    year_end = db.Column(db.Integer)   # Ex: 2024
+    address = db.Column(db.String(255))
+    logo = db.Column(db.String(255))
+    province = db.Column(db.String(50))
+    ville = db.Column(db.String(50))
+    commune = db.Column(db.String(50))
+    code = db.Column(db.String(20)) # Code de l'école
+    year_start = db.Column(db.Integer)
+    year_end = db.Column(db.Integer)
+    config_json = db.Column(db.Text) # Configuration spécifique (ex: périodes, maxima)
 
     users = db.relationship('User', backref='school', lazy=True)
     classes = db.relationship('Class', backref='school', lazy=True)
@@ -68,7 +64,6 @@ class Class(db.Model):
     capacity = db.Column(db.Integer)
 
     students = db.relationship('Student', backref='current_class', lazy=True)
-    subjects = db.relationship('Subject', backref='class_level', lazy=True)
 
 class Student(db.Model):
     """Modèle pour les élèves."""
@@ -89,41 +84,23 @@ class Student(db.Model):
     incidents = db.relationship('Incident', backref='student', lazy=True)
     bulletins = db.relationship('Bulletin', backref='student', lazy=True)
 
-    # Parents liés à cet élève
     parents = db.relationship('User', secondary=parent_student, backref=db.backref('children', lazy='dynamic'))
 
-class Message(db.Model):
-    """Modèle pour la messagerie entre professeurs et parents."""
-    __tablename__ = 'messages'
-    id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
-    read_at = db.Column(db.DateTime)
-
-    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
-    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
-
 class Subject(db.Model):
-    """Modèle pour les matières/cours."""
+    """Modèle pour les matières enseignées."""
     __tablename__ = 'subjects'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    domain = db.Column(db.String(100)) # Ex: DOMAINE DES SCIENCES
-    sub_domain = db.Column(db.String(100)) # Ex: Sous domaine des mathématiques
-    coefficient = db.Column(db.Float, default=1.0)
-    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'))
-
-    # Maxima par période pour le bulletin
-    max_1p = db.Column(db.Float, default=10.0)
-    max_2p = db.Column(db.Float, default=10.0)
-    max_exa1 = db.Column(db.Float, default=20.0)
-    max_3p = db.Column(db.Float, default=10.0)
-    max_4p = db.Column(db.Float, default=10.0)
-    max_exa2 = db.Column(db.Float, default=20.0)
-
-    teachers = db.relationship('Teacher', backref='subject', lazy=True)
+    domain = db.Column(db.String(100)) # Ex: Sciences, Langues
+    sub_domain = db.Column(db.String(100))
+    coefficient = db.Column(db.Integer, default=1)
+    max_1p = db.Column(db.Float)
+    max_2p = db.Column(db.Float)
+    max_exa1 = db.Column(db.Float)
+    max_3p = db.Column(db.Float)
+    max_4p = db.Column(db.Float)
+    max_exa2 = db.Column(db.Float)
+    class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
 
 class Teacher(db.Model):
     """Modèle pour l'attribution des cours aux professeurs."""
@@ -133,6 +110,10 @@ class Teacher(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=False)
 
+    # Relationships
+    subject = db.relationship('Subject', backref='teachers')
+    class_level = db.relationship('Class', backref='teachers')
+    user = db.relationship('User', backref='teacher_profile')
     grades = db.relationship('Grade', backref='teacher', lazy=True)
 
 class Grade(db.Model):
@@ -149,7 +130,7 @@ class Grade(db.Model):
     validated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 class Attendance(db.Model):
-    """Modèle pour le suivi des présences."""
+    """Modèle pour les présences quotidiennes."""
     __tablename__ = 'attendance'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
@@ -160,12 +141,12 @@ class Attendance(db.Model):
     recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Conduct(db.Model):
-    """Modèle pour l'évaluation de la conduite."""
+    """Modèle pour le suivi de la conduite."""
     __tablename__ = 'conduct'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    type = db.Column(db.String(50)) # Ex: Application, Conduite, Propreté
-    severity = db.Column(db.Integer) # Score ou niveau
+    type = db.Column(db.String(50)) # Conduite générale, Effort, etc.
+    severity = db.Column(db.Integer) # 1 à 5
     description = db.Column(db.Text)
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -175,29 +156,39 @@ class Incident(db.Model):
     __tablename__ = 'incidents'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    category = db.Column(db.String(50)) # Ex: Retard, Bagarre, Insolence
+    category = db.Column(db.String(50), nullable=False) # Bagarre, Vol, etc.
     description = db.Column(db.Text)
-    evidence = db.Column(db.String(200)) # Chemin vers une preuve (image/doc)
-    severity = db.Column(db.String(20)) # Mineur, Majeur, Critique
+    evidence = db.Column(db.String(255)) # Lien vers une photo ou preuve
+    severity = db.Column(db.String(20)) # mineur, majeur, critique
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Bulletin(db.Model):
-    """Modèle pour les bulletins générés."""
+    """Modèle pour l'archivage des bulletins générés."""
     __tablename__ = 'bulletins'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    period = db.Column(db.String(50)) # Trimestre 1, Semestre 1, Fin d'année
+    period = db.Column(db.String(20), nullable=False)
     generated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     generated_at = db.Column(db.DateTime, default=datetime.utcnow)
-    pdf_path = db.Column(db.String(200))
+    pdf_path = db.Column(db.String(255), nullable=False)
 
 class AuditLog(db.Model):
-    """Modèle pour les journaux d'audit et de sécurité."""
+    """Modèle pour le journal d'audit de sécurité."""
     __tablename__ = 'audit_logs'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    action = db.Column(db.String(100), nullable=False) # Ex: LOGIN, GRADE_UPDATE, DELETE_STUDENT
+    action = db.Column(db.String(100), nullable=False)
     details = db.Column(db.Text)
     ip_address = db.Column(db.String(45))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Message(db.Model):
+    """Modèle pour la communication Professeur-Parent."""
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
