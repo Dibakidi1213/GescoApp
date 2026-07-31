@@ -1,952 +1,1964 @@
 {% extends 'base.html' %}
+
 {% block title %}Administration - Cours{% endblock %}
+
 {% block content %}
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
+
+  <aside class="sidebar-ista">
+
     <!-- Principal -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chart-line"></i>
+
           <span>Tableau de Bord</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Gestion Académique -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.students') }}" class="sidebar-ista-link">
+
           <i class="fas fa-users"></i>
+
           <span>Inscription élèves</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
+
           <i class="fas fa-layer-group"></i>
+
           <span>Sections/Niveaux/Classes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link active">
+
+        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link active">
+
           <i class="fas fa-book"></i>
+
           <span>Cours/Attributions</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chalkboard-user"></i>
+
           <span>Professeurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Évaluations -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Évaluations</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
+
           <i class="fas fa-star"></i>
+
           <span>Gestion des cotes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-file-pdf"></i>
+
           <span>Paramétrage Bulletins</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
+
           <i class="fas fa-balance-scale"></i>
+
           <span>Délibération</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-sliders-h"></i>
+
           <span>Paramètres Délibération</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Configuration -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Configuration</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-ista-link">
+
           <i class="fas fa-cog"></i>
+
           <span>Paramètres école</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link">
+
           <i class="fas fa-user-shield"></i>
+
           <span>Utilisateurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <!-- PAGE HEADER -->
+
     <div class="page-header mb-4">
+
       <h1><i class="fas fa-book"></i> Cours et Attributions</h1>
+
       <p class="text-muted">Gérez les cours, assignez les professeurs et importez en masse</p>
+
     </div>
+
+
 
     <!-- TAB NAVIGATION -->
+
     <ul class="nav nav-tabs nav-modern mb-4" role="tablist">
+
       <li role="presentation">
+
         <button class="nav-link {% if not open_add_tab %}active{% endif %}" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-pane" type="button" role="tab" aria-controls="list-pane" aria-selected="{{ 'true' if not open_add_tab else 'false' }}">
+
           <i class="fas fa-list"></i> Liste des cours
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link {% if open_add_tab %}active{% endif %}" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-pane" type="button" role="tab" aria-controls="add-pane" aria-selected="{{ 'true' if open_add_tab else 'false' }}">
+
           <i class="fas fa-plus-circle"></i> Ajouter un cours
+
         </button>
+
       </li>
+
       {% if not current_user.is_super_admin() %}
+
       <li role="presentation">
+
         <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import-pane" type="button" role="tab" aria-controls="import-pane" aria-selected="false">
+
           <i class="fas fa-file-excel"></i> Importer Excel
+
         </button>
+
       </li>
+
       {% endif %}
+
     </ul>
 
+
+
     <!-- TAB CONTENT -->
+
     <div class="tab-content">
+
       <!-- LIST TAB -->
+
       <div class="tab-pane fade {% if not open_add_tab %}show active{% endif %}" id="list-pane" role="tabpanel" aria-labelledby="list-tab">
+
         <!-- School Filter (if super admin with multiple schools) -->
+
         {% if schools %}
+
         <div class="filter-panel mb-4">
+
           <form method="get" class="d-flex align-items-center gap-3">
+
+            {% if request.args.get('school_slug') %}
+
+            <input type="hidden" name="school_slug" value="{{ request.args.get('school_slug') }}">
+
+            {% endif %}
+
             <label class="mb-0 fw-bold">
+
               <i class="fas fa-filter"></i> Filtrer par école:
+
             </label>
+
             <select name="school_id" class="form-select filter-select">
+
               <option value="">Toutes les écoles</option>
+
               {% for school in schools %}
+
               <option value="{{ school.id }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
+
                 {{ school.name }}
+
               </option>
+
               {% endfor %}
+
             </select>
+
             <button type="submit" class="btn btn-sm btn-outline-primary">
+
               <i class="fas fa-search"></i> Filtrer
+
             </button>
+
           </form>
+
         </div>
+
         {% endif %}
+
+
+
+        <!-- Class Filter -->
+
+        <div class="filter-panel mb-4">
+
+          <form method="get" class="d-flex align-items-center gap-3">
+
+            <!-- Preserve school filter if present -->
+
+            {% if request.args.get('school_slug') %}
+
+            <input type="hidden" name="school_slug" value="{{ request.args.get('school_slug') }}">
+
+            {% endif %}
+
+            {% if selected_school_id %}
+
+            <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+
+            {% endif %}
+
+            <label class="mb-0 fw-bold">
+
+              <i class="fas fa-filter"></i> Filtrer par classe:
+
+            </label>
+
+            <select name="filter_section_id" class="form-select filter-select" onchange="this.form.submit()">
+
+              <option value="">Toutes les classes</option>
+
+              {% for section in sections %}
+
+              <option value="{{ section.id }}" {% if filter_section_id and filter_section_id == section.id %}selected{% endif %}>
+
+                {{ section.name }}
+
+              </option>
+
+              {% endfor %}
+
+            </select>
+
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+
+              <i class="fas fa-search"></i> Filtrer
+
+            </button>
+
+          </form>
+
+        </div>
+
+
 
         <!-- BULK ASSIGNMENT PANEL -->
+
         <div class="alert alert-info alert-modern mb-4" id="bulkAssignmentPanel" style="display: none;">
+
           <div class="row align-items-end g-3">
+
             <div class="col-md-6">
+
               <label class="form-label fw-bold">
+
                 <i class="fas fa-check-circle"></i> <span id="selectedCount">0</span> cours sélectionné(s)
+
               </label>
+
               <select id="bulkProfessorSelect" class="form-select">
+
                 <option value="">-- Choisir un professeur --</option>
+
                 {% for professor in professors %}
+
                 <option value="{{ professor.id }}">{{ professor.full_name }}</option>
+
                 {% endfor %}
+
               </select>
+
             </div>
+
             <div class="col-md-6">
+
               <div class="d-flex gap-2">
+
                 <button id="applyBulkAssignment" class="btn btn-primary-modern" disabled>
+
                   <i class="fas fa-save"></i> Attribuer à tous les sélectionnés
+
                 </button>
+
                 <button id="clearSelection" class="btn btn-outline-secondary">
+
                   <i class="fas fa-times"></i> Effacer sélection
+
                 </button>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
+
 
         <!-- Courses List -->
+
         {% if sorted_grouped %}
+
         <div class="courses-container">
+
           {% for section_key, section_courses in sorted_grouped %}
+
           <div class="section-courses-group">
+
             <div class="section-title">
+
               <div class="d-flex align-items-center justify-content-between">
+
                 <div>
+
                   <i class="fas fa-folder-open"></i> {{ section_key[1] }} - {{ section_key[2] }} {{ section_key[3] }}
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="table-responsive">
+
               <table class="table table-hover">
+
                 <thead>
+
                   <tr>
+
                     <th style="width: 40px;"><i class="fas fa-square"></i></th>
+
                     <th>Intitulé du cours</th>
+
                     <th>Professeur</th>
+
                     {% if schools %}
+
                     <th>École</th>
+
                     {% endif %}
+
                     {% if not current_user.is_super_admin() %}
+
                     <th>Actions</th>
+
                     {% endif %}
+
                   </tr>
+
                 </thead>
+
                 <tbody>
+
                   {% for course in section_courses %}
+
                   <tr class="course-row" data-section="{{ section_key[0] }}">
+
                     <td>
+
                       <input type="checkbox" class="form-check-input course-checkbox" data-course-id="{{ course.id }}">
+
                     </td>
+
                     <td><div class="fw-bold">{{ course.title }}</div></td>
+
                     <td>
+
                       {% if course.professor %}
+
                         <span class="badge bg-info">{{ course.professor.full_name }}</span>
+
                       {% else %}
+
                         <span class="badge bg-secondary">Non attribué</span>
+
                       {% endif %}
+
                     </td>
+
                     {% if schools %}
-                    <td>{{ course.section.school.name if course.section and course.section.school else '—' }}</td>
+
+                    <td>{{ course.section.school.name if course.section and course.section.school else 'â?"' }}</td>
+
                     {% endif %}
+
                     {% if not current_user.is_super_admin() %}
+
                     <td>
+
                       <a href="{{ url_for('admin.edit_course', course_id=course.id) }}" class="btn btn-sm btn-outline-primary" title="Modifier">
+
                         <i class="fas fa-edit"></i>
+
                       </a>
+
                       <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCourseModal{{ course.id }}" title="Supprimer">
+
                         <i class="fas fa-trash"></i>
+
                       </button>
+
                     </td>
+
                     {% endif %}
+
                   </tr>
+
                   {% endfor %}
+
                 </tbody>
+
               </table>
+
             </div>
+
           </div>
+
           {% endfor %}
+
         </div>
+
         {% else %}
+
         <div class="alert alert-info alert-modern">
+
           <i class="fas fa-info-circle"></i>
+
           <div>
+
             <strong>Aucun cours trouvé</strong>
+
             <p class="mb-0">Créez un nouveau cours en utilisant l'onglet "Ajouter un cours".</p>
+
           </div>
+
         </div>
+
         {% endif %}
+
       </div>
+
+
 
       <!-- ADD TAB -->
+
       {% if not current_user.is_super_admin() %}
+
       <div class="tab-pane fade {% if open_add_tab %}show active{% endif %}" id="add-pane" role="tabpanel" aria-labelledby="add-tab">
-        <div class="form-card">
+
+        <div class="card-ista">
+
           <form method="post" class="needs-validation" novalidate>
+
             <div class="form-sections">
+
               {% if schools %}
+
               <!-- Course Information -->
+
               <div class="form-section">
+
                 <div class="section-header">
+
                   <h6><i class="fas fa-info-circle"></i> École</h6>
+
                 </div>
+
                 <div class="row g-3">
+
                   <div class="col-md-4">
+
                     <label for="school_id" class="form-label">
+
                       École <span class="text-danger">*</span>
+
                     </label>
+
                     <select name="school_id" id="school_id" class="form-select" required>
+
                       <option value="">Choisir une école</option>
+
                       {% for school in schools %}
+
                       <option value="{{ school.id }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
+
                         {{ school.name }}
+
                       </option>
+
                       {% endfor %}
+
                     </select>
+
                     <div class="invalid-feedback">
+
                       Veuillez sélectionner une école.
+
                     </div>
+
                   </div>
+
                 </div>
+
               </div>
+
               {% endif %}
 
+
+
               <!-- Section and Professor -->
+
               <div class="form-section">
+
                 <div class="section-header">
+
                   <h6><i class="fas fa-sliders-h"></i> Classe, cours et professeur</h6>
+
                 </div>
+
                 <div class="row g-3">
+
                   <div class="col-md-4">
+
                     <label for="section_name_select" class="form-label">
+
                       Section <span class="text-danger">*</span>
+
                     </label>
+
                     <select id="section_name_select" class="form-select" onchange="window.updateCourseLevels && window.updateCourseLevels()" required>
+
                       <option value="">Choisir une section</option>
+
                       {% for section_name in sections | map(attribute='name') | unique | sort %}
+
                       <option value="{{ section_name }}" {% if selected_section and selected_section.name == section_name %}selected{% endif %}>
+
                         {{ section_name }}
+
                       </option>
+
                       {% endfor %}
+
                     </select>
+
                   </div>
+
                   <div class="col-md-4">
+
                     <label for="level_select" class="form-label">
+
                       Niveau <span class="text-danger">*</span>
+
                     </label>
+
                     <select id="level_select" class="form-select" onchange="window.updateCourseClasses && window.updateCourseClasses()" required disabled>
+
                       <option value="">Choisir un niveau</option>
+
                     </select>
+
                   </div>
+
                   <div class="col-md-4">
+
                     <label for="class_select" class="form-label">
+
                       Classe <span class="text-danger">*</span>
+
                     </label>
+
                     <select id="class_select" class="form-select" onchange="window.syncCourseSectionId && window.syncCourseSectionId()" required disabled>
+
                       <option value="">Choisir une classe</option>
+
                     </select>
+
                     <input type="hidden" name="section_id" id="section_id" value="{{ selected_section_id or '' }}" required>
+
                     <div class="invalid-feedback">
+
                       Veuillez sélectionner la section, le niveau et la classe.
+
                     </div>
+
                   </div>
+
                   <div class="col-md-4">
+
                     <label for="title" class="form-label">
+
                       Intitulés des cours <span class="text-danger">*</span>
+
                     </label>
+
                     <select name="titles[]" id="title" class="form-select" multiple size="6" required {% if not initial_branch_options %}disabled{% endif %}>
+
                       {% if initial_branch_options %}
+
                       {% for branch in initial_branch_options %}
+
                         {% if branch.assigned_to %}
+
                         <option value="{{ branch.id }}|{{ branch.name }}" disabled>{{ branch.name }} (Déjà attribué : {{ branch.assigned_to }})</option>
+
                         {% else %}
+
                         <option value="{{ branch.id }}|{{ branch.name }}" data-branch-id="{{ branch.id }}">{{ branch.name }}</option>
+
                         {% endif %}
+
                       {% endfor %}
+
                       {% else %}
+
                       <option value="">Choisir d'abord une classe</option>
+
                       {% endif %}
+
                     </select>
+
                     <div class="mt-2">
+
                       <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.querySelectorAll('#title option').forEach(o => { if(o.value) o.selected = true; })">
+
                         <i class="fas fa-check-double"></i> Tout sélectionner
+
                       </button>
+
                     </div>
+
                     <small class="text-muted" id="titleHelpText">
+
                       {% if initial_branch_options %}
+
                       {{ initial_branch_options|length }} intitulé(s) disponible(s) depuis le bulletin. (Maintenez Ctrl pour en sélectionner plusieurs)
+
                       {% else %}
+
                       Les intitulés proviennent du bulletin configuré pour la section et le niveau choisis.
+
                       {% endif %}
+
                     </small>
+
                     <div class="invalid-feedback">
+
                       Au moins un intitulé de cours est requis.
+
                     </div>
+
                   </div>
+
                   <div class="col-md-6">
+
                     <label for="professor_id" class="form-label">
+
                       Professeur <span class="text-muted">(optionnel)</span>
+
                     </label>
+
                     <select name="professor_id" id="professor_id" class="form-select">
+
                       <option value="">Aucun professeur attribué</option>
+
                       {% for professor in professors %}
+
                       <option value="{{ professor.id }}">{{ professor.full_name }}</option>
+
                       {% endfor %}
+
                     </select>
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
 
+
+
             <!-- Action Buttons -->
+
             <div class="form-actions">
+
               <button type="submit" class="btn btn-primary-modern">
+
                 <i class="fas fa-save"></i> Enregistrer l'attribution
+
               </button>
+
               <button type="reset" class="btn btn-outline-secondary">
+
                 <i class="fas fa-redo"></i> Réinitialiser
+
               </button>
+
             </div>
+
           </form>
+
         </div>
+
       </div>
+
+
 
       <!-- IMPORT TAB -->
+
       <div class="tab-pane fade" id="import-pane" role="tabpanel" aria-labelledby="import-tab">
-        <div class="form-card">
+
+        <div class="card-ista">
+
           <form method="post" id="course-import-form" enctype="multipart/form-data">
+
             <div class="form-sections">
+
               <!-- Import Information -->
+
               <div class="form-section">
+
                 <div class="section-header">
+
                   <h6><i class="fas fa-file-upload"></i> Importer depuis Excel</h6>
+
                 </div>
+
                 <div class="row g-3">
+
                   <div class="col-12">
+
                     <label for="import_file" class="form-label">
+
                       Fichier Excel (.xlsx, .xls) <span class="text-danger">*</span>
+
                     </label>
+
                     <div class="input-group">
+
                       <input type="file" name="import_file" id="import_file" class="form-control" accept=".xlsx,.xls" required>
+
                       <a href="{{ url_for('admin.download_courses_template') }}" class="btn btn-outline-secondary" title="Télécharger le template">
+
                         <i class="fas fa-download"></i> Template
+
                       </a>
+
                     </div>
+
                   </div>
+
                   <div class="col-12">
+
                     <div class="alert alert-info alert-modern">
+
                       <i class="fas fa-lightbulb"></i>
+
                       <div>
+
                         <strong>Format du fichier :</strong>
+
                         <p class="mb-0">Colonnes obligatoires : <code>course_title</code> (ou <code>intitule_cours</code>)<br>
+
                         Colonnes optionnelles : <code>section_name</code>, <code>level</code>, <code>class_name</code>, <code>professor_full_name</code></p>
+
                       </div>
+
                     </div>
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
+
 
             <!-- Action Buttons -->
+
             <div class="form-actions">
+
               <button type="submit" id="course-import-button" class="btn btn-primary-modern w-100">
+
                 <i class="fas fa-upload"></i>
+
                 <span id="course-import-button-text">Importer les cours</span>
+
                 <span id="course-import-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+
               </button>
+
             </div>
+
           </form>
+
         </div>
+
       </div>
+
       {% else %}
+
       <div class="tab-pane fade" id="add-pane" role="tabpanel" aria-labelledby="add-tab">
+
         <div class="alert alert-info alert-modern">
+
           <i class="fas fa-info-circle"></i>
+
           <div>
+
             <strong>Vue Superadmin</strong>
+
             <p class="mb-0">La gestion des cours est effectuée par les administrateurs d'école. Vous pouvez consulter la liste des cours par école ci-dessus.</p>
+
           </div>
+
         </div>
+
       </div>
+
       {% endif %}
+
     </div>
+
   </main>
+
 </div>
+
+
 
 <!-- DELETE CONFIRMATION MODALS -->
+
 {% for section_key, section_courses in sorted_grouped %}
+
 {% for course in section_courses %}
+
 <div class="modal fade" id="deleteCourseModal{{ course.id }}" tabindex="-1" aria-labelledby="deleteCourseModalLabel{{ course.id }}" aria-hidden="true">
+
   <div class="modal-dialog">
+
     <div class="modal-content">
+
       <div class="modal-header border-bottom">
+
         <h5 class="modal-title" id="deleteCourseModalLabel{{ course.id }}">
+
           <i class="fas fa-exclamation-triangle text-danger"></i> Confirmer la suppression
+
         </h5>
+
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
       </div>
+
       <div class="modal-body">
+
         <p>Êtes-vous sûr de vouloir supprimer le cours <strong>{{ course.title }}</strong> ?</p>
+
         {% if course.section and course.section.school %}
+
         <p class="text-muted small mb-0">École : {{ course.section.school.name }}</p>
+
         {% endif %}
+
       </div>
+
       <div class="modal-footer border-top">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+        <button type="button" class="btn-ista-secondary" data-bs-dismiss="modal">Annuler</button>
+
         <form method="post" action="{{ url_for('admin.delete_course', course_id=course.id) }}" style="display: inline;">
+
           <button type="submit" class="btn btn-danger">
+
             <i class="fas fa-trash"></i> Supprimer
+
           </button>
+
         </form>
+
       </div>
+
     </div>
+
   </div>
+
 </div>
+
 {% endfor %}
+
 {% endfor %}
+
+
 
 <style>
+
   /* COURSES PAGE SPECIFIC STYLES */
+
   .courses-container {
+
     display: flex;
+
     flex-direction: column;
+
     gap: 2rem;
+
   }
+
+
 
   .section-courses-group {
+
     background: white;
+
     border-radius: 12px;
+
     padding: 1.5rem;
+
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
   }
+
+
 
   .section-title {
+
     font-size: 1.1rem;
+
     font-weight: 600;
+
     color: #2c3e50;
+
     margin-bottom: 1.5rem;
+
     padding-bottom: 1rem;
+
     border-bottom: 2px solid #e9ecef;
+
     display: flex;
+
     align-items: center;
+
     gap: 0.5rem;
+
   }
+
+
 
   .section-title i {
+
     color: #3498db;
+
   }
+
+
 
   .table-responsive {
+
     overflow-x: auto;
+
   }
+
+
 
   .table {
+
     margin-bottom: 0;
+
   }
+
+
 
   .table thead {
+
     background-color: #f8f9fa;
+
   }
+
+
 
   .table thead th {
+
     border-bottom: 2px solid #dee2e6;
+
     font-weight: 600;
+
     color: #2c3e50;
+
   }
+
+
 
   .table tbody tr:hover {
+
     background-color: #f8f9fa;
+
   }
+
+
 
   .table tbody td {
+
     vertical-align: middle;
+
   }
+
+
 
   .filter-panel {
+
     background: white;
+
     padding: 1rem;
+
     border-radius: 8px;
+
     border-left: 4px solid #3498db;
+
   }
+
+
 
   .filter-select {
+
     max-width: 300px;
+
   }
 
-  .form-card {
+
+
+  .card-ista {
+
     background: white;
+
     border-radius: 12px;
+
     padding: 2rem;
+
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
   }
+
+
 
   .form-sections {
+
     display: flex;
+
     flex-direction: column;
+
     gap: 2rem;
+
     margin-bottom: 2rem;
+
   }
+
+
 
   .form-section {
+
     padding-bottom: 1.5rem;
+
     border-bottom: 1px solid #e9ecef;
+
   }
+
+
 
   .form-section:last-of-type {
+
     border-bottom: none;
+
     padding-bottom: 0;
+
   }
+
+
 
   .section-header {
+
     margin-bottom: 1.5rem;
+
   }
+
+
 
   .section-header h6 {
+
     font-size: 1rem;
+
     font-weight: 600;
+
     color: #2c3e50;
+
     margin: 0;
+
     display: flex;
+
     align-items: center;
+
     gap: 0.5rem;
+
   }
+
+
 
   .section-header i {
+
     color: #3498db;
+
     font-size: 1.1rem;
+
   }
+
+
 
   .form-actions {
+
     display: flex;
+
     gap: 1rem;
+
     padding-top: 1rem;
+
   }
+
+
 
   .form-actions button {
+
     padding: 0.6rem 1.5rem;
+
     font-weight: 500;
+
   }
+
+
 
   .btn-primary-modern {
+
     background-color: #3498db;
+
     border-color: #3498db;
+
     color: white;
+
   }
+
+
 
   .btn-primary-modern:hover {
+
     background-color: #2980b9;
+
     border-color: #2980b9;
+
   }
+
+
 
   .alert-modern {
+
     background: #e3f2fd;
+
     border-left: 4px solid #2196F3;
+
     color: #1565c0;
+
     display: flex;
+
     align-items: flex-start;
+
     gap: 1rem;
+
   }
+
+
 
   .alert-modern i {
+
     font-size: 1.25rem;
+
     margin-top: 0.2rem;
+
   }
+
+
 
   @media (max-width: 768px) {
+
     .filter-select {
+
       max-width: 100%;
+
     }
 
-    .form-card {
+
+
+    .card-ista {
+
       padding: 1.5rem;
+
     }
+
+
 
     .form-actions {
+
       flex-direction: column;
+
     }
+
+
 
     .form-actions button {
+
       width: 100%;
+
     }
+
   }
+
 </style>
 
+
+
 <script>
+
   // Form validation
+
   (() => {
+
     'use strict';
+
     const forms = document.querySelectorAll('.needs-validation');
+
     Array.from(forms).forEach(form => {
+
       form.addEventListener('submit', event => {
+
         if (!form.checkValidity()) {
+
           event.preventDefault();
+
           event.stopPropagation();
+
         }
+
         form.classList.add('was-validated');
+
       }, false);
+
     });
+
   })();
+
+
 
   // Import form overlay
+
   (() => {
+
     const importForm = document.getElementById('course-import-form');
+
     const importBtn = document.getElementById('course-import-button');
+
     const spinner = document.getElementById('course-import-spinner');
+
     const buttonText = document.getElementById('course-import-button-text');
+
     
+
     if (importForm) {
+
       importForm.addEventListener('submit', function () {
+
         importBtn.disabled = true;
+
         spinner.classList.remove('d-none');
+
         buttonText.textContent = 'Importation en cours...';
+
       });
+
     }
+
   })();
+
+
 
   // Hierarchical Section -> Niveau -> Classe selector.
+
   (() => {
+
     const sectionsData = {{ sections_payload|tojson }};
+
     const initialSection = {
+
       id: {{ selected_section_id|tojson }},
+
       name: {{ (selected_section.name if selected_section else '')|tojson }},
+
       level: {{ (selected_section.level if selected_section else '')|tojson }},
+
       className: {{ (selected_section.class_name if selected_section else '')|tojson }}
+
     };
+
     const sectionNameSelect = document.getElementById('section_name_select');
+
     const levelSelect = document.getElementById('level_select');
+
     const classSelect = document.getElementById('class_select');
+
     const sectionIdInput = document.getElementById('section_id');
 
+
+
     if (!sectionNameSelect || !levelSelect || !classSelect || !sectionIdInput) {
+
       return;
+
     }
+
+
 
     const normalizeValue = value => String(value || '').trim();
+
     const cleanSections = sectionsData.map(section => ({
+
       id: section.id,
+
       name: normalizeValue(section.name),
+
       level: normalizeValue(section.level),
+
       class_name: normalizeValue(section.class_name)
+
     }));
 
+
+
     function fillSelect(select, placeholder, values, selectedValue = '') {
+
       select.innerHTML = '';
+
       const option = document.createElement('option');
+
       option.value = '';
+
       option.textContent = placeholder;
+
       select.appendChild(option);
+
       values.forEach(value => {
+
         const item = document.createElement('option');
+
         item.value = value;
+
         item.textContent = value;
+
         if (String(value) === String(selectedValue)) {
+
           item.selected = true;
+
         }
+
         select.appendChild(item);
+
       });
+
       select.disabled = values.length === 0;
+
     }
+
+
 
     function uniqueSorted(values) {
+
       return Array.from(new Set(values.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), 'fr'));
+
     }
+
+
 
     function loadLevels(selectedLevel = '') {
+
       const sectionName = normalizeValue(sectionNameSelect.value);
+
       const levels = uniqueSorted(cleanSections.filter(s => s.name === sectionName).map(s => s.level));
+
       fillSelect(levelSelect, 'Choisir un niveau', levels, selectedLevel);
+
       fillSelect(classSelect, 'Choisir une classe', [], '');
+
       sectionIdInput.value = '';
+
       sectionIdInput.dispatchEvent(new Event('change', { bubbles: true }));
+
     }
+
+
 
     function loadClasses(selectedClass = '') {
+
       const sectionName = normalizeValue(sectionNameSelect.value);
+
       const level = normalizeValue(levelSelect.value);
+
       const classes = uniqueSorted(cleanSections.filter(s => s.name === sectionName && s.level === level).map(s => s.class_name));
+
       fillSelect(classSelect, 'Choisir une classe', classes, selectedClass);
+
       sectionIdInput.value = '';
+
       sectionIdInput.dispatchEvent(new Event('change', { bubbles: true }));
+
     }
+
+
 
     function syncSectionId() {
+
       const section = cleanSections.find(s =>
+
         s.name === normalizeValue(sectionNameSelect.value) &&
+
         s.level === normalizeValue(levelSelect.value) &&
+
         s.class_name === normalizeValue(classSelect.value)
+
       );
+
       sectionIdInput.value = section ? section.id : '';
+
       sectionIdInput.dispatchEvent(new Event('change', { bubbles: true }));
+
     }
+
+
 
     window.updateCourseLevels = loadLevels;
+
     window.updateCourseClasses = loadClasses;
+
     window.syncCourseSectionId = syncSectionId;
 
+
+
     sectionNameSelect.addEventListener('change', () => loadLevels());
+
     levelSelect.addEventListener('change', () => loadClasses());
+
     classSelect.addEventListener('change', syncSectionId);
 
+
+
     if (initialSection.id) {
+
       sectionNameSelect.value = initialSection.name;
+
       loadLevels(initialSection.level);
+
       loadClasses(initialSection.className);
+
       syncSectionId();
+
     }
+
   })();
+
+
 
   // Load course titles from bulletin config for selected section
+
   (() => {
+
     const sectionSelect = document.getElementById('section_id');
+
     const titleSelect = document.getElementById('title');
+
     const titleHelpText = document.getElementById('titleHelpText');
+
     if (!sectionSelect || !titleSelect) {
+
       return;
+
     }
+
+
 
     const adminApiPrefix = '{{ request.path.rsplit("/admin", 1)[0] }}/admin';
+
     const preloadedSectionId = {{ selected_section_id|tojson }};
+
     const hasPreloadedBranches = {{ (initial_branch_options|length > 0)|tojson }};
 
+
+
     function resetTitleSelect(placeholder, disabled = true) {
+
       titleSelect.innerHTML = '';
+
       if (placeholder) {
+
           const opt = document.createElement('option');
+
           opt.value = '';
+
           opt.textContent = placeholder;
+
           titleSelect.appendChild(opt);
+
       }
+
       titleSelect.disabled = disabled;
+
     }
+
+
 
     async function loadBranchOptions(sectionId) {
+
       if (!sectionId) {
+
         resetTitleSelect("Choisir d'abord une classe", true);
+
         if (titleHelpText) {
+
           titleHelpText.textContent = 'Les intitules proviennent du bulletin configure pour la section.';
+
         }
+
         return;
+
       }
+
+
 
       resetTitleSelect('Chargement...', true);
+
       try {
+
         const response = await fetch(`${adminApiPrefix}/api/courses/bulletin-branches/${encodeURIComponent(sectionId)}`, {
+
           credentials: 'same-origin'
+
         });
+
         if (!response.ok) {
+
           throw new Error(`HTTP ${response.status}`);
+
         }
+
+
 
         const branches = await response.json();
+
         if (!Array.isArray(branches) || !branches.length) {
+
           resetTitleSelect('Aucun intitule configure pour cette section', true);
+
           if (titleHelpText) {
+
             titleHelpText.textContent = "Configurez d'abord les branches du bulletin pour cette section.";
+
           }
+
           return;
+
         }
+
+
 
         resetTitleSelect('', false);
+
         branches.forEach(branch => {
+
           const opt = document.createElement('option');
+
           opt.value = branch.id + '|' + branch.name;
+
           if (branch.assigned_to) {
+
               opt.textContent = `${branch.name} (Déjà attribué : ${branch.assigned_to})`;
+
               opt.disabled = true;
+
           } else {
+
               opt.textContent = branch.name;
+
           }
+
           opt.dataset.branchId = branch.id;
+
           titleSelect.appendChild(opt);
+
         });
 
+
+
         if (titleHelpText) {
+
           titleHelpText.textContent = `${branches.length} intitulé(s) disponible(s) depuis le bulletin. (Maintenez Ctrl pour en sélectionner plusieurs)`;
+
         }
+
       } catch (error) {
+
         console.error('Error loading bulletin branches:', error);
+
         resetTitleSelect('Erreur de chargement des intitules', true);
+
         if (titleHelpText) {
+
           titleHelpText.textContent = 'Impossible de charger les intitules du bulletin.';
+
         }
+
       }
+
     }
+
+
 
     sectionSelect.addEventListener('change', () => {
+
       loadBranchOptions(sectionSelect.value);
+
     });
 
+
+
     if (hasPreloadedBranches && String(sectionSelect.value) === String(preloadedSectionId)) {
+
       titleSelect.disabled = false;
+
     } else if (sectionSelect.value) {
+
       loadBranchOptions(sectionSelect.value);
+
     } else {
+
       resetTitleSelect("Choisir d'abord une classe", true);
+
     }
+
   })();
 
+
+
   // BULK ASSIGNMENT FUNCTIONALITY
+
   (() => {
+
     const bulkPanel = document.getElementById('bulkAssignmentPanel');
+
     const selectedCountSpan = document.getElementById('selectedCount');
+
     const bulkProfessorSelect = document.getElementById('bulkProfessorSelect');
+
     const applyBulkBtn = document.getElementById('applyBulkAssignment');
+
     const clearSelectionBtn = document.getElementById('clearSelection');
+
     const courseCheckboxes = document.querySelectorAll('.course-checkbox');
+
     const sectionToggles = document.querySelectorAll('.section-toggle');
+
     const courseRows = document.querySelectorAll('.course-row');
+
+
 
     if (!bulkPanel || !courseCheckboxes.length) return;
 
+
+
     // Update panel visibility and count
+
     function updateBulkPanel() {
+
       const checked = document.querySelectorAll('.course-checkbox:checked').length;
+
       selectedCountSpan.textContent = checked;
+
       bulkPanel.style.display = checked > 0 ? 'block' : 'none';
+
       applyBulkBtn.disabled = checked === 0 || !bulkProfessorSelect.value;
+
     }
 
+
+
     // Add change listeners to checkboxes
+
     courseCheckboxes.forEach(checkbox => {
+
       checkbox.addEventListener('change', updateBulkPanel);
+
     });
+
+
 
     // Add change listener to professor select
+
     bulkProfessorSelect.addEventListener('change', () => {
+
       const checked = document.querySelectorAll('.course-checkbox:checked').length;
+
       applyBulkBtn.disabled = checked === 0 || !bulkProfessorSelect.value;
+
     });
+
+
 
     // Section toggle functionality
+
     sectionToggles.forEach(toggle => {
+
       toggle.addEventListener('change', function() {
+
         const sectionId = this.dataset.section;
+
         const rowsInSection = document.querySelectorAll(`.course-row[data-section="${sectionId}"] .course-checkbox`);
+
         rowsInSection.forEach(checkbox => {
+
           checkbox.checked = this.checked;
+
         });
+
         updateBulkPanel();
+
       });
+
     });
+
+
 
     // Clear selection
+
     clearSelectionBtn.addEventListener('click', () => {
+
       courseCheckboxes.forEach(checkbox => checkbox.checked = false);
+
       sectionToggles.forEach(toggle => toggle.checked = false);
+
       bulkProfessorSelect.value = '';
+
       updateBulkPanel();
+
     });
+
+
 
     // Apply bulk assignment
+
     applyBulkBtn.addEventListener('click', async () => {
+
       const checked = Array.from(document.querySelectorAll('.course-checkbox:checked'))
+
         .map(cb => parseInt(cb.dataset.courseId));
+
       const professorId = bulkProfessorSelect.value ? parseInt(bulkProfessorSelect.value) : null;
 
+
+
       if (checked.length === 0) {
+
         alert('Veuillez sélectionner au moins un cours');
+
         return;
+
       }
+
+
 
       applyBulkBtn.disabled = true;
+
       const originalText = applyBulkBtn.innerHTML;
+
       applyBulkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Attribution en cours...';
 
+
+
       try {
+
         const response = await fetch('{{ url_for("admin.api_assign_courses_bulk") }}', {
+
           method: 'POST',
+
           headers: {
+
             'Content-Type': 'application/json',
+
           },
+
           credentials: 'same-origin',
+
           body: JSON.stringify({
+
             course_ids: checked,
+
             professor_id: professorId
+
           })
+
         });
 
+
+
         const data = await response.json();
+
         
+
         if (data.success) {
+
           // Show success toast
+
           const toast = document.createElement('div');
+
           toast.className = 'alert alert-success alert-modern position-fixed bottom-0 end-0 m-4';
+
           toast.style.zIndex = '9999';
+
           toast.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
+
           document.body.appendChild(toast);
+
           setTimeout(() => toast.remove(), 3000);
 
+
+
           // Reload page to refresh professor badges
+
           setTimeout(() => location.reload(), 1500);
+
         } else {
+
           alert('Erreur : ' + data.error);
+
           applyBulkBtn.disabled = false;
+
           applyBulkBtn.innerHTML = originalText;
+
         }
+
       } catch (error) {
+
         console.error('Error:', error);
+
         alert('Erreur lors de l\'attribution : ' + error.message);
+
         applyBulkBtn.disabled = false;
+
         applyBulkBtn.innerHTML = originalText;
+
       }
+
     });
 
+
+
     // Initial state
+
     updateBulkPanel();
+
   })();
+
 </script>
+
 {% endblock %}
+

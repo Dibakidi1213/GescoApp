@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}Gestion des présences et de la conduite{% endblock %}
+{% block title %}Centralisation des presences{% endblock %}
+
 {% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <div class="dashboard-wrapper">
-  <aside class="sidebar">
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+  <aside class="sidebar-ista">
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+      <ul>
+        <li>
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
             <i class="fas fa-chart-line"></i>
             <span>Tableau de Bord</span>
           </a>
@@ -17,676 +18,516 @@
       </ul>
     </div>
 
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
-            <i class="fas fa-user-graduate"></i>
-            <span>Inscription élèves</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
-            <i class="fas fa-layer-group"></i>
-            <span>Sections/Niveaux/Classes</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
-            <i class="fas fa-book"></i>
-            <span>Cours/Attributions</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
-            <i class="fas fa-chalkboard-user"></i>
-            <span>Professeurs</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.attendance_management') }}" class="sidebar-menu-link active">
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Centralisation</h6>
+      <ul>
+        <li>
+          <a href="{{ url_for('admin.attendance_management') }}" class="sidebar-ista-link active">
             <i class="fas fa-clipboard-list"></i>
-            <span>Gestion des présences</span>
+            <span>Presences</span>
           </a>
         </li>
-      </ul>
-    </div>
-
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
             <i class="fas fa-star"></i>
-            <span>Gestion des cotes</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-menu-link">
-            <i class="fas fa-lock-open"></i>
-            <span>Déverrouillage cours</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
-            <i class="fas fa-file-pdf"></i>
-            <span>Paramétrage Bulletins</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.exam_management') }}" class="sidebar-menu-link">
-            <i class="fas fa-graduation-cap"></i>
-            <span>Gestion Examen</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
-            <i class="fas fa-balance-scale"></i>
-            <span>Délibération</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
-            <i class="fas fa-sliders-h"></i>
-            <span>Paramètres Délibération</span>
-          </a>
-        </li>
-      </ul>
-    </div>
-
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.edit_school', school_id=current_user.school_id) }}" class="sidebar-menu-link">
-            <i class="fas fa-school"></i>
-            <span>Paramètres école</span>
-          </a>
-        </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.register_user_redirect') }}" class="sidebar-menu-link">
-            <i class="fas fa-user-plus"></i>
-            <span>Ajouter utilisateur</span>
+            <span>Cotes</span>
           </a>
         </li>
       </ul>
     </div>
   </aside>
 
-  <main class="main-content">
-    <div class="page-header mb-4">
-      <h1><i class="fas fa-clipboard-list me-2"></i>Gestion des présences et de la conduite</h1>
+  <main class="main-content-ista">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <h1 class="page-title-ista mb-1">Centralisation des presences</h1>
+        <div class="text-muted small">Statistiques, listes nominatives et jours feries</div>
+      </div>
+      <span class="badge bg-primary">{{ current_year or current_academic_year }}</span>
     </div>
 
-    <ul class="nav nav-tabs nav-modern mb-3">
-      <li role="presentation">
-        <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance-content" type="button">
-          <i class="fas fa-clipboard-check me-1"></i> Saisie
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="stats-tab" data-bs-toggle="tab" data-bs-target="#statsPane" type="button" role="tab">
+          <i class="fas fa-chart-column me-1"></i> Statistiques journalieres
         </button>
       </li>
-      <li role="presentation">
-        <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports-content" type="button">
-          <i class="fas fa-clock-rotate-left me-1"></i> Historique
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="class-tab" data-bs-toggle="tab" data-bs-target="#classPane" type="button" role="tab">
+          <i class="fas fa-list-check me-1"></i> Liste par classe
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holidayPane" type="button" role="tab">
+          <i class="fas fa-calendar-xmark me-1"></i> Jours feries
         </button>
       </li>
     </ul>
 
     <div class="tab-content">
-      <div class="tab-pane fade show active" id="attendance-content">
-        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
-          <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center gap-2">
-            <strong>Classe</strong>
-            <span id="classLabelBadge" class="badge bg-info text-dark">Aucune classe sélectionnée</span>
+      <section class="tab-pane fade show active" id="statsPane" role="tabpanel" aria-labelledby="stats-tab">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <strong>Statistiques par jour pour toutes les classes</strong>
           </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <label for="sectionSelect" class="form-label">Section</label>
-                <select class="form-select" id="sectionSelect">
-                  <option value="">-- Sélectionner --</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label for="levelSelect" class="form-label">Niveau</label>
-                <select class="form-select" id="levelSelect" disabled>
-                  <option value="">-- Sélectionner --</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label for="classSelect" class="form-label">Classe</label>
-                <select class="form-select" id="classSelect" disabled>
-                  <option value="">-- Sélectionner --</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
-          <div class="card-header bg-white py-3 border-bottom">
-            <strong>Paramètres de saisie</strong>
-          </div>
-          <div class="card-body">
+          <div class="card-body p-3">
             <div class="row g-3 align-items-end">
-              <div class="col-md-3">
-                <label for="attendanceDate" class="form-label">Date</label>
-                <input type="date" class="form-control" id="attendanceDate" value="{{ today_iso }}">
-              </div>
               <div class="col-md-4">
-                <label for="attendancePeriod" class="form-label">Période (Mois)</label>
-                <input type="month" class="form-control" id="attendancePeriod">
+                <label for="statsDate" class="form-label">Date</label>
+                <input type="date" id="statsDate" class="form-control" value="{{ today_iso }}">
               </div>
-              <div class="col-md-5 d-flex gap-2">
-                <button type="button" id="reloadAttendanceBtn" class="btn btn-outline-secondary flex-grow-1">
-                  <i class="fas fa-rotate me-1"></i> Recharger
+              <div class="col-md-8 d-flex flex-wrap gap-2">
+                <button type="button" class="btn-ista-primary flex-fill" id="loadStatsBtn">
+                  <i class="fas fa-rotate me-1"></i> Actualiser
                 </button>
-                <button type="button" id="saveAttendanceBtn" class="btn btn-success flex-grow-1" disabled>
-                  <i class="fas fa-floppy-disk me-1"></i> Enregistrer
-                </button>
+                <a href="#" class="btn btn-outline-secondary flex-fill" id="printStatsLink" target="_blank">
+                  <i class="fas fa-print me-1"></i> Imprimer
+                </a>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card border-0 shadow-sm" style="border-radius: 8px;">
-          <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center gap-2">
-            <strong>Liste nominative</strong>
-            <span id="attendanceScopeLabel" class="badge bg-light text-dark">Sélectionnez une classe</span>
+        <div class="row g-3 mb-3" id="statsCards">
+          <div class="col-md-3"><div class="stat-card-ista red"><p class="stat-label-ista">Eleves</p><div class="stat-value-ista" id="totalStudents">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card-ista green"><p class="stat-label-ista">Presents</p><div class="stat-value-ista" id="totalPresent">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card-ista red"><p class="stat-label-ista">Absents</p><div class="stat-value-ista" id="totalAbsent">0</div></div></div>
+          <div class="col-md-3"><div class="stat-card-ista gold"><p class="stat-label-ista">Malades</p><div class="stat-value-ista" id="totalMalade">0</div></div></div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-header py-3 d-flex flex-wrap justify-content-between gap-2">
+            <strong>Resume par classe</strong>
+            <span class="badge bg-secondary" id="statsMeta">Aucune date chargee</span>
           </div>
           <div class="card-body p-0">
+            <div id="statsStatus"></div>
             <div class="table-responsive">
               <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead>
                   <tr>
-                    <th>Nom complet</th>
-                    <th style="width: 140px;">Sexe</th>
-                    <th style="width: 380px;">Statut</th>
+                    <th>Classe</th>
+                    <th class="text-center">Eleves</th>
+                    <th class="text-center">Pointes</th>
+                    <th class="text-center">Presents</th>
+                    <th class="text-center">Absents</th>
+                    <th class="text-center">Malades</th>
+                    <th class="text-center">Non saisis</th>
+                    <th class="text-center">%</th>
                   </tr>
                 </thead>
-                <tbody id="attendanceTableBody">
-                  <tr>
-                    <td colspan="3" class="text-center text-muted py-4">
-                      Sélectionnez une classe pour afficher la liste.
-                    </td>
-                  </tr>
+                <tbody id="statsTableBody">
+                  <tr><td colspan="8" class="text-center text-muted py-4">Chargement...</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
-          <div class="card-footer bg-white">
-            <div id="attendanceResult"></div>
+        </div>
+      </section>
+
+      <section class="tab-pane fade" id="classPane" role="tabpanel" aria-labelledby="class-tab">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <strong>Liste des presences par date et par classe</strong>
+          </div>
+          <div class="card-body p-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label for="classDate" class="form-label">Date</label>
+                <input type="date" id="classDate" class="form-control" value="{{ today_iso }}">
+              </div>
+              <div class="col-md-3">
+                <label for="sectionSelect" class="form-label">Section</label>
+                <select id="sectionSelect" class="form-select"><option value="">-- Section --</option></select>
+              </div>
+              <div class="col-md-2">
+                <label for="levelSelect" class="form-label">Niveau</label>
+                <select id="levelSelect" class="form-select" disabled><option value="">-- Niveau --</option></select>
+              </div>
+              <div class="col-md-2">
+                <label for="classSelect" class="form-label">Classe</label>
+                <select id="classSelect" class="form-select" disabled><option value="">-- Classe --</option></select>
+              </div>
+              <div class="col-md-2 d-flex gap-2">
+                <button type="button" class="btn-ista-primary flex-fill" id="loadClassBtn">
+                  <i class="fas fa-rotate"></i>
+                </button>
+                <a href="#" class="btn btn-outline-secondary flex-fill disabled" id="printClassLink" target="_blank">
+                  <i class="fas fa-print"></i>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="tab-pane fade" id="reports-content">
-        <div class="card border-0 shadow-sm" style="border-radius: 8px;">
-          <div class="card-header bg-white py-3 border-bottom">
-            <strong>Historique récent</strong>
+        <div class="card shadow-sm">
+          <div class="card-header py-3 d-flex flex-wrap justify-content-between gap-2">
+            <strong>Liste nominative</strong>
+            <span class="badge bg-secondary" id="classMeta">Aucune classe chargee</span>
           </div>
           <div class="card-body p-0">
+            <div id="classStatus"></div>
             <div class="table-responsive">
-              <table class="table table-striped table-hover mb-0 align-middle">
-                <thead class="table-light">
+              <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Période</th>
-                    <th>Classe</th>
-                    <th>Élève</th>
-                    <th>Sexe</th>
-                    <th>Statut</th>
+                    <th>Eleve</th>
+                    <th style="width: 100px;">Sexe</th>
+                    <th style="width: 160px;">Statut</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {% if records %}
-                    {% for record in records %}
-                    <tr>
-                      <td>{{ record.attendance_date }}</td>
-                      <td>{{ record.period or '—' }}</td>
-                      <td>{{ record.class_label or '—' }}</td>
-                      <td>{{ record.student_name or '—' }}</td>
-                      <td>{{ record.gender_label or '—' }}</td>
-                      <td>
-                        <span class="badge {% if record.status == 'present' %}bg-success{% elif record.status == 'absent' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
-                          {{ record.status_label or record.status or '—' }}
-                        </span>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  {% else %}
-                    <tr>
-                      <td colspan="6" class="text-center text-muted py-4">
-                        Aucun enregistrement récent.
-                      </td>
-                    </tr>
-                  {% endif %}
+                <tbody id="classTableBody">
+                  <tr><td colspan="3" class="text-center text-muted py-4">Selectionnez une classe.</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section class="tab-pane fade" id="holidayPane" role="tabpanel" aria-labelledby="holiday-tab">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <strong>Configuration des jours feries</strong>
+          </div>
+          <div class="card-body p-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <label for="holidayDate" class="form-label">Date</label>
+                <input type="date" id="holidayDate" class="form-control">
+              </div>
+              <div class="col-md-5">
+                <label for="holidayLabel" class="form-label">Libelle</label>
+                <input type="text" id="holidayLabel" class="form-control" maxlength="120">
+              </div>
+              <div class="col-md-3">
+                <button type="button" class="btn btn-success w-100" id="saveHolidayBtn">
+                  <i class="fas fa-plus me-1"></i> Ajouter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-header py-3">
+            <strong>Jours feries configures</strong>
+          </div>
+          <div class="card-body p-0">
+            <div id="holidayStatus"></div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Libelle</th>
+                    <th style="width: 130px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="holidayTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </div>
 
-<style>
-  .attendance-status-group {
-    display: inline-flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .attendance-status-btn {
-    min-width: 110px;
-  }
-
-  .attendance-status-btn.active {
-    box-shadow: none;
-  }
-</style>
-
 <script>
-  const sectionsData = {{ sections_catalog|tojson }};
-  const attendanceLoadUrlTemplate = {{ url_for('admin.get_class_attendance', section_id=0)|tojson }};
-  const attendanceSaveUrlTemplate = {{ url_for('admin.save_class_attendance', section_id=0)|tojson }};
-  const attendanceStatusLabels = {
-    present: 'Présent',
-    absent: 'Absent',
-    malade: 'Malade',
-  };
-  const attendanceStatusMeta = {
-    present: {
-      active: ['btn-success'],
-      inactive: ['btn-outline-success'],
-      icon: 'fa-check',
-    },
-    absent: {
-      active: ['btn-danger'],
-      inactive: ['btn-outline-danger'],
-      icon: 'fa-xmark',
-    },
-    malade: {
-      active: ['btn-warning', 'text-dark'],
-      inactive: ['btn-outline-warning', 'text-dark'],
-      icon: 'fa-notes-medical',
-    },
-  };
+const sectionsData = {{ sections_catalog|tojson }};
+let holidaysData = {{ holidays|tojson }};
+const statsApiUrl = {{ url_for('admin.attendance_daily_stats')|tojson }};
+const classApiUrl = {{ url_for('admin.attendance_class_list')|tojson }};
+const holidaysApiUrl = {{ url_for('admin.save_attendance_holiday')|tojson }};
+const printStatsUrl = {{ url_for('admin.print_attendance_daily_stats')|tojson }};
+const printClassUrl = {{ url_for('admin.print_attendance_class_list')|tojson }};
 
-  const sectionSelect = document.getElementById('sectionSelect');
-  const levelSelect = document.getElementById('levelSelect');
-  const classSelect = document.getElementById('classSelect');
-  const attendanceDateInput = document.getElementById('attendanceDate');
-  const attendancePeriodSelect = document.getElementById('attendancePeriod');
-  const reloadAttendanceBtn = document.getElementById('reloadAttendanceBtn');
-  const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
-  const attendanceTableBody = document.getElementById('attendanceTableBody');
-  const attendanceResult = document.getElementById('attendanceResult');
-  const attendanceScopeLabel = document.getElementById('attendanceScopeLabel');
-  const classLabelBadge = document.getElementById('classLabelBadge');
+const statsDate = document.getElementById('statsDate');
+const loadStatsBtn = document.getElementById('loadStatsBtn');
+const printStatsLink = document.getElementById('printStatsLink');
+const statsTableBody = document.getElementById('statsTableBody');
+const statsStatus = document.getElementById('statsStatus');
+const statsMeta = document.getElementById('statsMeta');
+const totalStudents = document.getElementById('totalStudents');
+const totalPresent = document.getElementById('totalPresent');
+const totalAbsent = document.getElementById('totalAbsent');
+const totalMalade = document.getElementById('totalMalade');
 
-  let currentSection = null;
-  let currentStudents = [];
+const classDate = document.getElementById('classDate');
+const sectionSelect = document.getElementById('sectionSelect');
+const levelSelect = document.getElementById('levelSelect');
+const classSelect = document.getElementById('classSelect');
+const loadClassBtn = document.getElementById('loadClassBtn');
+const printClassLink = document.getElementById('printClassLink');
+const classTableBody = document.getElementById('classTableBody');
+const classStatus = document.getElementById('classStatus');
+const classMeta = document.getElementById('classMeta');
 
-  const normalize = (value) => String(value ?? '').trim().toLowerCase();
-  const sortValues = (values) => [...values].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' }));
+const holidayDate = document.getElementById('holidayDate');
+const holidayLabel = document.getElementById('holidayLabel');
+const saveHolidayBtn = document.getElementById('saveHolidayBtn');
+const holidayTableBody = document.getElementById('holidayTableBody');
+const holidayStatus = document.getElementById('holidayStatus');
 
-  function buildAttendanceUrl(template, sectionId) {
-    return template.replace(/\/0$/, `/${sectionId}`);
-  }
+function normalize(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-  function showMessage(message, kind = 'success') {
-    attendanceResult.innerHTML = `
-      <div class="alert alert-${kind} alert-dismissible fade show mb-0" role="alert">
-        ${escapeHtml(message)}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-      </div>
-    `;
-  }
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }));
+}
 
-  function clearMessage() {
-    attendanceResult.innerHTML = '';
-  }
+function fillSelect(select, rows, placeholder) {
+  select.innerHTML = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = placeholder;
+  select.appendChild(empty);
+  rows.forEach((row) => {
+    const option = document.createElement('option');
+    option.value = row.value;
+    option.textContent = row.label;
+    select.appendChild(option);
+  });
+}
 
-  function getUniqueSectionNames() {
-    return sortValues([...new Set(sectionsData.map((item) => item.name).filter(Boolean))]);
-  }
+function setMessage(target, message, kind = 'info') {
+  target.innerHTML = `<div class="alert alert-${kind} m-3" role="alert">${escapeHtml(message)}</div>`;
+}
 
-  function getLevels(sectionName) {
-    const values = sectionsData
-      .filter((item) => normalize(item.name) === normalize(sectionName))
-      .map((item) => item.level)
-      .filter(Boolean);
-    return sortValues([...new Set(values)]);
-  }
+function clearMessage(target) {
+  target.innerHTML = '';
+}
 
-  function getClasses(sectionName, level) {
-    return sectionsData.filter((item) =>
-      normalize(item.name) === normalize(sectionName) &&
-      normalize(item.level) === normalize(level)
-    );
-  }
+function withQuery(url, params) {
+  const target = new URL(url, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') target.searchParams.set(key, value);
+  });
+  return target.pathname + target.search;
+}
 
-  function fillSelect(selectEl, options, placeholder, selectedValue = '') {
-    selectEl.innerHTML = '';
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = placeholder;
-    selectEl.appendChild(placeholderOption);
+function statusBadge(status, label) {
+  if (status === 'present') return `<span class="badge bg-success">${label}</span>`;
+  if (status === 'absent') return `<span class="badge bg-danger">${label}</span>`;
+  if (status === 'malade') return `<span class="badge bg-warning text-dark">${label}</span>`;
+  return `<span class="badge bg-secondary">${label || 'Non saisi'}</span>`;
+}
 
-    options.forEach((item) => {
-      const option = document.createElement('option');
-      option.value = item.value;
-      option.textContent = item.label;
-      if (normalize(selectedValue) === normalize(item.value)) {
-        option.selected = true;
-      }
-      selectEl.appendChild(option);
-    });
-  }
+async function loadStats() {
+  clearMessage(statsStatus);
+  statsTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Chargement...</td></tr>';
+  printStatsLink.href = withQuery(printStatsUrl, { date: statsDate.value });
 
-  function updateClassBadge(label) {
-    const text = label || 'Aucune classe sélectionnée';
-    classLabelBadge.textContent = text;
-    attendanceScopeLabel.textContent = label || 'Sélectionnez une classe';
-  }
+  try {
+    const response = await fetch(withQuery(statsApiUrl, { date: statsDate.value }));
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || 'Chargement impossible.');
 
-  function setButtonState(button, status, active) {
-    const meta = attendanceStatusMeta[status];
-    button.classList.remove(
-      'btn-success', 'btn-outline-success',
-      'btn-danger', 'btn-outline-danger',
-      'btn-warning', 'btn-outline-warning',
-      'text-dark', 'active'
-    );
-    button.classList.add('btn', 'btn-sm', 'attendance-status-btn');
-
-    const classes = active ? meta.active : meta.inactive;
-    classes.forEach((cls) => button.classList.add(cls));
-    if (active) {
-      button.classList.add('active');
+    const totals = data.totals || {};
+    totalStudents.textContent = totals.students_count || 0;
+    totalPresent.textContent = totals.present_count || 0;
+    totalAbsent.textContent = totals.absent_count || 0;
+    totalMalade.textContent = totals.malade_count || 0;
+    statsMeta.textContent = `${data.attendance_date} - ${totals.completion_rate || 0}% pointes`;
+    if (data.holiday) {
+      setMessage(statsStatus, `Jour ferie: ${data.holiday.label}`, 'warning');
+    } else if (data.closed) {
+      setMessage(statsStatus, 'Jour non ouvrable.', 'warning');
     }
-  }
 
-  function setRowStatus(row, status) {
-    row.dataset.status = status;
-    row.querySelectorAll('.attendance-status-btn').forEach((button) => {
-      setButtonState(button, button.dataset.status, button.dataset.status === status);
-    });
-  }
-
-  function renderStudents(students) {
-    currentStudents = students || [];
-    if (!currentStudents.length) {
-      attendanceTableBody.innerHTML = `
-        <tr>
-          <td colspan="3" class="text-center text-muted py-4">
-            Aucun élève trouvé pour cette classe.
-          </td>
-        </tr>
-      `;
-      saveAttendanceBtn.disabled = true;
+    const rows = data.rows || [];
+    if (!rows.length) {
+      statsTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Aucune classe trouvee.</td></tr>';
       return;
     }
-
-    attendanceTableBody.innerHTML = currentStudents.map((student) => {
-      const status = student.status || 'present';
-      const genderLabel = student.gender_label || (student.gender === 'M' ? 'Masculin' : student.gender === 'F' ? 'Féminin' : '—');
-      return `
-        <tr data-student-id="${student.student_id}" data-status="${status}">
-          <td class="fw-semibold">${escapeHtml(student.full_name)}</td>
-          <td>
-            <span class="badge bg-secondary">${escapeHtml(genderLabel)}</span>
-          </td>
-          <td>
-            <div class="attendance-status-group">
-              <button type="button" class="btn attendance-status-btn" data-status="present">
-                <i class="fas ${attendanceStatusMeta.present.icon} me-1"></i> Présent
-              </button>
-              <button type="button" class="btn attendance-status-btn" data-status="absent">
-                <i class="fas ${attendanceStatusMeta.absent.icon} me-1"></i> Absent
-              </button>
-              <button type="button" class="btn attendance-status-btn" data-status="malade">
-                <i class="fas ${attendanceStatusMeta.malade.icon} me-1"></i> Malade
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    attendanceTableBody.querySelectorAll('tr[data-student-id]').forEach((row, index) => {
-      const status = currentStudents[index].status || 'present';
-      setRowStatus(row, status);
-    });
-
-    saveAttendanceBtn.disabled = false;
-  }
-
-  async function loadAttendance() {
-    if (!currentSection || !currentSection.id) {
-      attendanceTableBody.innerHTML = `
-        <tr>
-          <td colspan="3" class="text-center text-muted py-4">
-            Sélectionnez une classe pour afficher la liste.
-          </td>
-        </tr>
-      `;
-      saveAttendanceBtn.disabled = true;
-      return;
-    }
-
-    const dateValue = attendanceDateInput.value || '';
-    const periodValue = attendancePeriodSelect.value || '';
-    if (!dateValue || !periodValue) {
-      showMessage('Date ou période manquante.', 'warning');
-      return;
-    }
-
-    attendanceTableBody.innerHTML = `
+    statsTableBody.innerHTML = rows.map((row) => `
       <tr>
-        <td colspan="3" class="text-center text-muted py-4">
-          Chargement...
-        </td>
+        <td class="fw-semibold">${escapeHtml(row.class_label)}</td>
+        <td class="text-center">${row.students_count}</td>
+        <td class="text-center">${row.entered_count}</td>
+        <td class="text-center">${row.present_count}</td>
+        <td class="text-center">${row.absent_count}</td>
+        <td class="text-center">${row.malade_count}</td>
+        <td class="text-center">${row.missing_count}</td>
+        <td class="text-center">${row.completion_rate}%</td>
       </tr>
-    `;
-    saveAttendanceBtn.disabled = true;
-    clearMessage();
+    `).join('');
+  } catch (error) {
+    statsTableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Erreur de chargement.</td></tr>';
+    setMessage(statsStatus, error.message || 'Erreur de chargement.', 'danger');
+  }
+}
 
-    try {
-      const response = await fetch(
-        `${buildAttendanceUrl(attendanceLoadUrlTemplate, currentSection.id)}?date=${encodeURIComponent(dateValue)}&period=${encodeURIComponent(periodValue)}`
-      );
-      const data = await response.json();
+function currentSectionId() {
+  return classSelect.value || '';
+}
 
-      if (!response.ok || data.error) {
-        throw new Error(data.error || 'Impossible de charger la liste.');
-      }
+function updateClassPrintLink() {
+  const sectionId = currentSectionId();
+  if (!sectionId) {
+    printClassLink.href = '#';
+    printClassLink.classList.add('disabled');
+    return;
+  }
+  printClassLink.href = withQuery(printClassUrl, { date: classDate.value, section_id: sectionId });
+  printClassLink.classList.remove('disabled');
+}
 
-      updateClassBadge(data.section?.label || currentSection.label || 'Classe sélectionnée');
-      renderStudents(data.students || []);
-    } catch (error) {
-      attendanceTableBody.innerHTML = `
-        <tr>
-          <td colspan="3" class="text-center text-muted py-4">
-            Échec du chargement.
-          </td>
-        </tr>
-      `;
-      saveAttendanceBtn.disabled = true;
-      showMessage(error.message || 'Erreur lors du chargement.', 'danger');
+async function loadClassList() {
+  const sectionId = currentSectionId();
+  updateClassPrintLink();
+  if (!sectionId) {
+    setMessage(classStatus, 'Selectionnez une classe.', 'warning');
+    return;
+  }
+
+  clearMessage(classStatus);
+  classTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Chargement...</td></tr>';
+
+  try {
+    const response = await fetch(withQuery(classApiUrl, { date: classDate.value, section_id: sectionId }));
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || 'Chargement impossible.');
+    classMeta.textContent = `${data.section?.label || ''} - ${data.attendance_date}`;
+    const rows = data.rows || [];
+    if (!rows.length) {
+      classTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Aucun eleve trouve.</td></tr>';
+      return;
     }
-  }
-
-  function refreshLevels(selectedLevel = '') {
-    const sectionName = sectionSelect.value;
-    const levels = getLevels(sectionName);
-    fillSelect(
-      levelSelect,
-      levels.map((level) => ({ value: level, label: level })),
-      '-- Sélectionner --',
-      selectedLevel
-    );
-    levelSelect.disabled = levels.length === 0;
-  }
-
-  function refreshClasses(selectedClass = '') {
-    const classes = getClasses(sectionSelect.value, levelSelect.value);
-    fillSelect(
-      classSelect,
-      classes.map((item) => ({ value: item.id, label: item.class_name })),
-      '-- Sélectionner --',
-      selectedClass
-    );
-    classSelect.disabled = classes.length === 0;
-  }
-
-  function resetSelection() {
-    currentSection = null;
-    currentStudents = [];
-    updateClassBadge('');
-    attendanceTableBody.innerHTML = `
+    classTableBody.innerHTML = rows.map((row) => `
       <tr>
-        <td colspan="3" class="text-center text-muted py-4">
-          Sélectionnez une classe pour afficher la liste.
-        </td>
+        <td class="fw-semibold">${escapeHtml(row.student_name)}</td>
+        <td><span class="badge bg-secondary">${escapeHtml(row.gender || '-')}</span></td>
+        <td>${statusBadge(row.status, row.status_label)}</td>
       </tr>
-    `;
-    saveAttendanceBtn.disabled = true;
-    clearMessage();
+    `).join('');
+  } catch (error) {
+    classTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Erreur de chargement.</td></tr>';
+    setMessage(classStatus, error.message || 'Erreur de chargement.', 'danger');
   }
+}
 
-  sectionSelect.addEventListener('change', () => {
-    refreshLevels('');
-    classSelect.innerHTML = '<option value="">-- Sélectionner --</option>';
-    classSelect.disabled = true;
-    resetSelection();
-  });
-
-  levelSelect.addEventListener('change', () => {
-    refreshClasses('');
-    resetSelection();
-  });
-
-  classSelect.addEventListener('change', async () => {
-    const selectedClassId = classSelect.value;
-    if (!selectedClassId) {
-      resetSelection();
-      return;
-    }
-
-    currentSection = sectionsData.find((item) => String(item.id) === String(selectedClassId)) || null;
-    updateClassBadge(currentSection?.label || '');
-    await loadAttendance();
-  });
-
-  attendanceDateInput.addEventListener('change', () => {
-    if (currentSection) {
-      loadAttendance();
-    }
-  });
-
-  attendancePeriodSelect.addEventListener('change', () => {
-    if (currentSection) {
-      loadAttendance();
-    }
-  });
-
-  reloadAttendanceBtn.addEventListener('click', () => {
-    if (currentSection) {
-      loadAttendance();
-    }
-  });
-
-  attendanceTableBody.addEventListener('click', (event) => {
-    const button = event.target.closest('.attendance-status-btn');
-    if (!button) {
-      return;
-    }
-
-    const row = button.closest('tr[data-student-id]');
-    if (!row) {
-      return;
-    }
-
-    setRowStatus(row, button.dataset.status);
-  });
-
-  saveAttendanceBtn.addEventListener('click', async () => {
-    if (!currentSection) {
-      showMessage('Sélectionnez une classe avant l’enregistrement.', 'warning');
-      return;
-    }
-
-    const entries = [...attendanceTableBody.querySelectorAll('tr[data-student-id]')].map((row) => ({
-      student_id: parseInt(row.dataset.studentId, 10),
-      status: row.dataset.status || 'present',
-    }));
-
-    saveAttendanceBtn.disabled = true;
-    saveAttendanceBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
-    clearMessage();
-
-    try {
-      const response = await fetch(buildAttendanceUrl(attendanceSaveUrlTemplate, currentSection.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          attendance_date: attendanceDateInput.value,
-          period: attendancePeriodSelect.value,
-          entries,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok || data.error) {
-        throw new Error(data.error || 'Échec de l’enregistrement.');
-      }
-
-      showMessage(data.message || 'Présences enregistrées avec succès.', 'success');
-      if (data.class_label) {
-        updateClassBadge(data.class_label);
-      }
-    } catch (error) {
-      showMessage(error.message || 'Erreur lors de l’enregistrement.', 'danger');
-    } finally {
-      saveAttendanceBtn.innerHTML = '<i class="fas fa-floppy-disk me-1"></i> Enregistrer';
-      saveAttendanceBtn.disabled = !currentSection || !currentStudents.length;
-    }
-  });
-
-  function initialize() {
-    const sectionNames = getUniqueSectionNames();
-    fillSelect(
-      sectionSelect,
-      sectionNames.map((name) => ({ value: name, label: name })),
-      '-- Sélectionner --'
-    );
-
-    if (!attendanceDateInput.value) {
-      attendanceDateInput.value = {{ today_iso|tojson }};
-    }
-    
-    if (!attendancePeriodSelect.value) {
-      const d = new Date();
-      attendancePeriodSelect.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    }
-
-    updateClassBadge('');
+function renderHolidays() {
+  if (!holidaysData.length) {
+    holidayTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Aucun jour ferie configure.</td></tr>';
+    return;
   }
+  holidayTableBody.innerHTML = holidaysData.map((holiday) => `
+    <tr data-holiday-id="${holiday.id}">
+      <td>${escapeHtml(holiday.holiday_date)}</td>
+      <td class="fw-semibold">${escapeHtml(holiday.label)}</td>
+      <td class="text-end">
+        <button type="button" class="btn btn-outline-danger btn-sm delete-holiday-btn">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
 
-  initialize();
+async function saveHoliday() {
+  clearMessage(holidayStatus);
+  if (!holidayDate.value || !holidayLabel.value.trim()) {
+    setMessage(holidayStatus, 'Date et libelle obligatoires.', 'warning');
+    return;
+  }
+  saveHolidayBtn.disabled = true;
+  try {
+    const response = await fetch(holidaysApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ holiday_date: holidayDate.value, label: holidayLabel.value.trim() }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || 'Enregistrement impossible.');
+    holidaysData = [data.holiday].concat(holidaysData.filter((item) => item.id !== data.holiday.id));
+    holidayLabel.value = '';
+    renderHolidays();
+    setMessage(holidayStatus, 'Jour ferie enregistre.', 'success');
+    loadStats();
+  } catch (error) {
+    setMessage(holidayStatus, error.message || 'Erreur d'enregistrement.', 'danger');
+  } finally {
+    saveHolidayBtn.disabled = false;
+  }
+}
+
+async function deleteHoliday(id) {
+  clearMessage(holidayStatus);
+  try {
+    const response = await fetch(`${holidaysApiUrl}/${id}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || 'Suppression impossible.');
+    holidaysData = holidaysData.filter((holiday) => String(holiday.id) !== String(id));
+    renderHolidays();
+    setMessage(holidayStatus, 'Jour ferie supprime.', 'success');
+    loadStats();
+  } catch (error) {
+    setMessage(holidayStatus, error.message || 'Erreur de suppression.', 'danger');
+  }
+}
+
+sectionSelect.addEventListener('change', () => {
+  const levels = uniqueSorted(sectionsData.filter((item) => normalize(item.name) === normalize(sectionSelect.value)).map((item) => item.level));
+  fillSelect(levelSelect, levels.map((level) => ({ value: level, label: level })), '-- Niveau --');
+  levelSelect.disabled = levels.length === 0;
+  fillSelect(classSelect, [], '-- Classe --');
+  classSelect.disabled = true;
+  updateClassPrintLink();
+});
+
+levelSelect.addEventListener('change', () => {
+  const classes = sectionsData.filter((item) =>
+    normalize(item.name) === normalize(sectionSelect.value) &&
+    normalize(item.level) === normalize(levelSelect.value)
+  );
+  fillSelect(classSelect, classes.map((item) => ({ value: item.id, label: item.class_name })), '-- Classe --');
+  classSelect.disabled = classes.length === 0;
+  updateClassPrintLink();
+});
+
+classSelect.addEventListener('change', () => {
+  updateClassPrintLink();
+  if (currentSectionId()) loadClassList();
+});
+classDate.addEventListener('change', () => {
+  updateClassPrintLink();
+  if (currentSectionId()) loadClassList();
+});
+statsDate.addEventListener('change', loadStats);
+loadStatsBtn.addEventListener('click', loadStats);
+loadClassBtn.addEventListener('click', loadClassList);
+saveHolidayBtn.addEventListener('click', saveHoliday);
+holidayTableBody.addEventListener('click', (event) => {
+  const button = event.target.closest('.delete-holiday-btn');
+  if (!button) return;
+  const row = button.closest('tr[data-holiday-id]');
+  if (row) deleteHoliday(row.dataset.holidayId);
+});
+
+function init() {
+  fillSelect(
+    sectionSelect,
+    uniqueSorted(sectionsData.map((item) => item.name)).map((name) => ({ value: name, label: name })),
+    '-- Section --'
+  );
+  printStatsLink.href = withQuery(printStatsUrl, { date: statsDate.value });
+  renderHolidays();
+  updateClassPrintLink();
+  loadStats();
+}
+
+init();
 </script>
 {% endblock %}

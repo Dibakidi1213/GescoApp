@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Statistiques des presences</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #fff;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    .toolbar button {
+      border: 1px solid #1d4ed8;
+      background: #1d4ed8;
+      color: #fff;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .toolbar button.secondary {
+      background: #fff;
+      color: #1d4ed8;
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 14px auto;
+      padding: 16mm 14mm;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 18px;
+      margin: 12px 0 16px;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      border: 1px solid #111827;
+      padding: 6px 7px;
+      text-align: center;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      background: #e5e7eb;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    tfoot td {
+      font-weight: 700;
+      background: #f3f4f6;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" class="secondary" onclick="window.close()">Fermer</button>
+    <button type="button" onclick="window.print()">Imprimer</button>
+  </div>
+
+  <main class="sheet">
+    <h1>{{ school.name if school else 'Ecole' }}</h1>
+    <h2>Statistiques des presences</h2>
+
+    <div class="meta">
+      <div><strong>Date :</strong> {{ stats.attendance_date }}</div>
+      <div><strong>Annee scolaire :</strong> {{ stats.academic_year }}</div>
+      <div><strong>Etat :</strong> {% if stats.holiday %}Jour ferie - {{ stats.holiday.label }}{% elif stats.closed %}Jour non ouvrable{% else %}Jour ouvrable{% endif %}</div>
+      <div><strong>Taux de pointage :</strong> {{ stats.totals.completion_rate }}%</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Classe</th>
+          <th>Eleves</th>
+          <th>Pointes</th>
+          <th>Presents</th>
+          <th>Absents</th>
+          <th>Malades</th>
+          <th>Non saisis</th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stats.rows %}
+        <tr>
+          <td>{{ row.class_label }}</td>
+          <td>{{ row.students_count }}</td>
+          <td>{{ row.entered_count }}</td>
+          <td>{{ row.present_count }}</td>
+          <td>{{ row.absent_count }}</td>
+          <td>{{ row.malade_count }}</td>
+          <td>{{ row.missing_count }}</td>
+          <td>{{ row.completion_rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>Total</td>
+          <td>{{ stats.totals.students_count }}</td>
+          <td>{{ stats.totals.entered_count }}</td>
+          <td>{{ stats.totals.present_count }}</td>
+          <td>{{ stats.totals.absent_count }}</td>
+          <td>{{ stats.totals.malade_count }}</td>
+          <td>{{ stats.totals.missing_count }}</td>
+          <td>{{ stats.totals.completion_rate }}%</td>
+        </tr>
+      </tfoot>
+    </table>
+  </main>
+</body>
+</html>

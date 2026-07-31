@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block title %}Communications - JNC_Kalasi{% endblock %}
+{% block content %}
+<div class="dashboard-wrapper">
+  <aside class="sidebar-ista">
+    <div class="sidebar-ista-group">
+      <ul>
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link"><i class="fas fa-chart-line"></i> <span>Tableau de Bord</span></a></li>
+      </ul>
+    </div>
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Administration</h6>
+      <ul>
+        <li><a href="{{ url_for('admin.schools') }}" class="sidebar-ista-link"><i class="fas fa-school"></i> <span>Gestion des écoles</span></a></li>
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link"><i class="fas fa-users-cog"></i> <span>Admins des écoles</span></a></li>
+        <li><a href="{{ url_for('admin.audit_logs') }}" class="sidebar-ista-link"><i class="fas fa-shield-halved"></i> <span>Audit & Sécurité</span></a></li>
+        <li><a href="{{ url_for('admin.backups') }}" class="sidebar-ista-link"><i class="fas fa-database"></i> <span>Sauvegarde & Restauration</span></a></li>
+        <li><a href="{{ url_for('admin.communications') }}" class="sidebar-ista-link active"><i class="fas fa-bullhorn"></i> <span>Communications</span></a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-content-ista">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="page-title-ista mb-1"><i class="fas fa-bullhorn" style="color: #7c3aed;"></i> Communications</h1>
+        <p class="text-muted">Envoyez des notifications et annonces aux écoles et utilisateurs.</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center py-3">
+            <div class="text-primary fs-3 mb-1"><i class="fas fa-envelope"></i></div>
+            <div class="fw-bold fs-4">{{ total_sent }}</div>
+            <div class="text-muted small">Notifications envoyées</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center py-3">
+            <div class="text-warning fs-3 mb-1"><i class="fas fa-envelope-open"></i></div>
+            <div class="fw-bold fs-4">{{ total_unread }}</div>
+            <div class="text-muted small">Non lues</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body d-flex align-items-center justify-content-center py-3">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sendModal">
+              <i class="fas fa-paper-plane me-2"></i> Nouvelle Communication
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Modal -->
+    <div class="modal fade" id="sendModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form method="POST" action="{{ url_for('admin.send_communication') }}">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-paper-plane me-2 text-primary"></i> Envoyer une Communication</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label fw-medium">Type de notification</label>
+                <select name="notification_type" class="form-select" id="notifType">
+                  <option value="global">Globale - Toutes les écoles actives</option>
+                  <option value="direct">Directe - École spécifique</option>
+                </select>
+              </div>
+              <div class="mb-3" id="schoolSelectDiv" style="display:none;">
+                <label class="form-label fw-medium">École cible</label>
+                <select name="school_id" class="form-select">
+                  <option value="">-- Sélectionner --</option>
+                  {% for s in schools %}
+                  <option value="{{ s.id }}">{{ s.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-medium">Rôle cible (optionnel)</label>
+                <select name="target_role" class="form-select">
+                  <option value="">Tous les rôles</option>
+                  <option value="school_admin">Administrateurs d'école</option>
+                  <option value="secretary">Secrétaires</option>
+                  <option value="professor">Professeurs</option>
+                  <option value="discipline">Discipline</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-medium">Titre</label>
+                <input type="text" name="title" class="form-control" required maxlength="150" placeholder="Objet de la communication">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-medium">Message</label>
+                <textarea name="message" class="form-control" rows="5" required placeholder="Contenu du message..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i> Envoyer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2 text-primary"></i> Historique des Communications</h5>
+        <form method="GET" class="d-flex gap-2">
+          <select name="school_id" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Toutes les écoles</option>
+            {% for s in schools %}
+            <option value="{{ s.id }}" {% if school_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+          </select>
+          <select name="type" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+            <option value="">Tous les types</option>
+            <option value="global" {% if type_filter == 'global' %}selected{% endif %}>Globale</option>
+            <option value="direct" {% if type_filter == 'direct' %}selected{% endif %}>Directe</option>
+            <option value="system" {% if type_filter == 'system' %}selected{% endif %}>Système</option>
+            <option value="general" {% if type_filter == 'general' %}selected{% endif %}>Générale</option>
+          </select>
+        </form>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr>
+                <th>Date</th>
+                <th>Titre</th>
+                <th>Message</th>
+                <th>Type</th>
+                <th>École</th>
+                <th>Destinataire</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for notif in notifications %}
+              <tr>
+                <td class="text-nowrap small">{{ notif.created_at.strftime('%d/%m/%Y %H:%M') if notif.created_at else '-' }}</td>
+                <td class="fw-medium">{{ notif.title }}</td>
+                <td class="small text-muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  {{ notif.message }}
+                </td>
+                <td>
+                  {% set type_styles = {'global': 'primary', 'direct': 'info', 'system': 'warning', 'general': 'secondary'} %}
+                  {% set style = type_styles.get(notif.notification_type, 'secondary') %}
+                  <span class="badge bg-{{ style }}-subtle text-{{ style }} px-2 py-1 small">
+                    {{ notif.notification_type|title }}
+                  </span>
+                </td>
+                <td class="small">{{ notif.school.name if notif.school else '-' }}</td>
+                <td class="small">
+                  {% if notif.recipient %}
+                  <span class="fw-medium">{{ notif.recipient.full_name }}</span>
+                  <span class="badge bg-light text-muted ms-1">{{ notif.recipient.role|replace('_', ' ')|title }}</span>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if notif.is_read %}
+                  <span class="badge bg-success-subtle text-success px-2 py-1 small"><i class="fas fa-check-circle me-1"></i> Lue</span>
+                  {% else %}
+                  <span class="badge bg-warning-subtle text-warning px-2 py-1 small"><i class="fas fa-clock me-1"></i> Non lue</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center py-4 text-muted">Aucune communication envoyée.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if pages > 1 %}
+    <nav class="mt-3">
+      <ul class="pagination pagination-sm justify-content-center">
+        <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.communications', page=current_page-1, school_id=school_filter, type=type_filter) }}">Précédent</a>
+        </li>
+        {% for p in range(1, pages + 1) %}
+        <li class="page-item {% if p == current_page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.communications', page=p, school_id=school_filter, type=type_filter) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if current_page >= pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.communications', page=current_page+1, school_id=school_filter, type=type_filter) }}">Suivant</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+document.getElementById('notifType').addEventListener('change', function() {
+  document.getElementById('schoolSelectDiv').style.display = this.value === 'direct' ? 'block' : 'none';
+});
+</script>
+
+<style>
+.bg-success-subtle { background-color: #d1fae5 !important; }
+.bg-warning-subtle { background-color: #fef3c7 !important; }
+.bg-primary-subtle { background-color: #e0e7ff !important; }
+.bg-info-subtle { background-color: #dbeafe !important; }
+.bg-secondary-subtle { background-color: #f3f4f6 !important; }
+</style>
+{% endblock %}

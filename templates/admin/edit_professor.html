@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block title %}Administration - Modifier professeur{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
@@ -24,8 +24,8 @@
             <input type="password" name="password" class="form-control" placeholder="Laisser vide pour conserver l’actuel">
           </div>
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
-            <a href="{{ url_for('admin.professors') }}" class="btn btn-secondary">Annuler</a>
+            <button type="submit" class="btn-ista-primary">Enregistrer</button>
+            <a href="{{ url_for('admin.professors') }}" class="btn-ista-secondary">Annuler</a>
           </div>
         </form>
       </div>

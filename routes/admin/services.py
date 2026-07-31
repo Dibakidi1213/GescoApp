@@ -290,14 +290,17 @@ def build_grades_map_for_student(student, school_id, year):
 
     bulletin_totals = None
     if branches:
-        max_period = sum(float(b['max_period_1'] or 0) * 2 for b in branches if b['type'] == 'branch')
-        max_exam = sum(float(b['max_exam_1'] or 0) for b in branches if b['type'] == 'branch')
-        semester_total = max_period + max_exam
+        max_period_1 = sum(float(b['max_period_1'] or 0) * 2 for b in branches if b['type'] == 'branch')
+        max_exam_1 = sum(float(b['max_exam_1'] or 0) for b in branches if b['type'] == 'branch')
+        max_period_2 = sum(float(b['max_period_3'] or 0) * 2 for b in branches if b['type'] == 'branch')
+        max_exam_2_val = sum(float(b['max_exam_2'] or 0) for b in branches if b['type'] == 'branch')
+        semester1_total = max_period_1 + max_exam_1
+        semester2_total = max_period_2 + max_exam_2_val
         bulletin_totals = {
-            'maxPeriod': max_period,
-            'maxExam': max_exam,
-            'semesterTotal': semester_total,
-            'generalTotal': semester_total * 2,
+            'maxPeriod': max_period_1 + max_period_2,
+            'maxExam': max_exam_1 + max_exam_2_val,
+            'semesterTotal': semester1_total + semester2_total,
+            'generalTotal': semester1_total + semester2_total,
         }
 
     return grades_map, branches, bulletin_totals
@@ -348,7 +351,7 @@ def get_failed_courses_for_student(student_id, school_id, year):
         # Calculer le maximum annuel
         branch = course.branch
         max_annual = (float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0)) + \
-                     (float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0))
+                     (float(branch.max_period_3 or 0) * 2) + (float(branch.max_exam_2 or 0))
         
         if max_annual == 0:
             continue
@@ -634,23 +637,56 @@ def build_centralization_context(school_id, section_id, scope, year):
 
 def apply_section_hierarchy_config(school_id, section_name, config, replace_existing=True):
     """Crée/met à jour les enregistrements Section à partir d'un dict niveau -> classes."""
-    if replace_existing:
-        existing = Section.query.filter_by(school_id=school_id, name=section_name).all()
-        for section in existing:
-            db.session.delete(section)
-        db.session.flush()
-
-    created = []
+    existing_sections = Section.query.filter_by(school_id=school_id, name=section_name).all()
+    
+    # Map key: (level, class_name) -> section object
+    existing_map = {(s.level, s.class_name): s for s in existing_sections}
+    
+    # On détermine les combinaisons cibles demandées
+    target_combinations = set()
     for level, classes in (config or {}).items():
         for class_name in classes or []:
+            target_combinations.add((str(level).strip(), str(class_name).strip()))
+            
+    # Déterminer les sections à supprimer si replace_existing est vrai
+    to_delete = []
+    if replace_existing:
+        for (level, class_name), section in existing_map.items():
+            if (level, class_name) not in target_combinations:
+                to_delete.append(section)
+                
+    # Valider les suppressions : interdire s'il y a des élèves
+    for section in to_delete:
+        student_count = Student.query.filter_by(section_id=section.id).count()
+        if student_count > 0:
+            raise ValueError(
+                f"Impossible de supprimer le niveau {section.level} (classe {section.class_name}) "
+                f"car {student_count} élève(s) y sont inscrit(s). "
+                f"Veuillez d'abord réaffecter ces élèves ou réinitialiser la classe."
+            )
+            
+        # Détacher les cours rattachés à cette section
+        Course.query.filter_by(section_id=section.id).update({'section_id': None})
+            
+    # Effectuer les suppressions
+    for section in to_delete:
+        db.session.delete(section)
+    if to_delete:
+        db.session.flush()
+        
+    # Déterminer les sections à créer
+    created = []
+    for level, class_name in target_combinations:
+        if (level, class_name) not in existing_map:
             section = Section(
                 school_id=school_id,
                 name=section_name,
-                level=str(level),
-                class_name=str(class_name),
+                level=level,
+                class_name=class_name,
             )
             db.session.add(section)
             created.append(section)
+            
     return created
 
 

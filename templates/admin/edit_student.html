@@ -1,293 +1,586 @@
 {% extends 'base.html' %}
+
 {% block title %}Modifier l'élève - JNC_Kalasi{% endblock %}
+
 {% block content %}
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
+
+  <aside class="sidebar-ista">
+
     <!-- Principal -->
-    <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chart-line"></i>
+
           <span>Tableau de Bord</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Gestion Académique -->
-    <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.students') }}" class="sidebar-menu-link active">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.students') }}" class="sidebar-ista-link active">
+
           <i class="fas fa-users"></i>
+
           <span>Inscription élèves</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
+
           <i class="fas fa-layer-group"></i>
+
           <span>Sections/Niveaux/Classes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link">
+
           <i class="fas fa-book"></i>
+
           <span>Cours/Attributions</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chalkboard-user"></i>
+
           <span>Professeurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Évaluations -->
-    <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Évaluations</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
+
           <i class="fas fa-star"></i>
+
           <span>Gestion des cotes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-file-pdf"></i>
+
           <span>Paramétrage Bulletins</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
+
           <i class="fas fa-balance-scale"></i>
+
           <span>Délibération</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-sliders-h"></i>
+
           <span>Paramètres Délibération</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Configuration -->
-    <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-menu-link">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Configuration</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-ista-link">
+
           <i class="fas fa-cog"></i>
+
           <span>Paramètres école</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link">
+
           <i class="fas fa-user-shield"></i>
+
           <span>Utilisateurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <!-- PAGE HEADER -->
+
     <div class="mb-4">
+
       <a href="{{ url_for('admin.students') }}" class="btn btn-sm btn-outline-secondary mb-3">
+
         <i class="fas fa-arrow-left"></i> Retour à la liste
+
       </a>
-      <h1 class="page-title">
+
+      <h1 class="page-title-ista">
+
         <i class="fas fa-user-edit"></i> Modifier la fiche de l'élève
+
       </h1>
+
       <p class="text-muted">Mettez à jour les informations personnelles et de scolarité pour l'élève <strong>{{ student.last_name }} {{ student.first_name }}</strong></p>
+
     </div>
+
+
 
     <div class="row g-3">
+
       <div class="col-lg-8">
-        <div class="card form-card" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; overflow: hidden; background: white;">
-          <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem 1.5rem; font-weight: 700; font-size: 1.1rem; border: none; display: flex; align-items: center; gap: 0.5rem;">
+
+        <div class="card card-ista" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; overflow: hidden; background: white;">
+
+          <div class="card-header" style="background: linear-gradient(135deg, var(--ista-blue) 0%, var(--ista-blue-dark) 100%); color: white; padding: 1.25rem 1.5rem; font-weight: 700; font-size: 1.1rem; border: none; display: flex; align-items: center; gap: 0.5rem;">
+
             <i class="fas fa-id-card"></i> Informations de l'élève
+
           </div>
+
           <div class="card-body" style="padding: 2rem;">
+
             <form method="post" id="edit-student-form">
+
               <input type="hidden" id="manual_section_name" name="section_name" value="{{ current_section.name if current_section else '' }}">
+
               <input type="hidden" id="manual_level" name="level" value="{{ current_section.level if current_section else '' }}">
+
               <input type="hidden" id="manual_class_name" name="class_name" value="{{ current_section.class_name if current_section else '' }}">
 
+
+
               <!-- Infos personnelles -->
+
               <div class="section-title mb-4">
+
                 <i class="fas fa-id-card"></i> Informations personnelles
+
               </div>
+
               <div class="row">
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-user"></i> Nom *</label>
+
                   <input type="text" name="last_name" class="form-control" value="{{ student.last_name }}" required>
+
                 </div>
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-user"></i> Postnom</label>
+
                   <input type="text" name="first_name" class="form-control" value="{{ student.first_name }}">
+
                 </div>
+
               </div>
 
+
+
               <div class="row">
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-calendar"></i> Date de naissance</label>
+
                   <input type="date" name="birth_date" class="form-control" value="{{ student.birth_date.strftime('%Y-%m-%d') if student.birth_date else '' }}">
+
                 </div>
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-map-pin"></i> Lieu de naissance</label>
+
                   <input type="text" name="place_of_birth" class="form-control" value="{{ student.place_of_birth or '' }}">
+
                 </div>
+
               </div>
 
+
+
               <div class="row">
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-venus-mars"></i> Genre</label>
+
                   <select name="gender" class="form-select">
+
                     <option value="" {% if not student.gender %}selected{% endif %}>Non spécifié</option>
+
                     <option value="M" {% if student.gender == 'M' %}selected{% endif %}>Masculin</option>
+
                     <option value="F" {% if student.gender == 'F' %}selected{% endif %}>Féminin</option>
+
                   </select>
+
                 </div>
+
                 <div class="col-md-6 mb-3">
-                  <label class="form-label"><i class="fas fa-id-card"></i> N° ID</label>
+
+                  <label class="form-label"><i class="fas fa-id-card"></i> NÂ° ID</label>
+
                   <input type="text" name="student_id_number" class="form-control" value="{{ student.student_id_number or '' }}">
+
                 </div>
+
               </div>
 
+
+
               <div class="row">
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-id-badge"></i> Numéro matricule / série</label>
+
                   <input type="text" name="serial_number" class="form-control" value="{{ student.serial_number or '' }}">
+
                 </div>
+
               </div>
+
+
 
               <!-- Infos parents -->
+
               <div class="section-title mb-4 mt-4">
+
                 <i class="fas fa-users-rectangle"></i> Informations des parents
-              </div>
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label class="form-label"><i class="fas fa-male"></i> Nom du père</label>
-                  <input type="text" name="father_name" class="form-control" value="{{ student.father_name or '' }}">
-                </div>
-                <div class="col-md-6 mb-3">
-                  <label class="form-label"><i class="fas fa-female"></i> Nom de la mère</label>
-                  <input type="text" name="mother_name" class="form-control" value="{{ student.mother_name or '' }}">
-                </div>
+
               </div>
 
               <div class="row">
+
                 <div class="col-md-6 mb-3">
-                  <label class="form-label"><i class="fas fa-phone"></i> Téléphone parents</label>
-                  <input type="text" name="parent_phone" class="form-control" value="{{ student.parent_phone or '' }}">
+
+                  <label class="form-label"><i class="fas fa-male"></i> Nom du père</label>
+
+                  <input type="text" name="father_name" class="form-control" value="{{ student.father_name or '' }}">
+
                 </div>
+
                 <div class="col-md-6 mb-3">
-                  <label class="form-label"><i class="fas fa-envelope"></i> Email parents / élève</label>
-                  <input type="email" name="email" class="form-control" value="{{ student.email or '' }}">
+
+                  <label class="form-label"><i class="fas fa-female"></i> Nom de la mère</label>
+
+                  <input type="text" name="mother_name" class="form-control" value="{{ student.mother_name or '' }}">
+
                 </div>
+
               </div>
+
+
+
+              <div class="row">
+
+                <div class="col-md-6 mb-3">
+
+                  <label class="form-label"><i class="fas fa-phone"></i> Téléphone parents</label>
+
+                  <input type="text" name="parent_phone" class="form-control" value="{{ student.parent_phone or '' }}">
+
+                </div>
+
+                <div class="col-md-6 mb-3">
+
+                  <label class="form-label"><i class="fas fa-envelope"></i> Email parents / élève</label>
+
+                  <input type="email" name="email" class="form-control" value="{{ student.email or '' }}">
+
+                </div>
+
+              </div>
+
+
 
               <!-- Infos contact -->
+
               <div class="section-title mb-4 mt-4">
+
                 <i class="fas fa-address-card"></i> Coordonnées
+
               </div>
+
               <div class="row">
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-phone"></i> Téléphone élève</label>
+
                   <input type="text" name="phone" class="form-control" value="{{ student.phone or '' }}">
+
                 </div>
+
                 <div class="col-md-6 mb-3">
+
                   <label class="form-label"><i class="fas fa-map-marker-alt"></i> Adresse domicile</label>
+
                   <input type="text" name="address" class="form-control" value="{{ student.address or '' }}">
+
                 </div>
+
               </div>
+
+
 
               <hr class="my-4">
+
               <div class="d-flex gap-3">
-                <button type="submit" class="btn btn-primary btn-lg flex-grow-1" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);">
+
+                <button type="submit" class="btn-ista-primary btn-lg flex-grow-1" style="background: linear-gradient(135deg, var(--ista-blue) 0%, var(--ista-blue-dark) 100%); border: none; box-shadow: 0 4px 12px rgba(24, 41, 131, 0.25);">
+
                   <i class="fas fa-save me-2"></i> Enregistrer les modifications
+
                 </button>
+
                 <a href="{{ url_for('admin.students') }}" class="btn btn-outline-secondary btn-lg">
+
                   Annuler
+
                 </a>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <!-- RIGHT SIDEBAR - CLASS SELECTOR -->
+
       <div class="col-lg-4">
-        <div class="card form-card" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; overflow: hidden; background: white;">
-          <div class="card-header" style="background: #f8f9fc; border-bottom: 2px solid #e9ecef; color: #2c3e50; padding: 1.25rem 1.5rem; font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-filter" style="color: #667eea;"></i> Affectation académique
+
+        <div class="card card-ista" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08); border-radius: 12px; overflow: hidden; background: white;">
+
+          <div class="card-header" style="background: #f8f9fc; border-bottom: 2px solid #e9ecef; color: var(--ista-blue); padding: 1.25rem 1.5rem; font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+
+            <i class="fas fa-filter" style="color: var(--ista-blue);"></i> Affectation académique
+
           </div>
+
           <div class="card-body" style="padding: 1.5rem;">
+
             <div class="mb-3">
+
               <label class="form-label">Section *</label>
+
               <select id="select_section_name" class="form-select" required>
+
                 <option value="">Choisir une section</option>
+
                 {% for name in sections | map(attribute='name') | unique | sort %}
+
                 <option value="{{ name }}" {% if current_section and current_section.name == name %}selected{% endif %}>{{ name }}</option>
+
                 {% endfor %}
+
               </select>
+
             </div>
+
             <div class="mb-3">
+
               <label class="form-label">Niveau *</label>
+
               <select id="select_level" class="form-select" required>
+
                 <option value="">Choisir un niveau</option>
+
                 {% for level in sections | map(attribute='level') | unique | sort %}
+
                 <option value="{{ level }}" {% if current_section and current_section.level == level %}selected{% endif %}>{{ level }}</option>
+
                 {% endfor %}
+
               </select>
+
             </div>
+
             <div class="mb-3">
+
               <label class="form-label">Classe *</label>
+
               <select id="select_class_name" class="form-select" required>
+
                 <option value="">Choisir une classe</option>
+
                 {% for class_name in sections | map(attribute='class_name') | unique | sort %}
+
                 <option value="{{ class_name }}" {% if current_section and current_section.class_name == class_name %}selected{% endif %}>{{ class_name }}</option>
+
                 {% endfor %}
+
               </select>
+
             </div>
+
             <div class="alert alert-info mt-4" role="alert" style="background-color: #f0f4ff; border-color: #dbe4ff; color: #3b5bdb;">
+
               <i class="fas fa-info-circle me-1"></i> 
+
               <strong>Note:</strong> L'élève doit obligatoirement être assigné à une classe de l'école.
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   </main>
+
 </div>
 
+
+
 <style>
+
 .section-title {
+
   font-size: 1rem;
+
   font-weight: 700;
-  color: #2c3e50;
+
+  color: var(--ista-blue);
+
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #667eea;
+
+  border-bottom: 2px solid var(--ista-blue);
+
   display: inline-block;
+
 }
+
 .form-control:focus, .form-select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+
+  border-color: var(--ista-blue);
+
+  box-shadow: 0 0 0 0.2rem rgba(24, 41, 131, 0.25);
+
 }
+
 </style>
 
+
+
 <script>
+
   (function () {
+
     const srcSection = document.getElementById('select_section_name');
+
     const srcLevel = document.getElementById('select_level');
+
     const srcClass = document.getElementById('select_class_name');
+
     const dstSection = document.getElementById('manual_section_name');
+
     const dstLevel = document.getElementById('manual_level');
+
     const dstClass = document.getElementById('manual_class_name');
 
+
+
     function sync() {
+
       if (dstSection) dstSection.value = srcSection ? srcSection.value : '';
+
       if (dstLevel) dstLevel.value = srcLevel ? srcLevel.value : '';
+
       if (dstClass) dstClass.value = srcClass ? srcClass.value : '';
+
     }
 
+
+
     if (srcSection) srcSection.addEventListener('change', sync);
+
     if (srcLevel) srcLevel.addEventListener('change', sync);
+
     if (srcClass) srcClass.addEventListener('change', sync);
+
     
+
     // Initial sync
+
     sync();
+
   })();
+
 </script>
+
 {% endblock %}
+

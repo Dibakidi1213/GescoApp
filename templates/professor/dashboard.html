@@ -1,2440 +1,626 @@
 {% extends 'base.html' %}
-{% block title %}{% if can_manage_grades %}Professeur - Saisie des notes{% else %}Discipline - Présences et conduite{% endif %}{% endblock %}
+{% block title %}{{ dashboard_title }}{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4 professor-dashboard">
-  <div class="row">
-    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <h2 class="mb-0">{{ dashboard_title }}</h2>
-      {% if can_manage_attendance and conduite_url %}
-      <a href="{{ conduite_url }}" class="btn btn-outline-primary btn-sm">
-        <i class="fas fa-clipboard-check me-1"></i> Conduite
-      </a>
-      {% endif %}
-    </div>
+<div class="main-content-ista">
+  <div class="page-header-ista">
+    <h1 class="page-title-ista"><i class="fas fa-star"></i> {{ dashboard_title }}</h1>
   </div>
 
-  <!-- Hierarchical Selection: Section -> Niveau -> Classe -> Cours -->
-  <div class="card shadow-sm mb-3">
-    <div class="card-header py-2">
-      <strong class="small"><i class="fas fa-filter text-muted me-1"></i> Filtres de sélection</strong>
-    </div>
-    <div class="card-body py-2">
-      <div class="row g-2 align-items-end">
-        <div class="col-12 col-sm-6 {% if can_manage_grades %}col-md-3{% else %}col-md-4{% endif %}">
-          <label class="form-label small text-muted mb-1">Section</label>
-          <select id="sectionSelect" class="form-select form-select-sm">
+  <!-- Filters -->
+  <div class="card-ista mb-3">
+    <div class="card-ista-header"><i class="fas fa-filter"></i> Filtres de sélection</div>
+    <div class="card-ista-body">
+      <div class="filter-group-ista">
+        <div class="filter-item">
+          <label>Section</label>
+          <select id="sectionSelect" class="form-select">
             <option value="">-- Section --</option>
+            {% for section in all_section_names %}
+              <option value="{{ section }}" {% if section == selected_section_name %}selected{% endif %}>{{ section }}</option>
+            {% endfor %}
           </select>
         </div>
-        <div class="col-12 col-sm-6 {% if can_manage_grades %}col-md-3{% else %}col-md-4{% endif %}">
-          <label class="form-label small text-muted mb-1">Niveau</label>
-          <select id="levelSelect" class="form-select form-select-sm" disabled>
+        <div class="filter-item">
+          <label>Niveau</label>
+          <select id="levelSelect" class="form-select" {% if not selected_section_name %}disabled{% endif %}>
             <option value="">-- Niveau --</option>
+            {% for level in all_levels %}
+              <option value="{{ level }}" {% if level == selected_level %}selected{% endif %}>{{ level }}</option>
+            {% endfor %}
           </select>
         </div>
-        <div class="col-12 col-sm-6 {% if can_manage_grades %}col-md-3{% else %}col-md-4{% endif %}">
-          <label class="form-label small text-muted mb-1">Classe</label>
-          <select id="classSelect" class="form-select form-select-sm" disabled>
+        <div class="filter-item">
+          <label>Classe</label>
+          <select id="classSelect" class="form-select" {% if not selected_level %}disabled{% endif %}>
             <option value="">-- Classe --</option>
+            {% for cls in all_classes %}
+              <option value="{{ cls }}" {% if cls == selected_class_name %}selected{% endif %}>{{ cls }}</option>
+            {% endfor %}
           </select>
         </div>
-        {% if can_manage_grades %}
-        <div class="col-12 col-sm-6 col-md-3">
-          <label class="form-label small text-muted mb-1">Cours</label>
-          <select id="courseSelect" class="form-select form-select-sm" disabled>
+        <div class="filter-item">
+          <label>Cours</label>
+          <select id="courseSelect" class="form-select" {% if not selected_class_name %}disabled{% endif %}>
             <option value="">-- Cours --</option>
+            {% for c in all_courses_for_class %}
+              <option value="{{ c.id }}" {% if c.id|string == selected_course_id|string %}selected{% endif %}>{{ c.title }}</option>
+            {% endfor %}
           </select>
         </div>
-        {% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Onglets principaux -->
-  <div id="courseSelectionNotice" class="alert alert-warning py-2 mb-3 small shadow-sm">
-    <strong>Instruction :</strong>
-    <span id="selectionNoticeContent">
-      {% if can_manage_grades %}
-        Sélectionnez une section, un niveau, une classe et un cours pour commencer la saisie des notes.
-      {% else %}
-        Sélectionnez une section, un niveau et une classe pour commencer la prise de présence et la conduite.
-      {% endif %}
-    </span>
+  <!-- Instruction -->
+  <div class="alert-ista-info mb-3"><strong>Instruction :</strong> Sélectionnez une section, un niveau, une classe et un cours.</div>
+
+  <!-- Tabs -->
+  <div class="d-flex w-100 mb-3 gap-1">
+    <div class="flex-grow-1 text-center py-2 text-white fw-bold rounded-top" style="background: var(--ista-blue); cursor: default;">
+      Saisie des cotes
+    </div>
+    <div class="flex-grow-1 text-center py-2 text-white fw-bold rounded-top" style="background: var(--ista-gold-dark); cursor: pointer;" onclick="toggleNotifications()">
+      <span class="badge bg-danger me-1">{{ unread_notifications_count or 0 }}</span> Notifications
+    </div>
   </div>
 
-  <div class="card shadow-sm mb-4">
-    <div class="card-header p-0">
-      <ul class="nav nav-tabs card-header-tabs" id="professorTabs" role="tablist">
-        {% if can_manage_grades %}
-        <li class="nav-item" role="presentation">
-          <button class="nav-link tab-grades active" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades-pane" type="button" role="tab" aria-controls="grades-pane" aria-selected="true">
-            Saisie des cotes
-          </button>
-        </li>
-        {% endif %}
-        {% if can_manage_attendance %}
-        <li class="nav-item" role="presentation">
-          <button class="nav-link tab-presence {% if not can_manage_grades %}active{% endif %}" id="presence-tab" data-bs-toggle="tab" data-bs-target="#presence-pane" type="button" role="tab" aria-controls="presence-pane" aria-selected="{% if not can_manage_grades %}true{% else %}false{% endif %}">
-            Présences
-          </button>
-        </li>
-        {% endif %}
-        {% if can_view_notifications %}
-        <li class="nav-item" role="presentation">
-          <button class="nav-link tab-notifications" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications-pane" type="button" role="tab" aria-controls="notifications-pane" aria-selected="false">
-            <span id="notificationsTabBadge" class="badge {% if unread_notifications_count and unread_notifications_count > 0 %}bg-danger{% else %}bg-secondary{% endif %} me-2">
-              {{ unread_notifications_count or 0 }}
-            </span>
-            Notifications
-          </button>
-        </li>
-        {% endif %}
-      </ul>
-    </div>
-    <div class="card-body">
-      <div class="tab-content" id="professorTabsContent">
-        {% if can_manage_grades %}
-        <div class="tab-pane fade show active" id="grades-pane" role="tabpanel" aria-labelledby="grades-tab">
-          {% if course %}
-          <div id="gradingWorkspace">
-            <div class="bg-light border rounded p-2 mb-3 shadow-sm">
-              <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div class="period-buttons mb-0 flex-grow-1" role="group" aria-label="Sélection de la période">
-                  {% for period in periods %}
-                    <input type="radio" class="btn-check period-select" name="period" id="period{{ loop.index }}"
-                           value="{{ period }}" {% if loop.index == 1 %}checked{% endif %}>
-                    <label class="btn btn-outline-primary btn-sm period-btn" for="period{{ loop.index }}">{{ period }}</label>
-                  {% endfor %}
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <form id="import-grades-form" class="d-flex align-items-center gap-2 m-0" enctype="multipart/form-data">
-                    <input type="file" name="file" id="grade-file-input" accept=".xlsx,.xls" class="form-control form-control-sm" style="max-width: 180px;" required>
-                    <button type="button" id="import-grades-btn" class="btn btn-success btn-sm"><i class="fas fa-file-import"></i> Importer</button>
-                    <button type="button" id="import-all-grades-btn" class="btn btn-warning btn-sm" title="Importer toutes les périodes remplies en même temps"><i class="fas fa-file-import"></i> Importer Tout</button>
-                    <span id="import-status"></span>
-                    <input type="hidden" name="course_id" id="import-course-id">
-                    <input type="hidden" name="period" id="import-period">
-                  </form>
-                  <a href="#" id="export-template-link" class="btn btn-outline-primary btn-sm" title="Télécharger modèle"><i class="fas fa-file-excel"></i> Modèle</a>
-                  <a href="#" id="export-grades-link" class="btn btn-outline-secondary btn-sm" title="Télécharger cotes"><i class="fas fa-download"></i> Cotes</a>
-                  <a href="#" id="export-fiche-vierge-link" class="btn btn-outline-info btn-sm" title="Fiche Vierge"><i class="fas fa-file"></i> Vierge</a>
-                  <a href="#" id="export-fiche-remplie-link" class="btn btn-outline-info btn-sm" title="Fiche Remplie"><i class="fas fa-file-lines"></i> Remplie</a>
-                </div>
-              </div>
+  <!-- Main Grade Container -->
+  <div class="card-ista" id="mainGradeContainer">
+    <div class="card-ista-body">
+    {% if selected_class_name %}
+      <!-- Controls -->
+      <div class="bg-light border rounded p-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="period-buttons d-flex" style="overflow-x: auto; white-space: nowrap; gap: 0;">
+          {% for period in periods %}
+            <input type="radio" class="btn-check period-select" name="period" id="period{{ loop.index }}" value="{{ period }}" {% if loop.index == 1 %}checked{% endif %}>
+            <label class="btn btn-outline-primary btn-sm m-0" for="period{{ loop.index }}">{{ 'REP' if period == 'REPECHAGE' else period }}</label>
+          {% endfor %}
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <form id="import-grades-form" class="d-flex align-items-center gap-2 m-0" enctype="multipart/form-data">
+            <input type="file" name="file" id="grade-file-input" accept=".xlsx,.xls" class="form-control form-control-sm" style="max-width: 180px;" {% if not course %}disabled{% endif %}>
+            <button type="button" id="import-grades-btn" class="btn-ista-primary btn-sm" {% if not course %}disabled{% endif %}>Importer</button>
+            <button type="button" id="import-all-grades-btn" class="btn btn-warning btn-sm text-white" {% if not course %}disabled{% endif %}>Importer Tout</button>
+          </form>
+          <a href="#" id="export-template-link" class="btn-ista-outline btn-sm {% if not course %}disabled{% endif %}">Modèle</a>
+          <a href="#" id="export-grades-link" class="btn-ista-outline btn-sm {% if not course %}disabled{% endif %}">Cotes</a>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+        <button type="button" id="save-draft-btn" class="btn-ista-secondary btn-sm" {% if not course %}disabled{% endif %}>
+          <i class="fas fa-save"></i> Sauvegarder (Brouillon)
+        </button>
+        <button type="button" id="submit-period-btn" class="btn-ista-primary btn-sm" style="background: linear-gradient(135deg, #f59e0b, #d97706);" {% if not course %}disabled{% endif %}>
+          <i class="fas fa-check-circle"></i> Soumettre la période
+        </button>
+        <span id="draft-status"></span>
+        <span id="submit-status"></span>
+      </div>
+      <div class="small text-muted mb-3">
+        <i class="fas fa-info-circle text-ista-blue me-1"></i>
+        <strong>Enregistrer le brouillon</strong> sauvegarde les notes localement. Seule l'action <strong>Soumettre la période</strong> verrouille les notes et notifie le secrétariat.
+      </div>
+
+      <!-- Course Info -->
+      <div class="card-ista mb-3 bg-light">
+        <div class="card-ista-header"><strong>Cours : {% if course %}{{ course.title }}{% else %}Aucun cours sélectionné{% endif %}</strong> | <span id="selectedPeriodDisplay">Période : 1èP</span></div>
+        <div class="card-ista-body py-2">
+          {% if branch_name %}
+            <div class="alert-ista-info mb-0 py-2 small">
+              <strong>Maxima du bulletin pour "{{ branch_name }}" :</strong>
+              1èP={{ branch_limits['1èP'] }}, 2èP={{ branch_limits['2èP'] }}, EXA1={{ branch_limits['EXA1'] }}, 
+              3èP={{ branch_limits['3èP'] }}, 4èP={{ branch_limits['4èP'] }}, EXA2={{ branch_limits['EXA2'] }}
             </div>
-
-            <div class="row mb-3">
-              <div class="col-12">
-                <div id="period-status-container"></div>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-12">
-                <button type="button" id="save-draft-btn" class="btn btn-primary btn-sm submit-period-btn me-2" title="Enregistre localement les notes comme brouillon — n'envoie PAS au secrétariat">
-                  <i class="fas fa-save"></i> Sauvegarder (Brouillon — pas de transmission)
-                </button>
-                <button type="button" id="submit-period-btn" class="btn btn-warning btn-sm submit-period-btn">
-                  <i class="fas fa-lock"></i> Soumettre la période au bulletin
-                </button>
-                <span id="draft-status" class="ms-3"></span>
-                <span id="submit-status" class="ms-3"></span>
-                <div class="small text-muted mt-2">Remarque : <strong>Enregistrer le brouillon</strong> sauvegarde les notes pour vous uniquement. Seule l'action <strong>Soumettre la période</strong> verrouille les notes et notifie le secrétariat.</div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <strong>Cours : {{ course.title }}</strong> | <span id="selectedPeriod">Période : 1èP</span>
-              </div>
-              <div class="card-body">
-                {% if branch_name %}
-                <div class="alert alert-info mb-3">
-                  <strong>Maxima du bulletin pour "{{ branch_name }}" :</strong>
-                  1èP={{ branch_limits['1èP'] }},
-                  2èP={{ branch_limits['2èP'] }},
-                  EXA1={{ branch_limits['EXA1'] }},
-                  3èP={{ branch_limits['3èP'] }},
-                  4èP={{ branch_limits['4èP'] }},
-                  EXA2={{ branch_limits['EXA2'] }}
-                </div>
-                {% elif course %}
-                <div class="alert alert-warning mb-3">
-                  Aucune configuration bulletin valide trouvée pour ce cours. Les notes sont limitées par défaut à 20.
-                </div>
-                {% endif %}
-                <div class="table-responsive grading-table-wrapper">
-                  <table class="table table-bordered align-middle grades-table">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Élève</th>
-                        <th>1èP</th>
-                        <th>2èP</th>
-                        <th>EXA1</th>
-                        <th style="background-color: #f0f0f0;"><strong>Total 1</strong></th>
-                        <th>3èP</th>
-                        <th>4èP</th>
-                        <th>EXA2</th>
-                        <th style="background-color: #f0f0f0;"><strong>Total 2</strong></th>
-                        <th style="background-color: #fffacd;"><strong>Total général</strong></th>
-                        <th style="background-color: #fffacd;"><strong>%</strong></th>
-                      </tr>
-                    </thead>
-                    <tbody id="studentsTableBody">
-                      <!-- Students will be loaded dynamically via JavaScript when a class is selected -->
-                    </tbody>
-                  </table>
-                </div>
-
-                <div id="grade-result" class="mt-3"></div>
-
-                <div class="mt-4">
-                  <div class="alert alert-info" role="alert">
-                      <h6 class="alert-heading"><strong>Formules de calcul :</strong></h6>
-                    <ul class="mb-0">
-                       <li><strong>Total 1:</strong> 1èP + 2èP + EXA1</li>
-                       <li><strong>Total 2:</strong> 3èP + 4èP + EXA2</li>
-                       <li><strong>Total Général:</strong> Total 1 + Total 2</li>
-                       <li><strong>Pourcentage:</strong> (Total Général / somme des maxima) × 100</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {% elif course %}
+            <div class="alert-ista-warning mb-0 py-2 small">Aucune configuration de maxima trouvée. Les notes sont limitées à 20 par défaut.</div>
           {% else %}
-          <div class="alert alert-info" role="alert">
-             <strong>Sélectionnez une section, un niveau, une classe et un cours pour commencer la saisie des cotes.</strong>
-          </div>
+            <div class="alert-ista-info mb-0 py-2 small">Veuillez sélectionner un cours.</div>
           {% endif %}
         </div>
-        {% endif %}
+      </div>
 
-        {% if can_manage_attendance %}
-        <div class="tab-pane fade {% if not can_manage_grades %}show active{% endif %}" id="presence-pane" role="tabpanel" aria-labelledby="presence-tab">
-          <div class="card mt-4" id="attendanceWorkspace">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <strong>Prise de présence</strong>
-              <div class="d-flex flex-wrap align-items-center gap-2">
-                {% if conduite_url %}
-                <a href="{{ conduite_url }}" class="btn btn-outline-primary btn-sm">
-                  <i class="fas fa-clipboard-check me-1"></i> Conduite
-                </a>
+      <!-- Grades Table -->
+      <div class="table-responsive">
+        <table class="table-ista table-bordered table-hover align-middle bg-white">
+          <thead>
+            <tr>
+              <th style="width: 200px;">ÉLÈVE</th>
+              {% for p in periods %}
+                {% if 'EXA' not in p %}
+                  <th class="text-center" style="width: 80px;">
+                    {{ p }}
+                    {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
+                  </th>
+                {% else %}
+                  <th class="text-center" style="width: 80px;">
+                    {{ p }}
+                    {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
+                  </th>
                 {% endif %}
-                <span id="attendanceScopeLabel" class="badge bg-info text-dark">
-                  {% if selected_class_label %}
-                    {{ selected_class_label }}
-                  {% else %}
-                    Sélectionnez une classe
-                  {% endif %}
-                </span>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="row g-2 align-items-end mb-3 bg-light p-2 rounded border mx-0">
-                <div class="col-12 col-sm-6 col-md-3">
-                  <label class="form-label small text-muted mb-1">Date</label>
-                  <input type="date" id="attendanceDate" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <label class="form-label small text-muted mb-1">Période (Mois)</label>
-                  <input type="month" id="attendancePeriod" class="form-control form-control-sm">
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <button type="button" id="reloadAttendanceBtn" class="btn btn-secondary btn-sm w-100"><i class="fas fa-sync-alt"></i> Charger</button>
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                  <button type="button" id="saveAttendanceBtn" class="btn btn-success btn-sm w-100"><i class="fas fa-save"></i> Enregistrer</button>
-                </div>
-              </div>
-              <div class="table-responsive grading-table-wrapper">
-                <table class="table table-bordered align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Nom complet</th>
-                      <th style="width: 110px;">Sexe</th>
-                      <th style="width: 360px;">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody id="attendanceTableBody">
-                    <tr>
-                      <td colspan="3" class="text-center text-muted">Sélectionnez une section, un niveau et une classe pour charger la liste nominative.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div id="attendanceResult" class="mt-3"></div>
-            </div>
-          </div>
-        </div>
-        {% endif %}
+                {% if p == 'EXA1' %}
+                  <th class="text-center" style="background: #f8f9fa; width: 90px;">TOTAL 1</th>
+                {% elif p == 'EXA2' %}
+                  <th class="text-center" style="background: #f8f9fa; width: 90px;">TOTAL 2</th>
+                {% endif %}
+              {% endfor %}
+              <th class="text-center" style="background: #fff3cd; width: 120px;">TOTAL GÉNÉRAL</th>
+              <th class="text-center" style="background: #fff3cd; width: 80px;">%</th>
+            </tr>
+          </thead>
+          <tbody id="studentsTableBody">
+            {% for st in all_students_for_class %}
+            <tr data-student-id="{{ st.id }}">
+              <td class="fw-medium text-truncate" style="max-width: 200px;" title="{{ st.full_name }}">{{ st.full_name }}</td>
+              {% for p in periods %}
+                {% set is_exa = 'EXA' in p %}
+                {% set is_locked = p in submitted_periods %}
+                {% set is_repechage = p == 'REPECHAGE' %}
+                {% set repechage_allowed = (not is_repechage) or (st.id in repechage_eligible_student_ids) %}
+                {% set bg_col = '#f0f0f0' if is_locked or (is_repechage and not repechage_allowed) else ('#f8f9fa' if is_exa else 'white') %}
+                <td class="text-center p-1" style="background-color: {{ bg_col }};">
+                  <input type="number" step="0.1" min="0" max="{{ branch_limits.get(p, 20) if branch_limits else (100 if p == 'REPECHAGE' else 20) }}"
+                         placeholder="/{{ branch_limits.get(p, 20) if branch_limits else (100 if p == 'REPECHAGE' else 20) }}"
+                         class="form-control form-control-sm text-center grade-input"
+                         data-student-id="{{ st.id }}" data-period="{{ p }}"
+                         data-max="{{ branch_limits.get(p, 20) if branch_limits else (100 if p == 'REPECHAGE' else 20) }}"
+                         data-locked="{{ 'true' if is_locked else 'false' }}"
+                         data-repechage-eligible="{{ 'true' if repechage_allowed else 'false' }}"
+                         {% if not course or is_locked or (is_repechage and not repechage_allowed) %}disabled{% endif %}
+                         style="background-color: {{ bg_col }}; {% if is_locked or (is_repechage and not repechage_allowed) %}color: #888; cursor: not-allowed;{% endif %}"
+                         value="{% if grades_by_period.get(st.id, {}).get(p) is not none %}{{ grades_by_period.get(st.id, {}).get(p, '') }}{% endif %}">
+                </td>
+                {% if p == 'EXA1' %}
+                  <td class="text-center fw-bold align-middle total1" style="background: #f8f9fa;">0.0</td>
+                {% elif p == 'EXA2' %}
+                  <td class="text-center fw-bold align-middle total2" style="background: #f8f9fa;">0.0</td>
+                {% endif %}
+              {% endfor %}
+              <td class="text-center fw-bold align-middle totalGeneral" style="background: #fff3cd;">0.0</td>
+              <td class="text-center fw-bold align-middle percentage" style="background: #fff3cd;">0.0%</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="11" class="text-center text-muted py-4">Aucun élève trouvé.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-        {% if can_view_notifications %}
-        <div class="tab-pane fade" id="notifications-pane" role="tabpanel" aria-labelledby="notifications-tab">
-          <div class="card shadow-sm">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <div>
-                <strong><i class="fas fa-bell"></i> Notifications du secrétariat</strong>
-                <div class="small text-muted">Modifications de cotes et retours du secrétariat.</div>
-              </div>
-          <div class="d-flex align-items-center gap-2 notifications-actions">
-            <span id="notificationsCountBadge" class="badge {% if unread_notifications_count and unread_notifications_count > 0 %}bg-danger{% else %}bg-secondary{% endif %}">
-              {{ unread_notifications_count or 0 }}
-            </span>
-                <button type="button" id="refreshNotificationsBtn" class="btn btn-outline-secondary btn-sm">
-                  <i class="fas fa-sync-alt"></i> Actualiser
-                </button>
-                <button type="button" id="markAllNotificationsReadBtn" class="btn btn-outline-primary btn-sm" {% if not unread_notifications_count %}disabled{% endif %}>
-                  Marquer tout comme lu
-                </button>
-              </div>
-            </div>
-            <div id="notificationsLiveAlert" class="px-3 pt-3"></div>
-            <div class="list-group list-group-flush" id="notificationsList">
-              {% if notifications %}
-                {% for notification in notifications %}
-                  <div class="list-group-item d-flex justify-content-between align-items-start notification-item {% if not notification.is_read %}notification-unread{% endif %}" data-notification-id="{{ notification.id }}">
-                    <div class="me-3">
-                      <div class="fw-semibold">{{ notification.title }}</div>
-                      <div class="small">{{ notification.message }}</div>
-                      <div class="small text-muted mt-1">{{ notification.created_at.strftime('%d/%m/%Y %H:%M') if notification.created_at else '' }}</div>
-                    </div>
-                    {% if not notification.is_read %}
-                      <span class="badge bg-primary">Nouveau</span>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              {% else %}
-                <div class="list-group-item text-muted" id="notificationsEmptyState">Aucune notification pour le moment.</div>
-              {% endif %}
-            </div>
-          </div>
+      <div id="grade-result" class="mt-2"></div>
+
+      <!-- Formulas Info -->
+      <div class="alert-ista-info mt-3">
+        <h6 class="fw-bold mb-2">Formules de calcul :</h6>
+        <ul class="mb-0 small ps-3">
+          <li><strong>Total 1:</strong> 1èP + 2èP + EXA1</li>
+          <li><strong>Total 2:</strong> 3èP + 4èP + EXA2</li>
+          <li><strong>Total Général:</strong> Total 1 + Total 2</li>
+          <li><strong>% :</strong> (Total Général / somme des maxima) × 100</li>
+        </ul>
+      </div>
+
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="fas fa-arrow-up fa-2x mb-3 text-secondary"></i>
+        <p class="fs-5">Veuillez sélectionner une section, un niveau et une classe.</p>
+      </div>
+    {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Notifications Modal -->
+<div class="modal fade modal-ista" id="notificationsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-bell"></i> Notifications du secrétariat</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-2 border-bottom d-flex justify-content-end bg-light">
+          <button type="button" class="btn-ista-outline btn-sm" id="markAllNotificationsReadBtn" onclick="markAllNotificationsAsRead()" {% if not unread_notifications_count %}disabled{% endif %}>
+            Marquer tout comme lu
+          </button>
         </div>
-        {% endif %}
+        <div class="list-group list-group-flush" id="notificationsList">
+          {% if notifications %}
+            {% for notification in notifications %}
+              <div class="list-group-item d-flex justify-content-between align-items-start {% if not notification.is_read %}bg-light{% endif %}" data-notification-id="{{ notification.id }}">
+                <div class="me-3">
+                  <div class="fw-semibold">{{ notification.title }}</div>
+                  {% if notification.url %}
+                    <a href="{{ notification.url }}" target="_blank" class="small d-block text-decoration-none">{{ notification.message }}</a>
+                  {% else %}
+                    <div class="small">{{ notification.message }}</div>
+                  {% endif %}
+                  <div class="small text-muted mt-1">{{ notification.created_at.strftime('%d/%m/%Y %H:%M') if notification.created_at else '' }}</div>
+                </div>
+                {% if not notification.is_read %}
+                  <span class="badge-ista badge-ista-red">Nouveau</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="p-4 text-center text-muted">Aucune notification.</div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
+</div>
+
 <style>
-  .professor-dashboard h2 {
-    font-size: clamp(1.2rem, 2.3vw, 1.9rem);
-  }
-  .professor-dashboard .card-header strong {
-    font-size: 0.95rem;
-  }
-  #professorTabs {
-    gap: 0.35rem;
-    padding: 0.5rem 0.5rem 0 0.5rem;
-  }
-  #professorTabs .nav-item {
-    flex: 1 1 0;
-  }
-  #professorTabs .nav-link {
-    width: 100%;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-bottom: 0;
-    border-radius: 0.85rem 0.85rem 0 0;
-    color: #fff;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-  }
-  #professorTabs .nav-link:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.03);
-  }
-  #professorTabs .nav-link.active {
-    color: #fff;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
-  }
-  #professorTabs .nav-link.tab-grades {
-    background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
-  }
-  #professorTabs .nav-link.tab-grades.active {
-    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  }
-  #professorTabs .nav-link.tab-presence {
-    background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
-  }
-  #professorTabs .nav-link.tab-presence.active {
-    background: linear-gradient(135deg, #115e59 0%, #0d9488 100%);
-  }
-  #professorTabs .nav-link.tab-notifications {
-    background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
-  }
-  #professorTabs .nav-link.tab-notifications.active {
-    background: linear-gradient(135deg, #92400e 0%, #d97706 100%);
-  }
-  .period-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .period-buttons .period-btn {
-    flex: 1 1 calc(33.333% - 0.5rem);
-    min-width: 74px;
-    padding: 0.3rem 0.45rem;
-    font-size: 0.85rem;
-    line-height: 1.1;
-    text-align: center;
-  }
-  .submit-period-btn {
-    padding: 0.32rem 0.6rem;
-    font-size: 0.85rem;
-    line-height: 1.2;
-  }
-  #submit-status {
-    display: inline-block;
-    vertical-align: middle;
-  }
-  .grading-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .grades-table {
-    min-width: 980px;
-  }
-  .grades-table th,
-  .grades-table td {
-    white-space: nowrap;
-  }
-  .grade-input {
-    min-width: 64px;
-    padding: 0.2rem 0.4rem;
-    font-size: 0.86rem;
-    text-align: center;
-  }
-  .attendance-status-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-  .attendance-status-btn {
-    min-width: 92px;
-    font-size: 0.82rem;
-    padding: 0.28rem 0.55rem;
-    white-space: nowrap;
-  }
-  .notification-item {
-    cursor: pointer;
-  }
-  .notification-unread {
-    background-color: #fff8e1;
-  }
-
-  @media (max-width: 991.98px) {
-    .professor-dashboard .card-header {
-      padding: 0.55rem 0.75rem;
-    }
-    .professor-dashboard .card-body {
-      padding: 0.75rem;
-    }
-    #professorTabs .nav-link {
-      font-size: 0.9rem;
-      padding: 0.45rem 0.65rem;
-    }
-    .period-buttons .period-btn {
-      font-size: 0.82rem;
-      padding: 0.28rem 0.4rem;
-    }
-    .grades-table {
-      min-width: 920px;
-    }
-  }
-
-  @media (max-width: 767.98px) {
-    .professor-dashboard {
-      padding-left: 0.25rem;
-      padding-right: 0.25rem;
-    }
-    .professor-dashboard .row.mb-4.g-3 > [class*="col-"] {
-      margin-bottom: 0.75rem;
-    }
-    .professor-dashboard .card-header strong {
-      font-size: 0.88rem;
-    }
-    #courseSelectionNotice {
-      font-size: 0.88rem;
-      line-height: 1.35;
-      word-break: break-word;
-    }
-    #professorTabs {
-      flex-direction: column;
-      padding: 0.4rem 0.4rem 0 0.4rem;
-    }
-    #professorTabs .nav-item {
-      width: 100%;
-    }
-    #professorTabs .nav-link {
-      border-radius: 0.5rem;
-      white-space: normal;
-      font-size: 0.82rem;
-      padding: 0.42rem 0.55rem;
-    }
-    .period-buttons {
-      gap: 0.35rem;
-    }
-    .period-buttons .period-btn {
-      flex: 1 1 calc(50% - 0.35rem);
-      min-width: 66px;
-      font-size: 0.78rem;
-      padding: 0.26rem 0.35rem;
-    }
-    .submit-period-btn {
-      width: 100%;
-      font-size: 0.8rem;
-      padding: 0.35rem 0.5rem;
-    }
-    #submit-status {
-      display: block;
-      margin-left: 0 !important;
-      margin-top: 0.45rem;
-    }
-    .grades-table {
-      min-width: 860px;
-    }
-    .grades-table th,
-    .grades-table td {
-      font-size: 0.78rem;
-      padding: 0.32rem 0.36rem;
-    }
-    .grade-input {
-      min-width: 56px;
-      font-size: 0.78rem;
-      padding: 0.15rem 0.3rem;
-    }
-    .notifications-actions {
-      width: 100%;
-      flex-wrap: wrap;
-    }
-    .notifications-actions > * {
-      width: 100%;
-    }
-    .notifications-actions #notificationsCountBadge {
-      width: auto;
-      align-self: flex-start;
-    }
-    .notifications-actions #refreshNotificationsBtn,
-    .notifications-actions #markAllNotificationsReadBtn {
-      width: 100%;
-    }
-  }
-
-  .grade-input:focus {
-    background-color: #fffacd;
-    border-color: #ffc107;
-  }
   .btn-check:checked + .btn-outline-primary {
     background-color: #0d6efd;
     color: white;
     border-color: #0d6efd;
   }
+  .grade-input:focus {
+    background-color: #fffacd !important;
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+  }
+  input[type="number"]::-webkit-inner-spin-button, 
+  input[type="number"]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  a.disabled {
+    pointer-events: none;
+    opacity: 0.65;
+  }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const sectionSelect = document.getElementById('sectionSelect');
-  const levelSelect = document.getElementById('levelSelect');
-  const classSelect = document.getElementById('classSelect');
-  const courseSelect = document.getElementById('courseSelect');
-  const periodSelects = document.querySelectorAll('.period-select');
-  const studentsTableBody = document.getElementById('studentsTableBody');
-  // Handle Enter key to move focus to next student's input in same period
-  function handleEnterKey(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const currentInput = e.target;
-      const period = currentInput.dataset.period;
-      const inputs = Array.from(document.querySelectorAll(`.grade-input[data-period="${period}"]`))
-        .sort((a, b) => parseInt(a.dataset.studentId) - parseInt(b.dataset.studentId));
-      const idx = inputs.findIndex(inp => inp === currentInput);
-      if (idx >= 0 && idx < inputs.length - 1) {
-        inputs[idx + 1].focus();
-      }
-    }
+const professorBaseUrl = {{ url_for('professor.dashboard', school_slug=school_slug)|tojson }};
+const currentCourseId = {{ selected_course_id|tojson }};
+const gradesByPeriod = {{ grades_by_period|tojson }};
+const repechageEligibleStudentIds = new Set({{ repechage_eligible_student_ids|tojson }}.map(id => String(id)));
+
+function buildUrl(params) {
+  const query = new URLSearchParams(window.location.search);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value);
+    else query.delete(key);
   }
-  if (studentsTableBody) {
-    studentsTableBody.addEventListener('keydown', function (e) {
-      if (e.target && e.target.matches('.grade-input')) {
-        handleEnterKey(e);
-      }
-    });
-    studentsTableBody.addEventListener('change', async function (e) {
-      if (!e.target || !e.target.matches('.grade-input')) return;
-      const input = e.target;
-      const studentId = input.dataset.studentId;
-      const period = input.dataset.period;
-      const value = input.value;
+  return `${professorBaseUrl.replace(/\/$/, '')}?${query.toString()}`;
+}
 
-      calculateTotals(studentId);
+document.getElementById('sectionSelect')?.addEventListener('change', function() {
+  window.location.href = buildUrl({ section_name: this.value, level: '', class_name: '', course_id: '' });
+});
+document.getElementById('levelSelect')?.addEventListener('change', function() {
+  window.location.href = buildUrl({ level: this.value, class_name: '', course_id: '' });
+});
+document.getElementById('classSelect')?.addEventListener('change', function() {
+  window.location.href = buildUrl({ class_name: this.value, course_id: '' });
+});
+document.getElementById('courseSelect')?.addEventListener('change', function() {
+  window.location.href = buildUrl({ course_id: this.value });
+});
 
-      if (!currentCourseId || value === null || value === '') {
-        return;
-      }
+function toggleNotifications() {
+  new bootstrap.Modal(document.getElementById('notificationsModal')).show();
+}
 
-      const maxAllowed = parseFloat(input.dataset.max) || 20;
-      if (parseFloat(value) > maxAllowed) {
-        input.value = '';
-        calculateTotals(studentId);
-        input.focus();
-        resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Valeur invalide : la note maximale pour ${period} est ${maxAllowed}. Veuillez recommencer la saisie avec une valeur correcte.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-        setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
-        return;
-      }
-
-      try {
-        const response = await fetch(buildProfessorUrl('grade'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            student_id: parseInt(studentId, 10),
-            period: period,
-            value: parseFloat(value),
-            course_id: currentCourseId
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          resultDiv.innerHTML = '<div class="alert alert-success alert-dismissible fade show" role="alert">Note enregistrée pour ' + period + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-        } else {
-          resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Erreur: ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-        }
-        setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
-      } catch (error) {
-        resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Erreur de communication<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-        console.error('Error:', error);
-      }
-    });
-    studentsTableBody.addEventListener('input', function (e) {
-      if (!e.target || !e.target.matches('.grade-input')) return;
-      const studentId = e.target.dataset.studentId;
-      calculateTotals(studentId);
-    });
+async function markAllNotificationsAsRead() {
+  try {
+    await fetch(`${professorBaseUrl.replace(/\/$/, '')}/api/notifications/mark-all-read`, { method: 'POST' });
+    window.location.reload();
+  } catch (e) {
+    console.error(e);
   }
-  const resultDiv = document.getElementById('grade-result');
-  const selectionNotice = document.getElementById('courseSelectionNotice');
-  const gradingWorkspace = document.getElementById('gradingWorkspace');
-  const initialSelection = {
-    sectionName: {{ selected_section_name|tojson }},
-    level: {{ selected_level|tojson }},
-    className: {{ selected_class_name|tojson }},
-    courseId: {{ selected_course_id|tojson }}
-  };
-  const professorBaseUrl = {{ url_for('professor.dashboard')|tojson }};
-  let currentCourseId = initialSelection.courseId ? parseInt(initialSelection.courseId, 10) : null;
-  let restoringSelection = false;
-  const saveDraftBtn = document.getElementById('save-draft-btn');
-  const submitBtn = document.getElementById('submit-period-btn');
-  const submitStatus = document.getElementById('submit-status');
-  const draftStatus = document.getElementById('draft-status');
-  const periodStatusContainer = document.getElementById('period-status-container');
-  const attendanceDateInput = document.getElementById('attendanceDate');
-  const attendancePeriodSelect = document.getElementById('attendancePeriod');
-  const reloadAttendanceBtn = document.getElementById('reloadAttendanceBtn');
-  const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
-  const attendanceTableBody = document.getElementById('attendanceTableBody');
-  const attendanceResultDiv = document.getElementById('attendanceResult');
-  const attendanceScopeLabel = document.getElementById('attendanceScopeLabel');
-  const notificationsLiveAlert = document.getElementById('notificationsLiveAlert');
-  const notificationsList = document.getElementById('notificationsList');
-  const notificationsCountBadge = document.getElementById('notificationsCountBadge');
-  const notificationsTabBadge = document.getElementById('notificationsTabBadge');
-  const markAllNotificationsReadBtn = document.getElementById('markAllNotificationsReadBtn');
-  const refreshNotificationsBtn = document.getElementById('refreshNotificationsBtn');
-  const canManageGrades = {{ can_manage_grades|tojson }};
-  const canManageAttendance = {{ can_manage_attendance|tojson }};
-  const canViewNotifications = {{ can_view_notifications|tojson }};
-  let grades_by_period = {{ grades_by_period|tojson }};
-  const branchLimits = {{ (branch_limits or {})|tojson }};
-  const branchEnabled = {{ (branch_enabled or {})|tojson }};
-  const selectionPrompt = canManageGrades
-    ? 'Sélectionnez une section, un niveau, une classe et un cours pour commencer la saisie des notes et des présences.'
-    : 'Sélectionnez une section, un niveau et une classe pour commencer la prise de présence et la conduite.';
-  const reselectionPrompt = canManageGrades
-    ? 'Sélectionnez à nouveau le niveau, la classe et le cours pour poursuivre.'
-    : 'Sélectionnez à nouveau la section, le niveau et la classe pour poursuivre.';
-  if (saveDraftBtn) {
-    saveDraftBtn.disabled = !currentCourseId;
+}
+
+function getSelectedPeriod() {
+  const radio = document.querySelector('.period-select:checked');
+  return radio ? radio.value : null;
+}
+
+const selectedPeriodDisplay = document.getElementById('selectedPeriodDisplay');
+function updateExportLinks() {
+  const period = getSelectedPeriod();
+  if (currentCourseId && period) {
+    const base = professorBaseUrl.replace(/\/$/, '');
+    document.getElementById('export-template-link').href = `${base}/api/export-grades?course_id=${currentCourseId}&period=${period}&template_only=1`;
+    document.getElementById('export-grades-link').href = `${base}/api/export-grades?course_id=${currentCourseId}&period=${period}`;
   }
-
-  function buildProfessorUrl(path = '') {
-    const basePath = professorBaseUrl || window.location.pathname.replace(/\/$/, '');
-    const base = basePath.endsWith('/') ? basePath : `${basePath}/`;
-    const cleanPath = String(path || '').replace(/^\/+/, '');
-    return `${base}${cleanPath}`;
-  }
-
-  function buildProfessorQueryUrl(path, params = {}) {
-    const query = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && String(value).trim() !== '') {
-        query.set(key, value);
-      }
-    });
-    const queryString = query.toString();
-    return buildProfessorUrl(queryString ? `${path}?${queryString}` : path);
-  }
-
-  function navigateToSelectedCourse(courseId) {
-    const params = new URLSearchParams();
-    params.set('section_name', (sectionSelect.value || '').trim());
-    params.set('level', (levelSelect.value || '').trim());
-    params.set('class_name', (classSelect.value || '').trim());
-    params.set('course_id', courseId);
-    const basePath = professorBaseUrl || window.location.pathname;
-    window.location.href = `${basePath}${basePath.includes('?') ? '&' : '?'}${params.toString()}`;
-  }
-
-  function getPeriodMax(period) {
-    const configuredMax = Number(branchLimits && branchLimits[period]);
-    return Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 20;
-  }
-
-  function isPeriodEnabled(period) {
-    return !branchEnabled || branchEnabled[period] !== false;
-  }
-
-  function setSelectionNotice(kind, message) {
-    if (!selectionNotice) return;
-    selectionNotice.className = `alert alert-${kind} py-2 mb-3 small shadow-sm`;
-    selectionNotice.innerHTML = `<strong>Instruction :</strong> ${message}`;
-  }
-
-  function updateSelectionLabel() {
-    if (!selectionNotice) return;
-
-    const section = (sectionSelect.value || '').trim();
-    const level = (levelSelect.value || '').trim();
-    const className = (classSelect.value || '').trim();
-    const course = courseSelect ? (courseSelect.value || '') : '';
-
-    // Only show selection label if we have at least section/level/class
-    if (section && level && className) {
-      const label = `${section} / ${level} / ${className}${course ? ` - ${courseSelect.options[courseSelect.selectedIndex]?.textContent || ''}` : ''}`;
-      selectionNotice.className = 'alert alert-success py-2 mb-3 small shadow-sm';
-      selectionNotice.innerHTML = `<strong>Sélection actuelle :</strong> ${escapeHtml(label)}`;
-    } else {
-      // Reset to instruction message if any field is missing
-      const instructionMsg = canManageGrades
-        ? 'Sélectionnez une section, un niveau, une classe et un cours pour commencer la saisie des notes.'
-        : 'Sélectionnez une section, un niveau et une classe pour commencer la prise de présence et la conduite.';
-      setSelectionNotice('warning', instructionMsg);
-    }
-  }
-
-  function setWorkspaceVisible(visible) {
-    if (gradingWorkspace) {
-      gradingWorkspace.style.display = visible ? '' : 'none';
-    }
-  }
-
-  function fetchJson(url) {
-    return fetch(url, { credentials: 'same-origin' }).then(async response => {
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP ${response.status}`);
-      }
-      return response.json();
-    });
-  }
-
-  function setDraftMessage(kind, message) {
-    if (!draftStatus) {
-      return;
-    }
-
-    draftStatus.innerHTML = `<span class="badge bg-${kind}">${escapeHtml(message)}</span>`;
-  }
-
-  function collectDraftGradeEntries() {
-    if (!currentCourseId) {
-      return [];
-    }
-
-    return Array.from(document.querySelectorAll('.grade-input'))
-      .filter(input => !input.disabled && input.value !== null && input.value !== '')
-      .map(input => ({
-        student_id: parseInt(input.dataset.studentId, 10),
-        period: input.dataset.period,
-        value: parseFloat(input.value)
-      }))
-      .filter(item => !Number.isNaN(item.student_id) && !Number.isNaN(item.value));
-  }
-
-  async function saveDraftGrades(showMessage = true) {
-    // Store drafts locally in browser localStorage (per-course)
-    if (!currentCourseId) {
-      throw new Error('Veuillez sélectionner un cours avant de sauvegarder.');
-    }
-
-    const invalidInput = Array.from(document.querySelectorAll('.grade-input')).find(input => {
-      if (input.disabled || input.value === null || input.value === '') {
-        return false;
-      }
-      return Number.isNaN(parseFloat(input.value));
-    });
-    if (invalidInput) {
-      throw new Error(`Valeur invalide pour la période ${invalidInput.dataset.period}.`);
-    }
-
-    const overMaxInput = Array.from(document.querySelectorAll('.grade-input')).find(input => {
-      if (input.disabled || input.value === null || input.value === '') {
-        return false;
-      }
-      const numericValue = parseFloat(input.value);
-      const maxAllowed = parseFloat(input.dataset.max || input.max || '20') || 20;
-      return numericValue > maxAllowed;
-    });
-    if (overMaxInput) {
-      const maxAllowed = parseFloat(overMaxInput.dataset.max || overMaxInput.max || '20') || 20;
-      throw new Error(`La note maximale pour la période ${overMaxInput.dataset.period} est ${maxAllowed}.`);
-    }
-
-    const grades = collectDraftGradeEntries();
-    const key = `grades_draft:${currentCourseId}`;
-    try {
-      localStorage.setItem(key, JSON.stringify(grades));
-      if (showMessage) {
-        setDraftMessage('success', `${grades.length} cotes sauvegardées localement.`);
-        setTimeout(() => { if (draftStatus) draftStatus.innerHTML = ''; }, 3000);
-      }
-      return { success: true, saved_count: grades.length, message: `${grades.length} cotes sauvegardées localement.` };
-    } catch (e) {
-      throw new Error('Impossible d\'enregistrer le brouillon localement.');
-    }
-  }
-
-  // Local draft helpers
-  function _getDraftKey(courseId) {
-    return `grades_draft:${courseId}`;
-  }
-
-  function loadLocalDrafts(courseId) {
-    try {
-      const raw = localStorage.getItem(_getDraftKey(courseId));
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function applyLocalDrafts(courseId) {
-    if (!courseId) return;
-    const drafts = loadLocalDrafts(courseId) || [];
-    if (!drafts.length) return;
-    drafts.forEach(item => {
-      const selector = `input[data-student-id="${item.student_id}"][data-period="${item.period}"]`;
-      const input = document.querySelector(selector);
-      if (input && !input.disabled) {
-        input.value = item.value;
-      }
-    });
-    setDraftMessage('info', 'Brouillon local chargé.');
-    setTimeout(() => { if (draftStatus) draftStatus.innerHTML = ''; }, 3000);
-  }
-
-  function clearLocalDraftsForPeriod(courseId, period) {
-    if (!courseId) return;
-    const drafts = loadLocalDrafts(courseId) || [];
-    const remaining = drafts.filter(d => d.period !== period);
-    try {
-      if (remaining.length) localStorage.setItem(_getDraftKey(courseId), JSON.stringify(remaining));
-      else localStorage.removeItem(_getDraftKey(courseId));
-    } catch (e) {
-      console.error('Error clearing local drafts for period', e);
-    }
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function formatNotificationDate(value) {
-    if (!value) {
-      return '';
-    }
-
-    const parsedDate = new Date(value);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return '';
-    }
-
-    return parsedDate.toLocaleString('fr-FR');
-  }
-
-  function updateNotificationBadge(count) {
-    const unreadCount = Number(count || 0);
-    const badgeTargets = [notificationsCountBadge, notificationsTabBadge].filter(Boolean);
-
-    badgeTargets.forEach((badge) => {
-      badge.textContent = unreadCount;
-      badge.classList.remove('bg-danger', 'bg-secondary');
-      badge.classList.add(unreadCount > 0 ? 'bg-danger' : 'bg-secondary');
-    });
-
-    if (markAllNotificationsReadBtn) {
-      markAllNotificationsReadBtn.disabled = unreadCount === 0;
-    }
-  }
-
-  function renderNotifications(notifications) {
-    if (!notificationsList) {
-      return;
-    }
-
-    if (!notifications || notifications.length === 0) {
-      notificationsList.innerHTML = '<div class="list-group-item text-muted" id="notificationsEmptyState">Aucune notification pour le moment.</div>';
-      return;
-    }
-
-    notificationsList.innerHTML = notifications.map(notification => `
-      <div class="list-group-item d-flex justify-content-between align-items-start notification-item ${notification.is_read ? '' : 'notification-unread'}" data-notification-id="${notification.id}">
-        <div class="me-3">
-          <div class="fw-semibold">${escapeHtml(notification.title)}</div>
-          <div class="small">${escapeHtml(notification.message)}</div>
-          <div class="small text-muted mt-1">${escapeHtml(formatNotificationDate(notification.created_at))}</div>
-        </div>
-        ${notification.is_read ? '' : '<span class="badge bg-primary">Nouveau</span>'}
-      </div>
-    `).join('');
-  }
-
-  function renderNotificationHighlight(notifications) {
-    if (!notificationsLiveAlert) {
-      return;
-    }
-
-    const latestUnread = (notifications || []).find(notification => !notification.is_read);
-    if (!latestUnread) {
-      notificationsLiveAlert.innerHTML = '';
-      return;
-    }
-
-    notificationsLiveAlert.innerHTML = `
-      <div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">
-        <strong>Nouvelle notification du secrétariat :</strong> ${escapeHtml(latestUnread.title)}<br>
-        <span class="small">${escapeHtml(latestUnread.message)}</span>
-      </div>
-    `;
-  }
-
-  async function loadNotifications() {
-    if (!notificationsList) {
-      return;
-    }
-
-    try {
-      const data = await fetchJson(buildProfessorUrl('api/notifications?limit=10'));
-      const notifications = data.notifications || [];
-      renderNotifications(notifications);
-      renderNotificationHighlight(notifications);
-      updateNotificationBadge(data.unread_count || 0);
-      if (currentCourseId && canManageGrades) {
-        loadPeriodStatus();
-      }
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-    }
-  }
-
-  async function markNotificationAsRead(notificationId) {
-    if (!notificationId) {
-      return;
-    }
-
-    const response = await fetch(buildProfessorUrl(`api/notifications/${notificationId}/read`), {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Unable to mark notification as read');
-    }
-  }
-
-  async function markAllNotificationsAsRead() {
-    const response = await fetch(buildProfessorUrl('api/notifications/mark-all-read'), {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Unable to mark notifications as read');
-    }
-  }
-
-  function getTodayIsoDate() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function getAttendanceDate() {
-    if (!attendanceDateInput) {
-      return getTodayIsoDate();
-    }
-    if (!attendanceDateInput.value) {
-      attendanceDateInput.value = getTodayIsoDate();
-    }
-    return attendanceDateInput.value;
-  }
-
-  function setAttendanceMessage(kind, message) {
-    if (!attendanceResultDiv) return;
-    attendanceResultDiv.innerHTML = `<div class="alert alert-${kind} alert-dismissible fade show" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-  }
-
-  const attendanceStatusMeta = {
-    present: { label: 'Présent', icon: 'fa-check', active: 'btn-success', inactive: 'btn-outline-success' },
-    absent: { label: 'Absent', icon: 'fa-xmark', active: 'btn-danger', inactive: 'btn-outline-danger' },
-    malade: { label: 'Malade', icon: 'fa-notes-medical', active: 'btn-warning text-dark', inactive: 'btn-outline-warning text-dark' }
-  };
-
-  function getAttendanceSelection() {
-    return {
-      sectionName: (sectionSelect && sectionSelect.value ? sectionSelect.value : '').trim(),
-      level: (levelSelect && levelSelect.value ? levelSelect.value : '').trim(),
-      className: (classSelect && classSelect.value ? classSelect.value : '').trim()
-    };
-  }
-
-  function hasAttendanceSelection() {
-    const selection = getAttendanceSelection();
-    return !!(selection.sectionName && selection.level && selection.className);
-  }
-
-  function getAttendancePeriod() {
-    if (!attendancePeriodSelect) {
-      const d = new Date();
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    }
-    if (!attendancePeriodSelect.value) {
-      const d = new Date();
-      attendancePeriodSelect.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    }
-    return attendancePeriodSelect.value;
-  }
-
-  function getAttendanceUrl() {
-    const attendanceDate = encodeURIComponent(getAttendanceDate());
-    const period = encodeURIComponent(getAttendancePeriod());
-    const selection = getAttendanceSelection();
-
-    if (canManageAttendance && hasAttendanceSelection()) {
-      return buildProfessorUrl(`api/attendance?section_name=${encodeURIComponent(selection.sectionName)}&level=${encodeURIComponent(selection.level)}&class_name=${encodeURIComponent(selection.className)}&date=${attendanceDate}&period=${period}`);
-    }
-
-    if (currentCourseId) {
-      return buildProfessorUrl(`api/attendance/${currentCourseId}?date=${attendanceDate}&period=${period}`);
-    }
-
-    return null;
-  }
-
-  function setAttendanceButtonState(button, status, active) {
-    const meta = attendanceStatusMeta[status];
-    if (!meta) return;
-    button.classList.remove('btn-success', 'btn-outline-success', 'btn-danger', 'btn-outline-danger', 'btn-warning', 'btn-outline-warning', 'text-dark', 'active');
-    button.classList.add('btn', 'btn-sm', 'attendance-status-btn');
-    meta[(active ? 'active' : 'inactive')].split(' ').forEach(function (cls) {
-      if (cls) {
-        button.classList.add(cls);
-      }
-    });
-    if (active) {
-      button.classList.add('active');
-    }
-  }
-
-  function applyAttendanceStatus(row, status) {
-    const normalizedStatus = attendanceStatusMeta[status] ? status : 'present';
-    row.dataset.status = normalizedStatus;
-    row.querySelectorAll('.attendance-status-btn').forEach(function (button) {
-      setAttendanceButtonState(button, button.dataset.status, button.dataset.status === normalizedStatus);
-    });
-  }
-
-  function formatAttendanceGender(gender) {
-    const normalized = String(gender || '').trim().toUpperCase();
-    if (normalized === 'M') {
-      return 'Masculin';
-    }
-    if (normalized === 'F') {
-      return 'Féminin';
-    }
-    return '—';
-  }
-
-  function updateAttendanceScopeLabel(label) {
-    if (!attendanceScopeLabel) {
-      return;
-    }
-
-    attendanceScopeLabel.textContent = label || 'Sélectionnez une classe';
-  }
-
-  function setAttendancePlaceholder(message) {
-    if (!attendanceTableBody) {
-      return;
-    }
-
-    attendanceTableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">${escapeHtml(message)}</td></tr>`;
-  }
-
-  function renderAttendanceRows(students) {
-    if (!attendanceTableBody) return;
-    {
-      const currentStudents = Array.isArray(students) ? students : [];
-      attendanceTableBody.innerHTML = '';
-
-      if (!currentStudents.length) {
-        setAttendancePlaceholder('Aucun élève trouvé pour cette classe.');
-        if (saveAttendanceBtn) {
-          saveAttendanceBtn.disabled = true;
-        }
-        return;
-      }
-
-      attendanceTableBody.innerHTML = currentStudents.map(function (student) {
-        const normalizedStatus = String(student.status || '').toLowerCase();
-        const status = attendanceStatusMeta[normalizedStatus] ? normalizedStatus : 'present';
-        const genderLabel = student.gender_label || formatAttendanceGender(student.gender);
-        return `
-          <tr data-student-id="${student.student_id}" data-status="${status}">
-            <td class="fw-semibold">${escapeHtml(student.student_name)}</td>
-            <td>
-              <span class="badge bg-secondary">${escapeHtml(genderLabel)}</span>
-            </td>
-            <td>
-              <div class="attendance-status-group">
-                <button type="button" class="btn attendance-status-btn" data-status="present">
-                  <i class="fas fa-check me-1"></i> Présent
-                </button>
-                <button type="button" class="btn attendance-status-btn" data-status="absent">
-                  <i class="fas fa-xmark me-1"></i> Absent
-                </button>
-                <button type="button" class="btn attendance-status-btn" data-status="malade">
-                  <i class="fas fa-notes-medical me-1"></i> Malade
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      attendanceTableBody.querySelectorAll('tr[data-student-id]').forEach(function (row) {
-        applyAttendanceStatus(row, row.dataset.status || 'present');
-      });
-
-      if (saveAttendanceBtn) {
-        saveAttendanceBtn.disabled = false;
-      }
-      return;
-    }
-    if (!attendanceTableBody) return;
-    attendanceTableBody.innerHTML = '';
-
-    if (!students || students.length === 0) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="3" class="text-center text-muted">Aucun élève trouvé pour ce cours.</td>';
-      attendanceTableBody.appendChild(tr);
-      return;
-    }
-
-    const statuses = [
-      { value: 'present', label: 'Présent' },
-      { value: 'absent', label: 'Absent' },
-      { value: 'late', label: 'Retard' },
-      { value: 'excused', label: 'Absence justifiée' }
-    ];
-
-    students.forEach(student => {
-      const tr = document.createElement('tr');
-      tr.dataset.studentId = student.student_id;
-
-      const tdName = document.createElement('td');
-      tdName.textContent = student.student_name;
-
-      const tdStatus = document.createElement('td');
-      const statusSelect = document.createElement('select');
-      statusSelect.className = 'form-select form-select-sm attendance-status-select';
-      statusSelect.dataset.studentId = student.student_id;
-      statuses.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.value;
-        option.textContent = item.label;
-        if (String(student.status || '').toLowerCase() === item.value) {
-          option.selected = true;
-        }
-        statusSelect.appendChild(option);
-      });
-      tdStatus.appendChild(statusSelect);
-
-      const tdNote = document.createElement('td');
-      const noteInput = document.createElement('input');
-      noteInput.type = 'text';
-      noteInput.className = 'form-control form-control-sm attendance-note-input';
-      noteInput.placeholder = 'Observation (optionnel)';
-      noteInput.value = student.note || '';
-      noteInput.dataset.studentId = student.student_id;
-      tdNote.appendChild(noteInput);
-
-      tr.appendChild(tdName);
-      tr.appendChild(tdStatus);
-      tr.appendChild(tdNote);
-      attendanceTableBody.appendChild(tr);
-    });
-  }
-
-  async function loadAttendance() {
-    if (!attendanceTableBody) return;
-    {
-      const attendanceUrl = getAttendanceUrl();
-      if (!attendanceUrl) {
-        updateAttendanceScopeLabel('Sélectionnez une classe');
-        setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-        if (saveAttendanceBtn) {
-          saveAttendanceBtn.disabled = true;
-        }
-        return;
-      }
-
-      if (reloadAttendanceBtn) reloadAttendanceBtn.disabled = true;
-      if (saveAttendanceBtn) {
-        saveAttendanceBtn.disabled = true;
-      }
-      setAttendancePlaceholder('Chargement...');
-
-      try {
-        const payload = await fetchJson(attendanceUrl);
-        updateAttendanceScopeLabel(payload.class_label || 'Sélectionnez une classe');
-        renderAttendanceRows(payload.students || []);
-      } catch (error) {
-        console.error('Error loading attendance:', error);
-        setAttendancePlaceholder('Impossible de charger la présence pour cette date.');
-        setAttendanceMessage('danger', 'Impossible de charger la présence pour cette date.');
-      } finally {
-        if (reloadAttendanceBtn) reloadAttendanceBtn.disabled = false;
-      }
-      return;
-    }
-    if (!currentCourseId || !attendanceTableBody) return;
-
-    const attendanceDate = getAttendanceDate();
-    const url = buildProfessorUrl(`api/attendance/${currentCourseId}?date=${encodeURIComponent(attendanceDate)}`);
-
-    if (reloadAttendanceBtn) reloadAttendanceBtn.disabled = true;
-    try {
-      const payload = await fetchJson(url);
-      renderAttendanceRows(payload.students || []);
-    } catch (error) {
-      console.error('Error loading attendance:', error);
-      renderAttendanceRows([]);
-      setAttendanceMessage('danger', 'Impossible de charger la présence pour cette date.');
-    } finally {
-      if (reloadAttendanceBtn) reloadAttendanceBtn.disabled = false;
-    }
-  }
-
-  async function saveAttendance() {
-    if (!attendanceTableBody) return;
-    {
-      const rows = attendanceTableBody.querySelectorAll('tr[data-student-id]');
-      const entries = Array.from(rows).map(function (row) {
-        return {
-          student_id: parseInt(row.dataset.studentId || '0', 10),
-          status: row.dataset.status || 'present'
-        };
-      }).filter(function (entry) {
-        return entry.student_id > 0;
-      });
-
-      if (!entries.length) {
-        setAttendanceMessage('warning', 'Aucune ligne de présence à enregistrer.');
-        return;
-      }
-
-      const selection = getAttendanceSelection();
-      const payload = {
-        attendance_date: getAttendanceDate(),
-        period: getAttendancePeriod(),
-        entries: entries
-      };
-
-      if (currentCourseId) {
-        payload.course_id = currentCourseId;
+}
+
+async function updateColumnLocking() {
+  if (!currentCourseId) return;
+  const selectedPeriod = getSelectedPeriod();
+  if (!selectedPeriod) return;
+
+  let isLocked = false;
+  try {
+    const res = await fetch(`${professorBaseUrl.replace(/\/$/, '')}/api/get-period-status/${currentCourseId}?period=${selectedPeriod}`);
+    if (res.ok) {
+      const data = await res.json();
+      const status = data[selectedPeriod] || data;
+      isLocked = Boolean(status.submitted);
+      if (isLocked) {
+        submittedPeriods.add(selectedPeriod);
       } else {
-        payload.section_name = selection.sectionName;
-        payload.level = selection.level;
-        payload.class_name = selection.className;
-      }
-
-      if (saveAttendanceBtn) {
-        saveAttendanceBtn.disabled = true;
-      }
-
-      try {
-        const response = await fetch(buildProfessorUrl('api/attendance/save'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Erreur lors de l\'enregistrement.');
-        }
-
-        setAttendanceMessage(
-          'success',
-          `Présences enregistrées (${data.created || 0} créées, ${data.updated || 0} mises à jour, ${data.skipped || 0} ignorées).`
-        );
-        if (data.class_label) {
-          updateAttendanceScopeLabel(data.class_label);
-        }
-        await loadAttendance();
-      } catch (error) {
-        console.error('Error saving attendance:', error);
-        setAttendanceMessage('danger', error.message || 'Erreur lors de l\'enregistrement des présences.');
-      } finally {
-        if (saveAttendanceBtn) saveAttendanceBtn.disabled = false;
-      }
-      return;
-    }
-    if (!currentCourseId || !attendanceTableBody) return;
-
-    const rows = attendanceTableBody.querySelectorAll('tr[data-student-id]');
-    const entries = Array.from(rows).map(row => {
-      const studentId = parseInt(row.dataset.studentId || '0', 10);
-      const statusSelect = row.querySelector('.attendance-status-select');
-      const noteInput = row.querySelector('.attendance-note-input');
-      return {
-        student_id: studentId,
-        status: statusSelect ? statusSelect.value : 'present',
-        note: noteInput ? noteInput.value : ''
-      };
-    }).filter(entry => entry.student_id > 0);
-
-    if (!entries.length) {
-      setAttendanceMessage('warning', 'Aucune ligne de présence à enregistrer.');
-      return;
-    }
-
-    const attendanceDate = getAttendanceDate();
-    if (saveAttendanceBtn) saveAttendanceBtn.disabled = true;
-
-    try {
-      const response = await fetch(buildProfessorUrl('api/attendance/save'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          course_id: currentCourseId,
-          attendance_date: attendanceDate,
-          entries: entries
-        })
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erreur lors de l\'enregistrement.');
-      }
-
-      setAttendanceMessage(
-        'success',
-        `Présences enregistrées (${data.created || 0} créées, ${data.updated || 0} mises à jour, ${data.skipped || 0} ignorées).`
-      );
-    } catch (error) {
-      console.error('Error saving attendance:', error);
-      setAttendanceMessage('danger', error.message || 'Erreur lors de l\'enregistrement des présences.');
-    } finally {
-      if (saveAttendanceBtn) saveAttendanceBtn.disabled = false;
-    }
-  }
-
-  function fillSelect(selectElement, placeholder, values, selectedValue = '') {
-    if (!selectElement) return;
-
-    selectElement.innerHTML = '';
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = placeholder;
-    selectElement.appendChild(placeholderOption);
-
-    const normalizedSelectedValue = String(selectedValue || '').trim();
-    values.forEach(value => {
-      const normalizedValue = String(value || '').trim();
-      const option = document.createElement('option');
-      option.value = normalizedValue;
-      option.textContent = value;
-      if (normalizedValue === normalizedSelectedValue) {
-        option.selected = true;
-      }
-      selectElement.appendChild(option);
-    });
-
-    selectElement.disabled = values.length === 0;
-    if (!values.length) {
-      selectElement.value = '';
-    }
-  }
-
-  function clearDependentSelects() {
-    fillSelect(levelSelect, '-- Sélectionner un niveau --', []);
-    fillSelect(classSelect, '-- Sélectionner une classe --', []);
-    fillSelect(courseSelect, '-- Sélectionner un cours --', []);
-  }
-
-  function deactivateCurrentCourse(message) {
-    currentCourseId = null;
-    setWorkspaceVisible(false);
-    if (saveDraftBtn) {
-      saveDraftBtn.disabled = true;
-    }
-    if (message) {
-      setSelectionNotice('warning', message);
-    }
-  }
-
-  async function loadSections(selectedSectionName = '') {
-    const sections = await fetchJson(buildProfessorUrl('api/sections'));
-    fillSelect(sectionSelect, '-- Sélectionner une section --', sections, selectedSectionName);
-    return sections;
-  }
-
-  async function loadLevels(selectedLevel = '') {
-    fillSelect(levelSelect, '-- Sélectionner un niveau --', []);
-    fillSelect(classSelect, '-- Sélectionner une classe --', []);
-    if (courseSelect) {
-      fillSelect(courseSelect, '-- Sélectionner un cours --', []);
-    }
-
-    const sectionName = (sectionSelect.value || '').trim();
-    if (!sectionName) {
-      if (canManageAttendance) {
-        updateAttendanceScopeLabel('Sélectionnez une classe');
-        setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-        if (saveAttendanceBtn) {
-          saveAttendanceBtn.disabled = true;
-        }
-      }
-      return [];
-    }
-
-    const levels = await fetchJson(buildProfessorQueryUrl('api/levels', { section_name: sectionName }));
-    fillSelect(levelSelect, '-- Sélectionner un niveau --', levels, selectedLevel);
-    levelSelect.disabled = levels.length === 0;
-    classSelect.disabled = true;
-    if (courseSelect) {
-      courseSelect.disabled = true;
-    }
-
-    if (canManageAttendance) {
-      updateAttendanceScopeLabel('Sélectionnez une classe');
-      setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-      if (saveAttendanceBtn) {
-        saveAttendanceBtn.disabled = true;
+        submittedPeriods.delete(selectedPeriod);
       }
     }
-    return levels;
-  }
+  } catch(e) {}
 
-  async function loadClasses(selectedClassName = '') {
-    fillSelect(classSelect, '-- Sélectionner une classe --', []);
-    if (courseSelect) {
-      fillSelect(courseSelect, '-- Sélectionner un cours --', []);
-    }
-
-    const sectionName = (sectionSelect.value || '').trim();
-    const level = (levelSelect.value || '').trim();
-    if (!sectionName || !level) {
-      if (canManageAttendance) {
-        updateAttendanceScopeLabel('Sélectionnez une classe');
-        setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-        if (saveAttendanceBtn) {
-          saveAttendanceBtn.disabled = true;
-        }
-      }
-      return [];
-    }
-
-    const classes = await fetchJson(buildProfessorQueryUrl('api/classes', { section_name: sectionName, level: level }));
-    fillSelect(classSelect, '-- Sélectionner une classe --', classes, selectedClassName);
-    classSelect.disabled = classes.length === 0;
-    if (courseSelect) {
-      courseSelect.disabled = true;
-    }
-
-    if (canManageAttendance) {
-      if (selectedClassName) {
-        updateAttendanceScopeLabel([sectionName, level, selectedClassName].filter(Boolean).join(' / '));
-      } else {
-        updateAttendanceScopeLabel('Sélectionnez une classe');
-        setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-        if (saveAttendanceBtn) {
-          saveAttendanceBtn.disabled = true;
-        }
-      }
-    }
-    return classes;
-  }
-
-  async function loadCourses(selectedCourseId = '') {
-    if (!canManageGrades || !courseSelect) {
-      if (canManageAttendance) {
-        if (hasAttendanceSelection()) {
-          await loadAttendance();
-        } else {
-          updateAttendanceScopeLabel('Sélectionnez une classe');
-          setAttendancePlaceholder('Sélectionnez une section, un niveau et une classe pour charger la liste nominative.');
-          if (saveAttendanceBtn) {
-            saveAttendanceBtn.disabled = true;
-          }
-        }
-      }
-      return [];
-    }
-
-    fillSelect(courseSelect, '-- Sélectionner un cours --', []);
-
-    const sectionName = (sectionSelect.value || '').trim();
-    const level = (levelSelect.value || '').trim();
-    const className = (classSelect.value || '').trim();
-    if (!sectionName || !level || !className) {
-      courseSelect.disabled = true;
-      return [];
-    }
-
-    const courses = await fetchJson(buildProfessorQueryUrl('api/courses', {
-      section_name: sectionName,
-      level: level,
-      class_name: className
-    }));
-
-    courseSelect.innerHTML = '';
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = courses.length ? '-- Sélectionner un cours --' : '-- Aucun cours trouvé --';
-    courseSelect.appendChild(placeholderOption);
-
-    courses.forEach(function (course) {
-      const option = document.createElement('option');
-      option.value = course.id;
-      option.textContent = course.title;
-      if (String(course.id) === String(selectedCourseId)) {
-        option.selected = true;
-      }
-      courseSelect.appendChild(option);
-    });
-
-    courseSelect.disabled = courses.length === 0;
-    if (!currentCourseId && !courses.length) {
-      setSelectionNotice('warning', 'Aucun cours trouvé pour cette section, ce niveau et cette classe.');
-    }
-    return courses;
-  }
-
-  async function loadClassStudents() {
-    const sectionName = (sectionSelect.value || '').trim();
-    const level = (levelSelect.value || '').trim();
-    const className = (classSelect.value || '').trim();
-    if (!sectionName || !level || !className) {
-      return [];
-    }
-
-    const students = await fetchJson(buildProfessorQueryUrl('api/students', {
-      section_name: sectionName,
-      level: level,
-      class_name: className
-    }));
-    renderStudentRows(students);
-    setWorkspaceVisible(true);
-    if (saveDraftBtn) {
-      saveDraftBtn.disabled = !currentCourseId;
-    }
-    return students;
-  }
-
-  function renderGradeInput(studentId, period, grades, disabledByCourse) {
-    const maxValue = getPeriodMax(period);
-    const enabled = isPeriodEnabled(period);
-    const disabled = disabledByCourse || !enabled ? 'disabled' : '';
-    const title = enabled ? '' : 'title="Période non active pour ce cours"';
-    const value = grades && grades[period] !== undefined && grades[period] !== null ? grades[period] : '';
-    return `<input type="number" min="0" max="${maxValue}" step="0.01" class="form-control form-control-sm grade-input" data-student-id="${studentId}" data-period="${period}" data-max="${maxValue}" value="${escapeHtml(value)}" placeholder="0" ${disabled} ${title}>`;
-  }
-
-  function renderStudentRows(students) {
-    if (!studentsTableBody) return;
-
-    const currentStudents = Array.isArray(students) ? students : [];
-    if (!currentStudents.length) {
-      studentsTableBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">Aucun élève trouvé pour cette classe.</td></tr>';
-      return;
-    }
-
-    const rows = currentStudents.map(student => {
-      const studentId = student.id;
-      const studentName = escapeHtml(student.full_name || '');
-      const disabledByCourse = !currentCourseId;
-      const grades = grades_by_period[studentId] || {};
-
-      return `
-        <tr data-student-id="${studentId}">
-          <td><strong>${studentName}</strong></td>
-          <td>${renderGradeInput(studentId, '1èP', grades, disabledByCourse)}</td>
-          <td>${renderGradeInput(studentId, '2èP', grades, disabledByCourse)}</td>
-          <td>${renderGradeInput(studentId, 'EXA1', grades, disabledByCourse)}</td>
-          <td style="background-color: #f0f0f0;"><span class="total1" data-student-id="${studentId}">0</span></td>
-          <td>${renderGradeInput(studentId, '3èP', grades, disabledByCourse)}</td>
-          <td>${renderGradeInput(studentId, '4èP', grades, disabledByCourse)}</td>
-          <td>${renderGradeInput(studentId, 'EXA2', grades, disabledByCourse)}</td>
-          <td style="background-color: #f0f0f0;"><span class="total2" data-student-id="${studentId}">0</span></td>
-          <td style="background-color: #fffacd;"><strong><span class="totalGeneral" data-student-id="${studentId}">0</span></strong></td>
-          <td style="background-color: #fffacd;"><strong><span class="percentage" data-student-id="${studentId}">0%</span></strong></td>
-        </tr>
-      `;
-    }).join('');
-
-    studentsTableBody.innerHTML = rows;
-    document.querySelectorAll('tbody tr[data-student-id]').forEach(row => {
-      calculateTotals(row.dataset.studentId);
-    });
-  }
-
-  async function restoreSelection() {
-    if (!initialSelection.sectionName) return;
-
-    sectionSelect.value = (initialSelection.sectionName || '').trim();
-
-    const levels = await loadLevels((initialSelection.level || '').trim());
-    if (!initialSelection.level && levels.length === 1) {
-      levelSelect.value = levels[0];
-    }
-    if (!levelSelect.value) {
-      updateSelectionLabel();
-      return;
-    }
-
-    const classes = await loadClasses((initialSelection.className || '').trim());
-    if (!initialSelection.className && classes.length === 1) {
-      classSelect.value = classes[0];
-    }
-    if (!classSelect.value) {
-      updateSelectionLabel();
-      return;
-    }
-
-    if (canManageAttendance) {
-      updateAttendanceScopeLabel([sectionSelect.value, levelSelect.value, classSelect.value].filter(Boolean).join(' / '));
-    }
-
-    if (!canManageGrades || !courseSelect) {
-      updateSelectionLabel();
-      if (canManageAttendance && hasAttendanceSelection()) await loadAttendance();
-      return;
-    }
-
-    await loadCourses(initialSelection.courseId || '');
-    if (initialSelection.courseId) {
-      courseSelect.value = String(initialSelection.courseId);
-      courseSelect.disabled = false;
-      currentCourseId = parseInt(initialSelection.courseId, 10);
-    }
-
-    if (currentCourseId) {
-      await loadClassStudents();
-    }
-
-    updateSelectionLabel();
-  }
-
-  sectionSelect.addEventListener('change', async function () {
-    if (!restoringSelection && currentCourseId) {
-      deactivateCurrentCourse(`La sélection a été réinitialisée. ${reselectionPrompt}`);
-    }
-
-    try {
-      await loadLevels();
-      updateSelectionLabel();
-    } catch (error) {
-      console.error('Error loading levels:', error);
-    }
-  });
-
-  levelSelect.addEventListener('change', async function () {
-    if (!restoringSelection && currentCourseId) {
-      deactivateCurrentCourse(`La sélection a été réinitialisée. ${reselectionPrompt}`);
-    }
-
-    try {
-      await loadClasses();
-      updateSelectionLabel();
-    } catch (error) {
-      console.error('Error loading classes:', error);
-    }
-  });
-
-  classSelect.addEventListener('change', async function () {
-    if (!restoringSelection && currentCourseId) {
-      deactivateCurrentCourse(`La sélection a été réinitialisée. ${reselectionPrompt}`);
-    }
-
-    try {
-      await loadCourses();
-      if (canManageGrades) {
-        setWorkspaceVisible(false);
-      }
-      updateSelectionLabel();
-    } catch (error) {
-      console.error('Error loading courses and students:', error);
-    }
-  });
-
-  if (courseSelect) {
-    courseSelect.addEventListener('change', async function () {
-    if (restoringSelection) {
-      return;
-    }
-
-    if (!this.value) {
-      currentCourseId = null;
-      setWorkspaceVisible(false);
-      if (saveDraftBtn) {
-        saveDraftBtn.disabled = true;
-      }
-      updateSelectionLabel();
-      return;
-    }
-
-    currentCourseId = parseInt(this.value, 10);
-    setSelectionNotice('info', 'Chargement du cours sélectionné...');
-    navigateToSelectedCourse(currentCourseId);
-    updateSelectionLabel();
-    });
-  }
-
-  if (attendanceDateInput && !attendanceDateInput.value) {
-    attendanceDateInput.value = getTodayIsoDate();
-  }
-
-  if (reloadAttendanceBtn) {
-    reloadAttendanceBtn.addEventListener('click', function () {
-      loadAttendance();
-    });
-  }
-
-  if (saveAttendanceBtn) {
-    saveAttendanceBtn.addEventListener('click', function () {
-      saveAttendance();
-    });
-  }
-
-  if (attendanceTableBody) {
-    attendanceTableBody.addEventListener('click', function (event) {
-      const button = event.target.closest('.attendance-status-btn');
-      if (!button) {
-        return;
-      }
-
-      const row = button.closest('tr[data-student-id]');
-      if (!row) {
-        return;
-      }
-
-      applyAttendanceStatus(row, button.dataset.status || 'present');
-    });
-  }
-
-  if (attendanceDateInput) {
-    attendanceDateInput.addEventListener('change', function () {
-      if (canManageAttendance) {
-        loadAttendance();
-      }
-    });
-  }
-
-  if (attendancePeriodSelect) {
-    attendancePeriodSelect.addEventListener('change', function () {
-      if (canManageAttendance) {
-        loadAttendance();
-      }
-    });
-  }
-
-  if (saveDraftBtn) {
-    saveDraftBtn.addEventListener('click', async function () {
-      try {
-        await saveDraftGrades(true);
-      } catch (error) {
-        console.error('Error saving draft grades:', error);
-        setDraftMessage('danger', error.message || 'Erreur lors de la sauvegarde du brouillon.');
-        setTimeout(() => {
-          if (draftStatus) {
-            draftStatus.innerHTML = '';
-          }
-        }, 4000);
-      }
-    });
-  }
-
-  if (refreshNotificationsBtn) {
-    refreshNotificationsBtn.addEventListener('click', function () {
-      loadNotifications();
-    });
-  }
-
-  if (markAllNotificationsReadBtn) {
-    markAllNotificationsReadBtn.addEventListener('click', async function () {
-      try {
-        await markAllNotificationsAsRead();
-        await loadNotifications();
-      } catch (error) {
-        console.error('Error marking notifications as read:', error);
-      }
-    });
-  }
-
-  if (notificationsList) {
-    notificationsList.addEventListener('click', async function (event) {
-      const item = event.target.closest('.notification-item');
-      if (!item || !item.dataset.notificationId) {
-        return;
-      }
-
-      try {
-        await markNotificationAsRead(item.dataset.notificationId);
-        await loadNotifications();
-      } catch (error) {
-        console.error('Error updating notification:', error);
-      }
-    });
-  }
-
-  (async function initializeSelection() {
-    restoringSelection = true;
-    try {
-      await loadSections(initialSelection.sectionName || '');
-      await restoreSelection();
-      if (currentCourseId && canManageGrades) {
-        setWorkspaceVisible(true);
-        loadPeriodStatus();
-        try { applyLocalDrafts(currentCourseId); } catch (e) { console.error('Error applying local drafts:', e); }
-      } else if (currentCourseId && canManageAttendance) {
-        loadAttendance();
-      } else {
-        setWorkspaceVisible(false);
-      }
-    } catch (error) {
-      console.error('Error initializing professor selection:', error);
-    } finally {
-      restoringSelection = false;
-    }
-  })();
-
-  if (canViewNotifications) {
-    loadNotifications();
-    setInterval(function () {
-      loadNotifications();
-    }, 15000);
-  }
-
-  /**
-   * Update selected period display
-   */
-  periodSelects.forEach(select => {
-    select.addEventListener('change', function () {
-      document.getElementById('selectedPeriod').textContent = 'Période : ' + this.value;
-      highlightActivePeriod(this.value);
-    });
-  });
-
-  /**
-   * Highlight the active period columns in the table
-   */
-  function highlightActivePeriod(period) {
-    document.querySelectorAll('.grade-input').forEach(input => {
-      input.style.backgroundColor = input.dataset.period === period ? '#e3f2fd' : '';
-    });
-  }
-
-  /**
-   * Calculate totals
-   */
-  function calculateTotals(studentId) {
-    const row = document.querySelector(`[data-student-id="${studentId}"]`);
-    if (!row) return;
-
-    const getGrade = (period) => {
-      const input = row.querySelector(`input[data-period="${period}"]`);
-      return input ? parseFloat(input.value) || 0 : 0;
-    };
-
-    const p1 = getGrade('1èP');
-    const p2 = getGrade('2èP');
-    const exa1 = getGrade('EXA1');
-    const p3 = getGrade('3èP');
-    const p4 = getGrade('4èP');
-    const exa2 = getGrade('EXA2');
-
-    const total1 = p1 + p2 + exa1;
-    const total2 = p3 + p4 + exa2;
-    const totalGeneral = total1 + total2;
-
-    const maxPeriods = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2'];
-    const totalMax = maxPeriods.reduce((sum, period) => {
-      const input = row.querySelector(`input[data-period="${period}"]`);
-      const max = input ? parseFloat(input.dataset.max || input.max || '0') : 0;
-      return sum + (isNaN(max) ? 0 : max);
-    }, 0);
-    const percentage = totalMax > 0 ? (totalGeneral / totalMax) * 100 : 0;
-
-    row.querySelector('.total1').textContent = total1.toFixed(2);
-    row.querySelector('.total2').textContent = total2.toFixed(2);
-    row.querySelector('.totalGeneral').textContent = totalGeneral.toFixed(2);
-    row.querySelector('.percentage').textContent = percentage.toFixed(1) + '%';
-
-    // Color coding
-    const percentageSpan = row.querySelector('.percentage');
-    if (percentage >= 80) {
-      percentageSpan.style.color = 'green';
-    } else if (percentage >= 60) {
-      percentageSpan.style.color = 'orange';
-    } else if (percentage > 0) {
-      percentageSpan.style.color = 'red';
-    }
-  }
-
-  /**
-   * Handle grade input changes
-   */
   document.querySelectorAll('.grade-input').forEach(input => {
-    input.addEventListener('change', async function () {
-      const studentId = this.dataset.studentId;
-      const period = this.dataset.period;
-      const value = this.value;
-
-      calculateTotals(studentId);
-
-      if (value !== null && value !== '') {
-        const maxAllowed = parseFloat(this.dataset.max) || 20;
-        if (parseFloat(value) > maxAllowed) {
-          this.value = '';
-          calculateTotals(studentId);
-          this.focus();
-          resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Valeur invalide : la note maximale pour ${period} est ${maxAllowed}. Veuillez recommencer la saisie avec une valeur correcte.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-          setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
-          return;
-        }
-
-        try {
-          const response = await fetch(buildProfessorUrl('grade'), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              student_id: parseInt(studentId, 10),
-              period: period,
-              value: parseFloat(value),
-              course_id: currentCourseId
-            })
-          });
-          const data = await response.json();
-          if (data.success) {
-            resultDiv.innerHTML = '<div class="alert alert-success alert-dismissible fade show" role="alert">Note enregistrée pour ' + period + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
-          } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Erreur: ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-          }
-          setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
-        } catch (error) {
-          resultDiv.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">Erreur de communication<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-          console.error('Error:', error);
-        }
+    if (input.dataset.period === selectedPeriod) {
+      if (selectedPeriod === 'REPECHAGE' && !repechageEligibleStudentIds.has(input.dataset.studentId)) {
+        input.disabled = true;
+        input.style.backgroundColor = '#e9ecef';
+        input.style.color = '#888';
+        input.style.cursor = 'not-allowed';
+      } else {
+        input.disabled = isLocked;
+        input.dataset.locked = isLocked ? 'true' : 'false';
+        input.style.backgroundColor = isLocked ? '#e9ecef' : '#e0f7fa';
+        input.style.color = isLocked ? '#888' : 'inherit';
+        input.style.cursor = isLocked ? 'not-allowed' : 'text';
       }
-    });
-
-    input.addEventListener('input', function () {
-      const studentId = this.dataset.studentId;
-      calculateTotals(studentId);
-    });
+    } else {
+      input.disabled = true;
+      input.dataset.locked = 'false';
+      input.style.backgroundColor = '';
+      input.style.color = 'inherit';
+      input.style.cursor = 'text';
+    }
   });
+}
 
-  // Initialize totals on page load
-  document.querySelectorAll('tbody tr[data-student-id]').forEach(row => {
-    const studentId = row.dataset.studentId;
-    calculateTotals(studentId);
+document.querySelectorAll('.period-select').forEach(radio => {
+  radio.addEventListener('change', function() {
+    if (this.checked && selectedPeriodDisplay) {
+      selectedPeriodDisplay.textContent = `Période : ${this.value}`;
+      updateExportLinks();
+      updateColumnLocking();
+    }
   });
+});
 
-  const checkedPeriod = document.querySelector('input[name="period"]:checked');
-  if (checkedPeriod) {
-    highlightActivePeriod(checkedPeriod.value);
+window.addEventListener('DOMContentLoaded', function() {
+  if (selectedPeriodDisplay) {
+    const period = getSelectedPeriod();
+    if (period) {
+      selectedPeriodDisplay.textContent = `Période : ${period}`;
+    }
   }
-
-  // Set current course ID if course is already selected
-  if (courseSelect && courseSelect.value) {
-    currentCourseId = courseSelect.value;
-  }
-
-  const exportTemplateLink = document.getElementById('export-template-link');
-  const exportGradesLink = document.getElementById('export-grades-link');
-  const exportFicheViergeLink = document.getElementById('export-fiche-vierge-link');
-  const exportFicheRemplieLink = document.getElementById('export-fiche-remplie-link');
-  const importGradesBtn = document.getElementById('import-grades-btn');
-  const importAllGradesBtn = document.getElementById('import-all-grades-btn');
-  const importGradesForm = document.getElementById('import-grades-form');
-  const importStatus = document.getElementById('import-status');
-
-  if (exportTemplateLink) {
-    exportTemplateLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      const selectedPeriod = document.querySelector('input[name="period"]:checked');
-      if (!selectedPeriod) {
-        alert('Veuillez sélectionner une période.');
-        return;
-      }
-      const url = buildProfessorUrl(`api/export-template?course_id=${currentCourseId}&period=${selectedPeriod.value}`);
-      window.location.href = url;
-    });
-  }
-
-  if (exportGradesLink) {
-    exportGradesLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      const selectedPeriod = document.querySelector('input[name="period"]:checked');
-      if (!selectedPeriod) {
-        alert('Veuillez sélectionner une période.');
-        return;
-      }
-      const url = buildProfessorUrl(`api/export-grades?course_id=${currentCourseId}&period=${selectedPeriod.value}`);
-      window.location.href = url;
-    });
-  }
-
-  if (exportFicheViergeLink) {
-    exportFicheViergeLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      const url = buildProfessorUrl(`api/export-fiche-cotes?course_id=${currentCourseId}&filled=0`);
-      window.location.href = url;
-    });
-  }
-
-  if (exportFicheRemplieLink) {
-    exportFicheRemplieLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      const url = buildProfessorUrl(`api/export-fiche-cotes?course_id=${currentCourseId}&filled=1`);
-      window.location.href = url;
-    });
-  }
-
-  if (importGradesBtn && importGradesForm) {
-    importGradesBtn.addEventListener('click', async function() {
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      const selectedPeriod = document.querySelector('input[name="period"]:checked');
-      if (!selectedPeriod) {
-        alert('Veuillez sélectionner une période.');
-        return;
-      }
-      
-      const fileInput = document.getElementById('grade-file-input');
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert('Veuillez sélectionner un fichier Excel.');
-        return;
-      }
-
-      const formData = new FormData(importGradesForm);
-      formData.set('course_id', currentCourseId);
-      formData.set('period', selectedPeriod.value);
-
-      importGradesBtn.disabled = true;
-      if (importStatus) {
-        importStatus.innerHTML = '<span class="text-info small ms-2">Importation...</span>';
-      }
-
-      try {
-        const response = await fetch(buildProfessorUrl('api/import-grades'), {
-          method: 'POST',
-          body: formData
-        });
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-          if (importStatus) {
-            importStatus.innerHTML = `<span class="text-success small ms-2">Import réussi : ${data.imported} cotes ajoutées. Actualisation...</span>`;
-          }
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          if (importStatus) {
-            importStatus.innerHTML = `<span class="text-danger small ms-2">Erreur : ${data.error || 'Erreur lors de l\'importation'}</span>`;
-          }
-          importGradesBtn.disabled = false;
-        }
-      } catch (error) {
-        console.error('Error importing grades:', error);
-        if (importStatus) {
-          importStatus.innerHTML = `<span class="text-danger small ms-2">Erreur de communication</span>`;
-        }
-        importGradesBtn.disabled = false;
-      }
-    });
-  }
-
-  if (importAllGradesBtn && importGradesForm) {
-    importAllGradesBtn.addEventListener('click', async function() {
-      if (!currentCourseId) {
-        alert('Veuillez sélectionner un cours.');
-        return;
-      }
-      
-      const fileInput = document.getElementById('grade-file-input');
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert('Veuillez sélectionner un fichier Excel.');
-        return;
-      }
-
-      if (!confirm('Êtes-vous sûr de vouloir importer toutes les périodes remplies en même temps ?')) {
-        return;
-      }
-
-      const formData = new FormData(importGradesForm);
-      formData.set('course_id', currentCourseId);
-      formData.set('period', 'all');
-
-      importAllGradesBtn.disabled = true;
-      if (importStatus) {
-        importStatus.innerHTML = '<span class="text-info small ms-2">Importation de toutes les périodes...</span>';
-      }
-
-      try {
-        const response = await fetch(buildProfessorUrl('api/import-grades'), {
-          method: 'POST',
-          body: formData
-        });
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-          if (importStatus) {
-            importStatus.innerHTML = `<span class="text-success small ms-2">Import réussi : ${data.imported} cotes ajoutées. Actualisation...</span>`;
-          }
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          if (importStatus) {
-            importStatus.innerHTML = `<span class="text-danger small ms-2">Erreur : ${data.error || 'Erreur lors de l\\'importation'}</span>`;
-          }
-          importAllGradesBtn.disabled = false;
-        }
-      } catch (error) {
-        console.error('Error importing all grades:', error);
-        if (importStatus) {
-          importStatus.innerHTML = `<span class="text-danger small ms-2">Erreur de communication</span>`;
-        }
-        importAllGradesBtn.disabled = false;
-      }
-    });
-  }
-
-  /**
-   * Load submission status for each period
-   */
-  function loadPeriodStatus() {
-    if (!currentCourseId) return;
-
-    fetch(buildProfessorUrl(`api/get-period-status/${currentCourseId}`))
-      .then(response => response.json())
-      .then(status => {
-        renderPeriodStatus(status);
-        syncLockedInputs(status);
-        // Disable submit/save-draft if the currently selected period is submitted
-        try {
-          const sel = document.querySelector('input[name="period"]:checked');
-          const selectedPeriod = sel ? sel.value : null;
-          const isSubmitted = selectedPeriod && status[selectedPeriod] && status[selectedPeriod].submitted;
-          if (submitBtn) submitBtn.disabled = !!isSubmitted;
-          if (saveDraftBtn) saveDraftBtn.disabled = !!isSubmitted;
-        } catch (e) {
-          // fallback: ensure submit button remains enabled if unknown
-          console.error('Error setting per-period submit state:', e);
-        }
-      })
-      .catch(error => console.error('Error loading period status:', error));
-  }
-
-  /**
-   * Disable grade inputs for locked periods
-   */
-  function disableLockInputs(status) {
-    const periods = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2'];
-    periods.forEach(period => {
-      if (status[period] && status[period].submitted) {
-        const inputs = document.querySelectorAll(`input[data-period="${period}"]`);
-        inputs.forEach(input => {
-          input.disabled = true;
-          input.title = 'Cette note est verrouillée. Secrétariat peut la modifier.';
-          input.style.opacity = '0.6';
-          input.style.backgroundColor = '#f0f0f0';
-        });
-      }
-    });
-  }
-
-  function syncLockedInputs(status) {
-    const periods = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2'];
-    periods.forEach(period => {
-      const inputs = document.querySelectorAll(`input[data-period="${period}"]`);
-      inputs.forEach(input => {
-        const isInactivePeriod = String(input.title || '').toLowerCase().includes('non active');
-        if (status[period] && status[period].submitted) {
-          input.disabled = true;
-          input.title = 'Cette note est verrouillée. Le secrétariat peut la modifier.';
-          input.style.opacity = '0.6';
-          input.style.backgroundColor = '#f0f0f0';
-          return;
-        }
-
-        if (!isInactivePeriod) {
-          input.disabled = false;
-          input.title = '';
-          input.style.opacity = '';
-          input.style.backgroundColor = '';
-        }
-      });
-    });
-  }
-
-  /**
-   * Render period status bar
-   */
-  function renderPeriodStatus(status) {
-    const periods = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2'];
-    let html = '<div class="row">';
-
-    periods.forEach(period => {
-      const s = status[period] || {};
-      const bgColor = s.submitted ? '#ffe6e6' : '#e6f2ff';
-      const textColor = s.submitted ? '#8b0000' : '#003d99';
-      const icon = s.submitted ? '🔒' : '✏️';
-
-      html += `
-        <div class="col-6 col-sm-4 col-lg-2 mb-2">
-          <div style="background-color: ${bgColor}; padding: 0.5rem; border-radius: 4px; text-align: center; border: 1px solid #ccc;">
-            <strong>${period}</strong><br>
-            <small style="color: ${textColor};">${icon} ${s.submitted ? 'Verrouillée' : 'En édition'}</small><br>
-            <small>${s.submitted_count || 0}/${s.total_count || 0} notes</small>
-          </div>
-        </div>
-      `;
-    });
-
-    html += '</div>';
-    periodStatusContainer.innerHTML = html;
-  }
-
-  /**
-   * Handle submit period button click
-   */
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async function () {
-      const selectedPeriod = document.querySelector('input[name="period"]:checked');
-      if (!selectedPeriod || !currentCourseId) {
-        alert('Veuillez sélectionner une période et un cours.');
-        return;
-      }
-
-      const period = selectedPeriod.value;
-      const courseLabel = courseSelect.options[courseSelect.selectedIndex]?.textContent || 'ce cours';
-      const message = `Voulez-vous publier les notes de ${period} pour le cours "${courseLabel}" dans le bulletin ? Cette période/examen de ce cours sera verrouillée après envoi.`;
-      
-      customConfirm(message, async () => {
-        // Callback si utilisateur clique OK
-        // First, save local drafts to ensure latest values are stored
-        try {
-          await saveDraftGrades(false);
-      } catch (error) {
-        console.error('Error saving draft before submission:', error);
-        setDraftMessage('danger', error.message || 'Veuillez enregistrer le brouillon avant la soumission.');
-        return;
-      }
-
-      // Then, push local drafts for this period to server (if any)
-      try {
-        const localDrafts = loadLocalDrafts(currentCourseId) || [];
-        const draftsToSend = localDrafts.filter(d => d.period === period);
-        if (draftsToSend.length) {
-          const resp = await fetch(buildProfessorUrl('api/save-grades-draft'), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ course_id: currentCourseId, grades: draftsToSend })
-          });
-          const respData = await resp.json();
-          if (!resp.ok) {
-            setDraftMessage('danger', respData.error || 'Erreur lors de l\'envoi des brouillons.');
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('Error syncing local drafts to server:', error);
-        setDraftMessage('danger', 'Erreur lors de la synchronisation du brouillon.');
-        return;
-      }
-
-      // Now submit the period
-      try {
-        const response = await fetch(buildProfessorUrl('api/submit-period'), {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ course_id: currentCourseId, period: period })
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          // Clear local drafts for this period
-          try { clearLocalDraftsForPeriod(currentCourseId, period); } catch (e) { console.error('Error clearing local drafts:', e); }
-
-          // Immediately lock UI inputs for this period to prevent further edits
-          try {
-            const inputs = document.querySelectorAll(`input[data-period="${period}"]`);
-            const totalCount = inputs ? inputs.length : 0;
-            const statusUpdate = {};
-            statusUpdate[period] = { submitted: true, submitted_count: totalCount, total_count: totalCount };
-            renderPeriodStatus(statusUpdate);
-            syncLockedInputs(statusUpdate);
-            if (saveDraftBtn) saveDraftBtn.disabled = true;
-            if (submitBtn) submitBtn.disabled = true;
-          } catch (e) {
-            console.error('Error applying immediate lock UI:', e);
-          }
-
-          submitStatus.innerHTML = `<span class="badge bg-success">${data.message}</span>`;
-          setTimeout(() => {
-            submitStatus.innerHTML = '';
-            // Reload the entire page to reflect all server-side changes
-            window.location.reload();
-          }, 3000);
-        } else {
-          submitStatus.innerHTML = `<span class="badge bg-danger">${data.error}</span>`;
-          setTimeout(() => { submitStatus.innerHTML = ''; }, 3000);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        submitStatus.innerHTML = `<span class="badge bg-danger">Erreur de communication</span>`;
-      }
-      }); // Fin du callback customConfirm
-    });
-  }
-
-  /**
-   * Custom confirm dialog replacement
-   */
-  function customConfirm(message, onConfirm) {
-    const modalHtml = `
-      <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header" style="background-color: #0056b3; border-bottom: 2px solid #0056b3;">
-              <h5 class="modal-title" style="color: #fff; font-weight: bold;">JNC_Kalasi</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              ${message}
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-              <button type="button" class="btn btn-primary" id="confirmBtn">OK</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Remove existing modal if present
-    const existing = document.getElementById('confirmModal');
-    if (existing) existing.remove();
-    
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Get modal element and show it
-    const modalElement = document.getElementById('confirmModal');
-    const modal = new bootstrap.Modal(modalElement);
-    
-    // Handle confirm button
-    document.getElementById('confirmBtn').addEventListener('click', function() {
-      modal.hide();
-      // Remove modal from DOM
-      setTimeout(() => modalElement.remove(), 150);
-      // Call the callback
-      if (onConfirm) onConfirm();
-    });
-    
-    // Handle cancel/close
-    modalElement.addEventListener('hidden.bs.modal', function() {
-      // Remove modal from DOM
-      modalElement.remove();
-    });
-    
-    modal.show();
-  }
-
-  function syncLockedInputs(status) {
-    const periodKeys = Object.keys(status || {});
-    periodKeys.forEach(period => {
-      const inputs = document.querySelectorAll(`input[data-period="${period}"]`);
-      inputs.forEach(input => {
-        const isInactivePeriod = String(input.title || '').toLowerCase().includes('non active');
-        if (status[period] && status[period].submitted) {
-          input.disabled = true;
-          input.title = 'Cette note est verrouillée. Le secrétariat peut la modifier.';
-          input.style.opacity = '0.6';
-          input.style.backgroundColor = '#f0f0f0';
-          return;
-        }
-
-        if (!isInactivePeriod) {
-          input.disabled = false;
-          input.title = '';
-          input.style.opacity = '';
-          input.style.backgroundColor = '';
-        }
-      });
-    });
+  updateExportLinks();
+  updateColumnLocking();
+  if (!pollingTimerId) {
+    pollingTimerId = setInterval(updateColumnLocking, pollingIntervalMs);
   }
 });
+
+window.addEventListener('beforeunload', function() {
+  if (pollingTimerId) {
+    clearInterval(pollingTimerId);
+    pollingTimerId = null;
+  }
+});
+
+function calculateTotals(studentId) {
+  const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+  if (!row) return;
+
+  const getGrade = (p) => {
+    const input = row.querySelector(`input[data-period="${p}"]`);
+    return input && input.value !== '' ? parseFloat(input.value) : 0;
+  };
+
+  const p1 = getGrade('1èP');
+  const p2 = getGrade('2èP');
+  const exa1 = getGrade('EXA1');
+  const p3 = getGrade('3èP');
+  const p4 = getGrade('4èP');
+  const exa2 = getGrade('EXA2');
+
+  const total1 = p1 + p2 + exa1;
+  const total2 = p3 + p4 + exa2;
+  const totalGeneral = total1 + total2;
+
+  let totalMax = 0;
+  row.querySelectorAll('.grade-input').forEach(inp => {
+    totalMax += parseFloat(inp.dataset.max || 20);
+  });
+  
+  const percentage = totalMax > 0 ? (totalGeneral / totalMax) * 100 : 0;
+
+  row.querySelector('.total1').textContent = total1.toFixed(1);
+  row.querySelector('.total2').textContent = total2.toFixed(1);
+  row.querySelector('.totalGeneral').textContent = totalGeneral.toFixed(1);
+  row.querySelector('.percentage').textContent = percentage.toFixed(1) + '%';
+  
+  const pctEl = row.querySelector('.percentage');
+  if (percentage >= 80) pctEl.style.color = '#198754';
+  else if (percentage >= 50) pctEl.style.color = '#fd7e14';
+  else if (percentage > 0) pctEl.style.color = '#dc3545';
+  else pctEl.style.color = 'inherit';
+}
+
+if (gradesByPeriod) {
+  for (const [studentId, periods] of Object.entries(gradesByPeriod)) {
+    for (const [period, value] of Object.entries(periods)) {
+      const input = document.querySelector(`input[data-student-id="${studentId}"][data-period="${period}"]`);
+      if (input) input.value = value;
+    }
+  }
+}
+
+if (currentCourseId) {
+  const draftsStr = localStorage.getItem(`grades_draft_${currentCourseId}`);
+  if (draftsStr) {
+    try {
+      const drafts = JSON.parse(draftsStr);
+      drafts.forEach(g => {
+        const input = document.querySelector(`input[data-student-id="${g.student_id}"][data-period="${g.period}"]`);
+        if (input && g.value !== null) input.value = g.value;
+      });
+    } catch(e) {}
+  }
+}
+
+document.querySelectorAll('#studentsTableBody tr').forEach(row => {
+  if (row.dataset.studentId) calculateTotals(row.dataset.studentId);
+});
+
+document.querySelectorAll('.grade-input').forEach(input => {
+  input.addEventListener('change', async function() {
+    calculateTotals(this.dataset.studentId);
+    
+    if (!currentCourseId || this.value === '') return;
+
+    const max = parseFloat(this.dataset.max) || 20;
+    if (parseFloat(this.value) > max || parseFloat(this.value) < 0) {
+      alert(`Valeur invalide. La note maximale pour ${this.dataset.period} est ${max}.`);
+      this.value = '';
+      calculateTotals(this.dataset.studentId);
+      setTimeout(() => this.focus(), 10);
+      return;
+    }
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const periodInputs = Array.from(document.querySelectorAll(`.grade-input[data-period="${this.dataset.period}"]`));
+      const idx = periodInputs.indexOf(this);
+      if (idx > -1 && idx < periodInputs.length - 1) {
+        periodInputs[idx + 1].focus();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const periodInputs = Array.from(document.querySelectorAll(`.grade-input[data-period="${this.dataset.period}"]`));
+      const idx = periodInputs.indexOf(this);
+      if (idx > 0) {
+        periodInputs[idx - 1].focus();
+      }
+    }
+  });
+});
+
+document.getElementById('save-draft-btn')?.addEventListener('click', function() {
+  const grades = [];
+  document.querySelectorAll('.grade-input').forEach(inp => {
+    if (inp.value !== '' && !inp.disabled) {
+      grades.push({
+        student_id: parseInt(inp.dataset.studentId),
+        period: inp.dataset.period,
+        value: parseFloat(inp.value)
+      });
+    }
+  });
+  localStorage.setItem(`grades_draft_${currentCourseId}`, JSON.stringify(grades));
+  const status = document.getElementById('draft-status');
+  status.innerHTML = `<span class="badge-ista badge-ista-green">Brouillon sauvegardé localement !</span>`;
+  setTimeout(() => status.innerHTML = '', 3000);
+});
+
+const submittedPeriods = new Set({{ submitted_periods | list | tojson }});
+const pollingIntervalMs = 5000;
+let pollingTimerId = null;
+
+document.getElementById('submit-period-btn')?.addEventListener('click', async function() {
+  const selectedPeriod = getSelectedPeriod();
+  if (!selectedPeriod) return alert("Sélectionnez une période");
+
+  if (submittedPeriods.has(selectedPeriod)) {
+    alert(`La période ${selectedPeriod} est déjà soumise et verrouillée.`);
+    return;
+  }
+
+  if (!confirm(`Voulez-vous soumettre définitivement la période ${selectedPeriod} au secrétariat ?`)) return;
+
+  const gradesToSubmit = [];
+  document.querySelectorAll(`.grade-input[data-period="${selectedPeriod}"]`).forEach(inp => {
+    if (inp.value !== '') {
+      gradesToSubmit.push({
+        student_id: parseInt(inp.dataset.studentId),
+        period: selectedPeriod,
+        value: parseFloat(inp.value)
+      });
+    }
+  });
+
+  if (gradesToSubmit.length === 0) return alert(`Aucune cote à soumettre.`);
+
+  try {
+    const saveRes = await fetch(`${professorBaseUrl.replace(/\/$/, '')}/api/save-grades-draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ course_id: currentCourseId, grades: gradesToSubmit })
+    });
+    const saveData = await saveRes.json();
+    if (!saveRes.ok) return alert("Erreur: " + (saveData.error || ''));
+
+    const submitRes = await fetch(`${professorBaseUrl.replace(/\/$/, '')}/api/submit-period`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ course_id: currentCourseId, period: selectedPeriod })
+    });
+    const submitData = await submitRes.json();
+    
+    if (submitData.success) {
+      const draftsStr = localStorage.getItem(`grades_draft_${currentCourseId}`);
+      if (draftsStr) {
+        let drafts = JSON.parse(draftsStr);
+        drafts = drafts.filter(g => g.period !== selectedPeriod);
+        localStorage.setItem(`grades_draft_${currentCourseId}`, JSON.stringify(drafts));
+      }
+      window.location.reload();
+    } else {
+      alert("Erreur: " + submitData.error);
+    }
+  } catch (e) {
+    alert("Erreur de connexion.");
+  }
+});
+
+const importBtn = document.getElementById('import-grades-btn');
+const importAllBtn = document.getElementById('import-all-grades-btn');
+const fileInput = document.getElementById('grade-file-input');
+
+async function handleImport(importAll = false) {
+  if (!fileInput.files.length) return alert("Sélectionnez un fichier Excel.");
+  const period = getSelectedPeriod();
+  if (!period && !importAll) return alert("Sélectionnez une période.");
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('course_id', currentCourseId);
+  if (!importAll) formData.append('period', period);
+
+  const url = importAll ? `${professorBaseUrl.replace(/\/$/, '')}/api/import-all-grades` : `${professorBaseUrl.replace(/\/$/, '')}/api/import-grades`;
+
+  try {
+    const res = await fetch(url, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.success) {
+      alert(data.message || "Importation réussie !");
+      window.location.reload();
+    } else {
+      alert("Erreur: " + data.error);
+    }
+  } catch (e) {
+    alert("Erreur de connexion.");
+  }
+}
+
+importBtn?.addEventListener('click', () => handleImport(false));
+importAllBtn?.addEventListener('click', () => handleImport(true));
+
+updateExportLinks();
+updateColumnLocking();
 </script>
 {% endblock %}

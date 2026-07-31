@@ -1,15 +1,16 @@
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import g, render_template, request, redirect, url_for, flash, session
 from flask_login import current_user
 from models import db, DeliberationCriteria, DeliberationResult, Section, Student, BulletinConfig, Grade, Course, BulletinBranch
 from routes.admin import admin_bp
+from routes.admin.helpers import get_school_id_for_admin_context
 from routes.admin.services import build_centralization_context
 
 LEVEL_GROUPS = {
-    '1ere_2eme': ['7è', '8è'],
-    '3eme_humanites': ['1è'],
-    '4eme_humanites': ['2è'],
-    '5eme_humanites': ['3è'],
-    '6eme_humanites': ['4è']
+    '1ere_2eme': ['7', '8'],
+    '3eme_humanites': ['1'],
+    '4eme_humanites': ['2'],
+    '5eme_humanites': ['3'],
+    '6eme_humanites': ['4']
 }
 
 # Libellés lisibles pour l'affichage dans les templates
@@ -23,7 +24,7 @@ LEVEL_GROUP_LABELS = {
 
 @admin_bp.route('/deliberation/config', methods=['GET', 'POST'])
 def deliberation_config(school_slug=None):
-    school_id = current_user.school_id
+    school_id = get_school_id_for_admin_context() or current_user.school_id
     year = session.get('academic_year', '2025 - 2026')
     
     if request.method == 'POST':
@@ -61,7 +62,7 @@ def deliberation_config(school_slug=None):
 
 @admin_bp.route('/deliberation/execute', methods=['GET', 'POST'])
 def deliberation_execute(school_slug=None):
-    school_id = current_user.school_id
+    school_id = get_school_id_for_admin_context() or current_user.school_id
     year = session.get('academic_year', '2025 - 2026')
     sections = Section.query.filter_by(school_id=school_id).order_by(Section.name, Section.level, Section.class_name).all()
     
@@ -84,7 +85,7 @@ def deliberation_execute(school_slug=None):
         # Trouver le level_group
         level_group = '1ere_2eme'
         for group, levels in LEVEL_GROUPS.items():
-            if any(str(section.level).startswith(l) for l in levels):
+            if str(section.level) in levels:
                 level_group = group
                 break
                 
@@ -205,7 +206,7 @@ def calculate_deliberation(row, criteria, course_columns):
     # Repêchage
     if percentage >= float(criteria.min_percentage_repechage) and echecs_count <= criteria.max_echecs_repechage:
         if has_echec_specifique_critique or has_echec_option_critique:
-            return 'ECHEC DELIBERABLE (REFUSE POUR BRANCHE SPECIFIQUE/OPTION)'
+            return 'ECHEC DELIBERABLE (BRANCHE SPECIFIQUE/OPTION)'
         return 'PASSAGE APRES REPECHAGE'
         
     # Redoublement

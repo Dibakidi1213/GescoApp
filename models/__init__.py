@@ -43,6 +43,7 @@ class School(db.Model):
     bulletin_configs = db.relationship('BulletinConfig', back_populates='school', lazy='dynamic')
     attendance_records = db.relationship('AttendanceRecord', back_populates='school', lazy='dynamic')
     notifications = db.relationship('Notification', back_populates='school', lazy='dynamic')
+    holidays = db.relationship('SchoolHoliday', back_populates='school', lazy='dynamic')
     subscriptions = db.relationship('SchoolSubscription', back_populates='school', lazy='dynamic')
     remote_support_tickets = db.relationship('RemoteSupportTicket', back_populates='school', lazy='dynamic')
 
@@ -227,12 +228,14 @@ class LoginHistory(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=True)
     login_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     ip_address = db.Column(db.String(45), nullable=True)  # IPv6 compatible
     user_agent = db.Column(db.String(255), nullable=True)
     success = db.Column(db.Boolean, nullable=False, default=True)
     
     user = db.relationship('User', backref=db.backref('login_history', lazy='dynamic'))
+    school = db.relationship('School', backref=db.backref('login_history', lazy='dynamic'))
 
 
 class ActivityLog(db.Model):
@@ -240,6 +243,7 @@ class ActivityLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Nullable for system actions
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=True)
     action_type = db.Column(db.String(50), nullable=False)  # e.g., 'grade_update', 'user_create', 'settings_change'
     action_description = db.Column(db.String(255), nullable=False)
     related_model = db.Column(db.String(50), nullable=True)  # e.g., 'Grade', 'User', 'School'
@@ -249,6 +253,7 @@ class ActivityLog(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     
     user = db.relationship('User', backref=db.backref('activity_log', lazy='dynamic'))
+    school = db.relationship('School', backref=db.backref('activity_log', lazy='dynamic'))
 
 
 class Notification(db.Model):
@@ -261,6 +266,7 @@ class Notification(db.Model):
     notification_type = db.Column(db.String(50), nullable=False, default='general', server_default='general')
     title = db.Column(db.String(150), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    url = db.Column(db.String(500), nullable=True)
     is_read = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('0'))
     read_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -298,6 +304,24 @@ class AttendanceRecord(db.Model):
             'school_id', 'course_id', 'student_id', 'attendance_date', 'academic_year',
             name='unique_attendance_record'
         ),
+    )
+
+
+class SchoolHoliday(db.Model):
+    __tablename__ = 'school_holidays'
+
+    id = db.Column(db.Integer, primary_key=True)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    holiday_date = db.Column(db.Date, nullable=False)
+    label = db.Column(db.String(120), nullable=False)
+    academic_year = db.Column(db.String(30), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    school = db.relationship('School', back_populates='holidays')
+
+    __table_args__ = (
+        db.UniqueConstraint('school_id', 'holiday_date', name='unique_school_holiday_date'),
     )
 
 

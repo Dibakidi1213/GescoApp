@@ -149,13 +149,14 @@ def _render_bulletins_page(school_slug=None):
     selected_section_name = None
 
     if current_user.is_super_admin() and not school_id:
-        # Superadmin: list all schools and show sections across all schools
+        # Superadmin: list all schools and show sections across all schools unless a school is selected
         schools = School.query.order_by(School.name).all()
         if selected_school_id:
             school_id = selected_school_id
             school = School.query.get(selected_school_id)
-        # Collect sections across all schools so superadmin can choose a section name
-        sections = Section.query.order_by(Section.name, Section.level).all()
+            sections = Section.query.filter_by(school_id=school_id).order_by(Section.name, Section.level).all()
+        else:
+            sections = Section.query.order_by(Section.name, Section.level).all()
         section_names = sorted({section.name for section in sections})
     elif school_id:
         school = School.query.get(school_id)
@@ -245,12 +246,6 @@ def get_bulletin_config(section_ref, level, school_slug=None):
         level=level,
         academic_year=year,
     ).first()
-    if not config:
-        config = BulletinConfig.query.filter_by(
-            school_id=school_id,
-            section_id=section.id,
-            level=level,
-        ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
 
     return jsonify(_serialize_config_response(config, section.name))
 
@@ -400,12 +395,6 @@ def export_bulletin_config(section_name, level, school_slug=None):
         level=level,
         academic_year=session.get('academic_year', '2025 - 2026'),
     ).first()
-    if not config:
-        config = BulletinConfig.query.filter_by(
-            school_id=school_id,
-            section_id=section.id,
-            level=level,
-        ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
 
     if not config:
         return jsonify({'error': 'Configuration introuvable. Sauvegardez d\'abord la configuration.'}), 404

@@ -38,7 +38,7 @@ def dashboard(school_slug=None):
         total_enrollments = Student.query.filter_by(academic_year=year).count()
         total_professors_count = User.query.filter_by(role='professor').count()
         total_grades_count = Grade.query.count()
-        usage_rate = round((total_grades_count / max(total_students, 1)) * 10, 1)
+        usage_rate = round((total_grades_count / max(total_students, 1)) * 100, 1)
         usage_rate = min(usage_rate, 100)
 
         return render_template(

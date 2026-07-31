@@ -5,6 +5,8 @@ from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 
 from models import (
+    BulletinBranch,
+    BulletinConfig,
     Course,
     Grade,
     Payment,
@@ -137,11 +139,25 @@ def delete_school(school_id, school_slug=None):
     school = School.query.get_or_404(school_id)
     school_name = school.name
 
+    # Import local des modèles dépendants pour la suppression en cascade
+    from models import ConductGrade, AttendanceRecord, DeliberationResult, Notification, SchoolHoliday, SchoolSubscription, SchoolSubscriptionPayment
+
     Grade.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     Payment.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    ConductGrade.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    AttendanceRecord.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    SchoolHoliday.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    DeliberationResult.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     Student.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     Course.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     Section.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    # Utilisation d'une sous-requête car SQLAlchemy ne supporte pas delete() avec join()
+    config_ids = db.session.query(BulletinConfig.id).filter(BulletinConfig.school_id == school.id)
+    BulletinBranch.query.filter(BulletinBranch.config_id.in_(config_ids)).delete(synchronize_session=False)
+    BulletinConfig.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    Notification.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    SchoolSubscriptionPayment.query.filter_by(school_id=school.id).delete(synchronize_session=False)
+    SchoolSubscription.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     User.query.filter_by(school_id=school.id).delete(synchronize_session=False)
     db.session.delete(school)
     db.session.commit()

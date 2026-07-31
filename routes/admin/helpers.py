@@ -5,7 +5,7 @@ from datetime import date, datetime
 from functools import wraps
 from pathlib import Path
 
-from flask import flash, g, redirect, url_for, current_app
+from flask import flash, g, redirect, request, url_for, current_app
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 
@@ -40,6 +40,26 @@ SCOPE_OPTIONS = PERIOD_OPTIONS + [
 ]
 
 ALLOWED_LOGO_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp'}
+
+
+def log_activity(action_type, description, related_model=None, related_id=None, user_id=None, school_id=None):
+    try:
+        uid = user_id or (current_user.id if current_user.is_authenticated else None)
+        sid = school_id or (current_user.school_id if current_user.is_authenticated and hasattr(current_user, 'school_id') else None)
+        entry = ActivityLog(
+            user_id=uid,
+            school_id=sid,
+            action_type=action_type,
+            action_description=str(description)[:255],
+            related_model=related_model,
+            related_id=related_id,
+            ip_address=request.remote_addr if request else None,
+            user_agent=(request.headers.get('User-Agent')[:255] if request and request.headers.get('User-Agent') else None),
+        )
+        db.session.add(entry)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def normalize_text(value):

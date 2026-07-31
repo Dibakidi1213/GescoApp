@@ -1,1309 +1,2742 @@
 {% extends 'base.html' %}
 
+
+
 {% block content %}
+
 <div class="container-fluid py-4">
+
     <!-- Header Card -->
+
     <div class="row mb-4">
+
         <div class="col-12">
+
             <div class="card shadow-sm border-0" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+
                 <div class="card-body d-flex justify-content-between align-items-center">
+
                     <div>
+
                         <h2 class="h4 mb-1"><i class="fas fa-file-invoice me-2"></i>Configuration des Bulletins (Modèle RDC Officiel)</h2>
+
                         <p class="mb-0 opacity-75">Paramétrage dynamique des bulletins</p>
+
                         {% if current_user.is_super_admin() %}
+
                         <p class="mb-0 mt-2"><i class="fas fa-globe me-1"></i><strong>Superadministrateur:</strong> Cette configuration s'appliquera à <strong>TOUTES les écoles</strong></p>
+
                         {% else %}
+
                         <p class="mb-0 mt-2"><i class="fas fa-building me-1"></i><strong>Administrateur école:</strong> Cette configuration s'appliquera à <strong>votre école uniquement</strong></p>
+
                         {% endif %}
+
                     </div>
+
                     <div class="d-flex gap-2">
+
                         <button class="btn btn-light fw-bold shadow-sm" onclick="saveConfiguration()">
+
                             <i class="fas fa-save me-2 text-primary"></i>SAUVEGARDER
+
                         </button>
+
                         <button class="btn btn-outline-secondary fw-bold shadow-sm" onclick="downloadConfiguration()">
+
                             <i class="fas fa-download me-2"></i>TÉLÉCHARGER
+
                         </button>
+
                         <button class="btn btn-outline-secondary fw-bold shadow-sm" onclick="triggerImportFile()">
+
                             <i class="fas fa-file-import me-2"></i>IMPORTER
+
                         </button>
+
                         {% if not current_user.is_super_admin() %}
+
                         <button id="validateButton" class="btn btn-success fw-bold shadow-sm" onclick="validateConfiguration()" disabled>
+
                             <i class="fas fa-check me-2"></i>VALIDER
+
                         </button>
+
                         {% endif %}
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
+
+
 
     <div class="row">
+
         <!-- Configuration Side -->
+
         <div class="col-xl-6">
+
             <div class="card shadow-sm border-0 mb-4 h-100">
+
                 <div class="card-header bg-white py-3">
+
                     <form id="selectionForm" method="GET" action="{{ url_for('admin.bulletins_config', school_slug=g.school_slug) }}" class="row g-2 align-items-end">
+
                         {% if schools %}
+
                         <div class="col-md-4">
+
                             <label for="schoolSelect" class="form-label small mb-1">École</label>
+
                             <select id="schoolSelect" name="school_id" class="form-select" onchange="this.form.submit()">
+
                                 <option value="" {% if not selected_school_id %}selected{% endif %}>Toutes les écoles...</option>
+
                                 {% for school in schools %}
+
                                 <option value="{{ school.id }}" {% if school.id == selected_school_id %}selected{% endif %}>{{ school.name }}</option>
+
                                 {% endfor %}
+
                             </select>
+
                         </div>
+
                         <div class="col-md-3">
+
                         {% else %}
+
                         <div class="col-md-6">
+
                         {% endif %}
+
                             <label for="sectionSelect" class="form-label small mb-1">Section</label>
+
                             <select id="sectionSelect" name="section_name" class="form-select" onchange="loadLevels()">
+
                                 <option value="">Sélectionnez une section...</option>
+
                                 {% for section_name in section_names %}
+
                                 <option value="{{ section_name }}" {% if section_name == selected_section_name %}selected{% endif %}>{{ section_name }}</option>
+
                                 {% endfor %}
+
                             </select>
+
                         </div>
+
                         <div class="col-md-3">
+
                             <label for="levelInput" class="form-label small mb-1">Niveau</label>
+
                             <select id="levelInput" name="level" class="form-select" onchange="loadConfig()" disabled>
+
                                 <option value="">Sélectionnez un niveau...</option>
+
                             </select>
+
                         </div>
+
                         <div class="col-md-2 d-flex align-items-end gap-1">
+
                             <button type="button" class="btn btn-outline-primary btn-sm flex-grow-1" onclick="addRow()" title="Ajouter une branche" aria-label="Ajouter une branche">
+
                                 <i class="fas fa-plus"></i>
+
                             </button>
+
                             <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" onclick="addDomain()" title="Ajouter un domaine" aria-label="Ajouter un domaine">
+
                                 D
+
                             </button>
+
                             <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" onclick="addSubdomain()" title="Ajouter un sous-domaine" aria-label="Ajouter un sous-domaine">
+
                                 SD
+
                             </button>
+
                             <button type="button" class="btn btn-outline-warning btn-sm flex-grow-1" onclick="addSubtotal()" title="Ajouter un sous-total" aria-label="Ajouter un sous-total">
+
                                 ST
+
                             </button>
+
                         </div>
+
                         <input id="importConfigFile" type="file" accept="application/json,.json" style="display:none" onchange="handleImportFile(event)">
+
                     </form>
+
                     <div class="mt-2">
+
                         <small class="text-muted">Niveaux disponibles: <span id="sectionLevelsSummary">Aucun</span></small><br>
+
                         <small class="text-muted">Classes disponibles: <span id="sectionClassesSummary">Aucune</span></small><br>
+
                         <small class="text-muted">Modèle: <span id="modelTypeBadge"><em>Non sélectionné</em></span></small><br>
+
                         <small class="text-muted">Statut de validation: <span id="validationStatusText">Aucune configuration chargée</span></small>
+
                         <div class="mt-3 pb-2 border-top" style="border-color: #dee2e6 !important;">
+
                             <label for="igeNumberInput" class="form-label small mb-2 fw-bold" style="color: #495057;">Numéro IGE</label>
+
                             <input type="text" class="form-control form-control-sm" id="igeNumberInput" placeholder="ex: IGE/PS/026" title="Format: IGE/XX/000">
+
                             <small class="text-muted d-block mt-1">Format: IGE/[CODE_SECTION]/[NUMÉRO]</small>
+
                         </div>
+
                         <div class="mt-2" id="sectionLevelDetails" style="font-size: .85rem; color: #495057;">
+
                             <em>Sélectionnez une section pour afficher les niveaux et classes.</em>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div class="card-body p-0">
+
                     <div class="table-responsive" style="max-height: 700px;">
+
                         <table class="table table-sm table-hover align-middle mb-0" id="configTable">
+
                             <thead class="table-light sticky-top">
+
                                 <tr class="small text-uppercase fw-bold" style="font-size: 10px;">
+
                                     <th style="width: 30px;">#</th>
+
                                     <th>Branche / Catégorie</th>
+
                                     <th style="width: 80px; background-color: #e7f3ff; border: 2px solid #0d6efd; color: #0d6efd;">Max P</th>
+
                                     <th style="width: 80px; background-color: #e7f3ff; border: 2px solid #0d6efd; color: #0d6efd;">Max E</th>
+
                                     <th class="text-end" style="width: 100px;">Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="branchRows">
+
                                 <!-- Dynamic rows -->
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
+
 
         <!-- Preview Side -->
+
         <div class="col-xl-6">
+
             <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+
                 <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+
                     <h6 class="mb-0 fw-bold"><i class="fas fa-eye me-2 text-primary"></i>APERÇU DIRECT (RDC)</h6>
+
                     <button class="btn btn-outline-dark btn-sm" onclick="printBulletin()">
+
                         <i class="fas fa-print"></i>
+
                     </button>
+
                 </div>
+
                 <div class="card-body p-0 overflow-auto" id="previewArea" style="max-height: 850px; background: #525659; padding: 20px;">
+
                     <!-- The high-fidelity bulletin will be rendered here -->
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
 
+
+
 <style>
+
   /* Editor Styles */
+
   .branch-input { border: 1px solid #dee2e6; border-radius: 4px; padding: 2px 6px; width: 100%; font-size: 12px; }
+
   .max-input { 
+
     text-align: center; 
+
     font-weight: bold; 
+
     background: #e7f3ff;
+
     border: 2px solid #0d6efd !important;
+
     border-radius: 6px;
+
     padding: 6px 4px !important;
+
     font-size: 13px;
+
     color: #0d6efd;
+
   }
+
   .max-input:focus {
+
     background: #fff;
+
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+
   }
+
   
+
   .max-row-input {
+
       background-color: #e6e6e6 !important;
+
   }
+
   .max-row-input:focus {
+
       background-color: #e6e6e6 !important;
+
       box-shadow: 0 0 0 0.25rem rgba(100, 100, 100, 0.25) !important;
+
   }
+
   
+
   /* Bulletin Preview Styles */
+
   #bulletin-container {
+
     background: white;
+
     width: 210mm; /* A4 width */
+
     min-height: 297mm;
+
     margin: 0 auto;
+
     padding: 5mm 5mm;
+
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
+
     font-family: 'Times New Roman', Times, serif;
+
     font-size: 10px;
+
     color: #000;
+
   }
+
   
+
   .bulletin-table {
+
     width: 100% !important;
+
     flex: 1 1 auto;
+
     border-collapse: collapse;
+
     font-size: 10px;
+
     table-layout: fixed;
+
     box-sizing: border-box;
+
   }
+
   .bulletin-table th, .bulletin-table td {
+
     border: 1px solid #000 !important;
+
     padding: 1px;
+
     text-align: center;
+
     vertical-align: middle;
+
     min-height: 16px;
+
     box-sizing: border-box;
+
   }
+
   .bulletin-table th {
+
     white-space: normal;
+
     word-break: break-word;
+
   }
+
   .bulletin-table td {
+
     overflow: hidden;
+
     text-overflow: ellipsis;
+
   }
+
+    /* Level-4 specific styling: make EXAMEN DE REP. appear as a single merged cell */
+
+    .bulletin-table.level-4-bulletin th.rep-col[colspan="2"],
+
+    .bulletin-table.level-4-bulletin td.rep-col[colspan="2"] {
+
+        border-left: 1px solid #000 !important;
+
+        border-right: 1px solid #000 !important;
+
+        border-top: 1px solid #000 !important;
+
+        border-bottom: 1px solid #000 !important;
+
+        width: 130px;
+
+    }
+
+    /* Hide internal vertical borders for rep-col cells so colspan looks merged */
+
+    .bulletin-table.level-4-bulletin td.rep-col,
+
+    .bulletin-table.level-4-bulletin th.rep-col {
+
+        border-left: none !important;
+
+        border-right: none !important;
+
+    }
+
+    /* Re-enable outer borders for the merged cell */
+
+    .bulletin-table.level-4-bulletin td.rep-col[colspan="2"],
+
+    .bulletin-table.level-4-bulletin th.rep-col[colspan="2"] {
+
+        border-left: 1px solid #000 !important;
+
+        border-right: 1px solid #000 !important;
+
+    }
+
+
+
+    /* Remove horizontal internal lines inside the rep column for body rows */
+
+    .bulletin-table.level-4-bulletin tbody td.rep-col,
+
+    .bulletin-table.level-4-bulletin tbody th.rep-col {
+
+        border-top: none !important;
+
+        border-bottom: none !important;
+
+    }
+
+
+
+    /* Ensure the top of the rep area still has a top border (first body row) */
+
+    .bulletin-table.level-4-bulletin tbody tr:first-child td.rep-col,
+
+    .bulletin-table.level-4-bulletin tbody tr:first-child th.rep-col {
+
+        border-top: 1px solid #000 !important;
+
+    }
+
+
+
+    /* Ensure the bottom of the rep area has a bottom border at signature/decision row */
+
+    .bulletin-table.level-4-bulletin .signature-row td.rep-col,
+
+    .bulletin-table.level-4-bulletin .signature-row th.rep-col,
+
+    .bulletin-table.level-4-bulletin .decision-box td.rep-col,
+
+    .bulletin-table.level-4-bulletin .decision-box th.rep-col {
+
+        border-bottom: 1px solid #000 !important;
+
+    }
+
     .academic-col {
+
         width: 18px;
+
         min-width: 18px;
+
         max-width: 18px;
+
         white-space: normal;
+
         overflow-wrap: anywhere;
+
     }
+
     .exam-col,
+
     .tot-col {
+
         width: 55px;
+
         min-width: 55px;
+
         max-width: 55px;
+
         white-space: normal;
+
         overflow-wrap: anywhere;
+
     }
+
     .totg-col {
+
         width: 55px;
+
         min-width: 55px;
+
         max-width: 55px;
+
     }
+
     .narrow-col {
+
         width: 45px;
+
         min-width: 45px;
+
         max-width: 45px;
+
     }
+
     .rep-col {
+
         width: 65px;
+
         min-width: 65px;
+
         max-width: 65px;
+
     }
+
+    .bulletin-table th.rep-col[colspan="2"],
+
+    .bulletin-table td.rep-col[colspan="2"] {
+
+        border-left: 1px solid #000 !important;
+
+        border-right: 1px solid #000 !important;
+
+        border-top: 1px solid #000 !important;
+
+        border-bottom: 1px solid #000 !important;
+
+        width: 130px;
+
+    }
+
     .branch-col {
+
         width: auto !important;
+
         min-width: 150px !important;
+
         max-width: none !important;
+
         text-align: left !important;
+
         padding-left: 3px !important;
+
         white-space: normal;
+
         overflow-wrap: anywhere;
+
         font-size: 12px;
+
     }
+
   .bulletin-table thead th.branch-col {
+
     white-space: normal !important;
+
   }
+
   .bulletin-table th.narrow-col,
+
   .bulletin-table th.exam-col,
+
   .bulletin-table th.tot-col,
+
   .bulletin-table th.rep-col {
+
     white-space: normal !important;
+
     word-break: break-all;
+
     overflow-wrap: anywhere;
+
         font-size: 9px;
+
     padding: 0px;
+
     line-height: 1;
+
   }
+
   .bulletin-table thead th { height: 14px; min-height: 14px; padding: 0px 1px; white-space: nowrap; font-size: 9px; line-height: 1; }
+
   
+
   .domain-row { background: #333 !important; color: #fff !important; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+
   .subdomain-row { background: #999 !important; font-weight: bold; font-style: italic; font-size: 10px; }
+
   .maxima-row td { background: #e6e6e6 !important; font-weight: bold !important; }
+
   .total-row { font-weight: bold; }
+
   .summary-row td { height: 16px !important; max-height: 16px !important; padding: 0px 1px !important; line-height: 1; font-size: 10px; }
+
   
+
   .id-box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: -1px; vertical-align: middle; text-align: center; line-height: 12px; font-size: 9px; font-weight: bold; box-sizing: border-box; }
+
   .meta-label { font-weight: bold; text-transform: uppercase; font-size: 11px; }
+
   .meta-value { border-bottom: 1px dotted #000; flex-grow: 1; margin-left: 5px; font-size: 11px; min-height: 15px; }
 
+
+
     .decision-box { text-align: left !important; padding: 3px !important; font-size: 10px; vertical-align: top; border: 1.5px solid #000 !important; line-height: 1.2; }
+
     .signature-row td { border-bottom: 1px solid #000 !important; }
+
   
+
   @media print {
+
     body * { visibility: hidden; }
+
     #bulletin-container, #bulletin-container * { visibility: visible; }
+
     #bulletin-container { position: absolute; left: 0; top: 0; margin: 0; box-shadow: none; }
+
   }
+
 </style>
 
+
+
 <script>
+
 // EXACT CONFIGURATION FROM THE PROVIDED IMAGE
+
 // Modèle SCIENCES: pour sections SCIENCES, SCIENTIFIQUE
+
 const DEFAULT_BRANCHES_SCIENCES = [
+
   { type: 'domain', domain: 'DOMAINE DES SCIENCES', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'subdomain', subdomain: 'Sous domaine des mathématiques', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des mathématiques', name: 'Algèbre', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des mathématiques', name: 'Arithmétique', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des mathématiques', name: 'Géométrie', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des mathématiques', name: 'Statistique', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des mathématiques', name: 'Sous total', max_period_1: 70, max_exam_1: 140 },
+
   
+
   { type: 'subdomain', subdomain: 'Sous domaine des sciences de la vie et de la terre', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des sciences de la vie', name: 'Anatomie', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des sciences de la vie', name: 'Botanique', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des sciences de la vie', name: 'Zoologie', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine des sciences de la vie', name: 'Sous total', max_period_1: 40, max_exam_1: 80 },
+
   
+
   { type: 'subdomain', subdomain: 'Sous domaine des sciences Physiques, Technologie et Tic', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine Physique/TIC', name: 'Sciences Physiques', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine Physique/TIC', name: 'Technologie', max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine Physique/TIC', name: "Techno d'info & Com(TIC)", max_period_1: 10, max_exam_1: 20 },
+
   { type: 'branch', domain: 'DOMAINE DES SCIENCES', subdomain: 'Sous domaine Physique/TIC', name: 'Sous total', max_period_1: 30, max_exam_1: 60 },
+
   
+
   { type: 'domain', domain: 'DOMAINE DES LANGUES', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DES LANGUES', subdomain: '', name: 'Anglais', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: 'DOMAINE DES LANGUES', subdomain: '', name: 'Français', max_period_1: 50, max_exam_1: 100 },
+
   { type: 'branch', domain: 'DOMAINE DES LANGUES', subdomain: '', name: 'Sous total', max_period_1: 80, max_exam_1: 160 },
+
   
+
   { type: 'domain', domain: "DOMAINE DE L'UNIVERS SOCIAL ET ENVIRONNEMENT", name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Religion', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Éducation à la vie (1)', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Éducation civique et moral', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Géographie', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Histoire', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE UNIVERS SOCIAL', subdomain: '', name: 'Sous total', max_period_1: 110, max_exam_1: 220 },
+
   
+
   { type: 'domain', domain: 'DOMAINE DES ARTS', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DES ARTS', subdomain: '', name: 'Dessin', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE DES ARTS', subdomain: '', name: 'Musique', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE DES ARTS', subdomain: '', name: 'Sous total', max_period_1: 40, max_exam_1: 80 },
+
   
+
   { type: 'domain', domain: 'DOMAINE DU DEVELOPPEMENT PERSONNEL', name: '', max_period_1: 0, max_exam_1: 0 },
+
   { type: 'branch', domain: 'DOMAINE DEV PERSONNEL', subdomain: '', name: 'Éducation Physique', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: 'DOMAINE DEV PERSONNEL', subdomain: '', name: 'Sous total', max_period_1: 20, max_exam_1: 40 }
+
 ];
+
+
 
 // Modèle HUMANITES: pour sections non-SCIENCES (LATIN PHILO, ELECTRICITE, CONSTRUCTION, etc.)
+
 // MODÈLE PLAT - Sans domaines ni sous-domaines (respecte l'image du bulletin RDC)
+
 const DEFAULT_BRANCHES_HUMANITES = [
+
   { type: 'branch', domain: '', subdomain: '', name: 'Français', max_period_1: 50, max_exam_1: 100 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Anglais', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Latin', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Mathématiques', max_period_1: 50, max_exam_1: 100 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Histoire', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Géographie', max_period_1: 30, max_exam_1: 60 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Éducation civique et moral', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Religion', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Sciences Naturelles', max_period_1: 20, max_exam_1: 40 },
+
   { type: 'branch', domain: '', subdomain: '', name: 'Éducation Physique', max_period_1: 20, max_exam_1: 40 }
+
 ];
 
+
+
 // Helper: détecter si c'est une section SCIENCES
+
 function isSciencesSection(sectionName) {
+
   if (!sectionName) return false;
+
   const normalized = sectionName.toLowerCase().trim();
+
   return normalized.includes('science') || normalized.includes('scientifique');
+
 }
 
+
+
 // Helper: sélectionner le modèle par défaut approprié
+
 function getDefaultBranches(sectionName) {
+
   if (isSciencesSection(sectionName)) {
+
     return DEFAULT_BRANCHES_SCIENCES;
+
   }
+
   return DEFAULT_BRANCHES_HUMANITES;
+
 }
+
+
 
 const DEFAULT_BRANCHES = DEFAULT_BRANCHES_SCIENCES; // Backward compatibility
 
+
+
 let currentBranches = buildPreviewBranches([...DEFAULT_BRANCHES]).branches;
+
 const ADMIN_API_PREFIX = '{{ request.path.rsplit("/admin", 1)[0] }}/admin';
 
+
+
 function createZeroMaxima() {
+
     return {
+
         maxPeriod: 0,
+
         maxExam: 0,
+
         semesterTotal: 0,
+
         generalTotal: 0
+
     };
+
 }
+
+
 
 function toNumber(value, fallback = 0) {
+
     const parsed = parseFloat(value);
+
     return Number.isFinite(parsed) ? parsed : fallback;
+
 }
+
+
 
 function normalizeBranchMaxima(branch) {
+
     const normalized = { ...branch };
 
+
+
     if (normalized.type === 'branch' || normalized.type === 'maxima') {
+
         const maxPeriod = toNumber(normalized.max_period_1);
+
         const maxExam = toNumber(normalized.max_exam_1);
+
         normalized.max_period_1 = maxPeriod;
+
         normalized.max_period_2 = maxPeriod;
+
         normalized.max_period_3 = maxPeriod;
+
         normalized.max_period_4 = maxPeriod;
+
         normalized.max_exam_1 = maxExam;
+
         normalized.max_exam_2 = maxExam;
+
     } else {
+
         normalized.max_period_1 = 0;
+
         normalized.max_period_2 = 0;
+
         normalized.max_period_3 = 0;
+
         normalized.max_period_4 = 0;
+
         normalized.max_exam_1 = 0;
+
         normalized.max_exam_2 = 0;
+
     }
+
+
 
     return normalized;
+
 }
+
+
 
 function addMaxima(target, source) {
+
     target.maxPeriod += source.maxPeriod || 0;
+
     target.maxExam += source.maxExam || 0;
+
     target.semesterTotal += source.semesterTotal || 0;
+
     target.generalTotal += source.generalTotal || 0;
+
     return target;
+
 }
+
+
 
 function computeBranchMaxima(branch) {
+
     const maxPeriod = toNumber(branch.max_period_1);
+
     const maxExam = toNumber(branch.max_exam_1);
+
     const semesterTotal = (maxPeriod * 2) + maxExam;
 
+
+
     return {
+
         maxPeriod,
+
         maxExam,
+
         semesterTotal,
+
         generalTotal: semesterTotal * 2
+
     };
+
 }
+
+
 
 function isSubtotalBranch(branch) {
+
     const name = String(branch?.name || '').trim().toLowerCase();
+
     return branch?.type === 'branch' && /sous[\s-]*total|subtotal/.test(name);
+
 }
+
+
 
 function isMaximaBranch(branch) {
+
     if (!branch) return false;
+
     const name = String(branch.name || branch.subdomain || branch.domain || '').trim().toLowerCase();
+
     return branch.type === 'maxima' || name === 'maxima';
+
 }
+
+
 
 function buildPreviewBranches(branches) {
+
     const previewBranches = [];
+
     const totals = createZeroMaxima();
+
     let groupTotals = createZeroMaxima();
+
     let hasGroupBranches = false;
 
+
+
     branches.forEach(branch => {
+
         const previewBranch = normalizeBranchMaxima(branch);
+
         if (isMaximaBranch(previewBranch)) {
+
             previewBranch.type = 'maxima';
+
         }
+
+
 
         if (previewBranch.type !== 'branch') {
+
             previewBranches.push(previewBranch);
+
             return;
+
         }
+
+
 
         if (isSubtotalBranch(previewBranch)) {
+
             const subtotalMaxima = hasGroupBranches ? { ...groupTotals } : computeBranchMaxima(previewBranch);
+
             previewBranch.max_period_1 = subtotalMaxima.maxPeriod;
+
             previewBranch.max_period_2 = subtotalMaxima.maxPeriod;
+
             previewBranch.max_exam_1 = subtotalMaxima.maxExam;
+
             previewBranch.max_period_3 = subtotalMaxima.maxPeriod;
+
             previewBranch.max_period_4 = subtotalMaxima.maxPeriod;
+
             previewBranch.max_exam_2 = subtotalMaxima.maxExam;
+
             previewBranch.previewMaxima = subtotalMaxima;
+
             addMaxima(totals, subtotalMaxima);
+
             groupTotals = createZeroMaxima();
+
             hasGroupBranches = false;
+
         } else {
+
             previewBranch.previewMaxima = computeBranchMaxima(previewBranch);
+
             addMaxima(groupTotals, previewBranch.previewMaxima);
+
             hasGroupBranches = true;
+
         }
+
+
 
         previewBranches.push(previewBranch);
+
     });
+
+
 
     if (hasGroupBranches) {
+
         addMaxima(totals, groupTotals);
+
     }
+
+
 
     return { branches: previewBranches, totals };
+
 }
+
+
 
 async function loadLevels(preselectedLevel = '') {
+
     const sectionRef = document.getElementById('sectionSelect').value;
+
     const levelInput = document.getElementById('levelInput');
+
     if (!sectionRef) {
+
         levelInput.innerHTML = '<option value="">Niveau...</option>';
+
         levelInput.disabled = true;
+
         updateSectionSummary([]);
+
         updatePreview();
+
         return;
+
     }
+
     const schoolId = new URLSearchParams(window.location.search).get('school_id');
+
     const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
+
     try {
+
         const response = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-levels/${encodeURIComponent(sectionRef)}${query}`);
+
         if (!response.ok) {
+
             throw new Error(`Échec du chargement des niveaux: ${response.status}`);
+
         }
+
         const levels = await response.json();
+
         levelInput.innerHTML = '<option value="">Niveau...</option>';
+
         levels.forEach(l => {
+
             const selected = preselectedLevel && preselectedLevel === l.level ? ' selected' : '';
+
             levelInput.innerHTML += `<option value="${l.level}"${selected}>${l.level}</option>`;
+
         });
+
         updateSectionSummary(levels);
+
         levelInput.disabled = false;
+
         if (preselectedLevel) {
+
             levelInput.value = preselectedLevel;
+
         } else if (levels.length === 1) {
+
             levelInput.value = levels[0].level;
+
         } else {
+
             levelInput.value = '';
+
         }
+
         const currentLevel = levelInput.value || '';
+
         updateUrlQueryParams({ section_name: sectionRef, level: currentLevel, school_id: schoolId || '' });
+
         if (levelInput.value) {
+
             await loadConfig();
+
         } else {
+
             updatePreview();
+
         }
+
     } catch (e) {
+
         console.error(e);
+
         updateSectionSummary([]);
+
         updatePreview();
+
     }
+
 }
+
+
 
 function updateUrlQueryParams(params) {
+
     const url = new URL(window.location.href);
+
     Object.keys(params).forEach(key => {
+
         const value = params[key];
+
         if (value === null || value === undefined || value === '') {
+
             url.searchParams.delete(key);
+
         } else {
+
             url.searchParams.set(key, value);
+
         }
+
     });
+
     window.history.replaceState({}, '', url.toString());
+
 }
+
+
 
 function updateSectionSummary(levels) {
+
     const summaryLevels = levels.map(l => l.level).join(', ') || 'Aucun';
+
     const classesSet = new Set();
+
     levels.forEach(l => {
+
         if (Array.isArray(l.classes)) {
+
             l.classes.forEach(c => classesSet.add(c));
+
         }
+
     });
+
     const summaryClasses = Array.from(classesSet).sort().join(', ') || 'Aucune';
+
     document.getElementById('sectionLevelsSummary').textContent = summaryLevels;
+
     document.getElementById('sectionClassesSummary').textContent = summaryClasses;
 
+
+
     const detailsEl = document.getElementById('sectionLevelDetails');
+
     if (!levels.length) {
+
         detailsEl.innerHTML = '<em>Sélectionnez une section pour afficher les niveaux et classes.</em>';
+
         return;
+
     }
+
+
 
     const lines = levels.map(l => {
+
         const classes = Array.isArray(l.classes) && l.classes.length ? l.classes.join(', ') : 'Aucune classe configurée';
+
         return `<div><strong>${l.level}:</strong> ${classes}</div>`;
+
     });
+
     detailsEl.innerHTML = lines.join('');
+
 }
+
+
 
 function updateValidationStatus(data) {
+
     const statusText = document.getElementById('validationStatusText');
+
     const validateButton = document.getElementById('validateButton');
+
     const igeInput = document.getElementById('igeNumberInput');
+
     
+
     if (!data || !data.id) {
+
         statusText.innerHTML = 'Aucune configuration chargée';
+
         if (igeInput) igeInput.value = '';
+
         if (validateButton) validateButton.disabled = true;
+
         return;
+
     }
+
+
 
     let statusHtml = '';
+
     
+
     // Display IGE number if available
+
     if (data.ige_number) {
+
         statusHtml += `<span class="badge bg-info me-2"><i class="fas fa-barcode me-1"></i>${data.ige_number}</span>`;
+
         if (igeInput) igeInput.value = data.ige_number;
+
     }
 
+
+
     if (data.validated) {
+
         statusHtml += `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Validé le ${new Date(data.validated_at).toLocaleString()} par ${data.validated_by || 'utilisateur'}</span>`;
+
         if (validateButton) validateButton.disabled = true;
+
     } else {
+
         statusHtml += `<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Non validé</span>`;
+
         if (validateButton) validateButton.disabled = false;
+
     }
+
     
+
     statusText.innerHTML = statusHtml;
+
 }
+
+
 
 // Fonction generateIGENumber supprimée - saisie manuelle uniquement
 
+
+
 async function loadConfig() {
+
     const sectionId = document.getElementById('sectionSelect').value;
+
     const level = document.getElementById('levelInput').value;
+
     if (!sectionId || !level) return;
+
     const schoolId = new URLSearchParams(window.location.search).get('school_id');
+
     const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
+
     updateUrlQueryParams({ section_name: sectionId, level, school_id: schoolId || '' });
+
     
+
     // Display model type badge
+
     const modelType = isSciencesSection(sectionId) ? 'SCIENCES' : 'HUMANITES';
+
     document.getElementById('modelTypeBadge').innerHTML = `<span class="badge ${isSciencesSection(sectionId) ? 'bg-success' : 'bg-info'}">${modelType}</span>`;
+
     
+
     try {
+
         const response = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-config/${encodeURIComponent(sectionId)}/${encodeURIComponent(level)}${query}`);
+
         if (response.ok) {
+
             const data = await response.json();
+
             currentBranches = data.branches || [];
+
             updateValidationStatus(data);
+
         } else {
+
             // Use appropriate default model based on section type
+
             const defaultBranches = getDefaultBranches(sectionId);
+
             currentBranches = [...defaultBranches];
+
             updateValidationStatus(null);
+
         }
+
         renderTable();
+
         updatePreview();
+
     } catch (e) { 
+
         // Use appropriate default model based on section type
+
         const defaultBranches = getDefaultBranches(sectionId);
+
         currentBranches = [...defaultBranches];
+
         renderTable();
+
         updatePreview();
+
         updateValidationStatus(null);
+
     }
+
 }
+
+
 
 function renderTable() {
+
     const tbody = document.getElementById('branchRows');
+
     tbody.innerHTML = '';
+
     currentBranches.forEach((b, idx) => {
+
         const tr = document.createElement('tr');
+
         const isDomain = b.type === 'domain';
+
         const isSub = b.type === 'subdomain';
+
         const isMax = isMaximaBranch(b);
+
         
+
         tr.innerHTML = `
+
             <td class="text-muted small">${idx + 1}</td>
+
             <td>
+
                 <div class="input-group input-group-sm">
+
                           <input type="text" class="form-control ${isDomain ? 'fw-bold bg-dark text-white' : (isSub ? 'fst-italic bg-light' : (isMax ? 'fw-bold text-dark max-row-input' : ''))}" 
+
                               value="${isDomain ? b.domain : (isSub ? b.subdomain : b.name)}" 
+
                               onchange="updateBranchData(${idx}, this.value)">
+
                     ${(!isDomain && !isSub && !isMax && !/sous[\s-]*total|subtotal/i.test(b.name)) ? `
+
                     <select class="form-select form-select-sm" style="max-width: 110px;" onchange="updateBranchCategory(${idx}, this.value)">
+
                         <option value="general" ${b.category === 'general' || !b.category ? 'selected' : ''}>Général</option>
+
                         <option value="specifique" ${b.category === 'specifique' ? 'selected' : ''}>Spécifique</option>
+
                         <option value="option" ${b.category === 'option' ? 'selected' : ''}>Option</option>
+
                     </select>
+
                     ` : ''}
+
                 </div>
+
             </td>
+
             <td><input type="number" class="branch-input max-input" value="${b.max_period_1}" onchange="updateBranchField(${idx}, 'max_period_1', this.value)"></td>
+
             <td><input type="number" class="branch-input max-input" value="${b.max_exam_1}" onchange="updateBranchField(${idx}, 'max_exam_1', this.value)"></td>
+
             <td class="text-end" style="width: 240px;">
+
                 <div class="d-flex flex-wrap gap-1 justify-content-end align-items-center">
+
                     ${b.entry_state === 'ns' ? '<span class="badge bg-danger" title="Cours non saisi">NS</span>' : ''}
+
                     <button class="btn btn-sm btn-outline-success" title="Insérer au-dessus" aria-label="Insérer au-dessus" onclick="insertRow(${idx}, -1)">
+
                         <i class="fas fa-arrow-up"></i>
+
                     </button>
+
                     <button class="btn btn-sm btn-outline-success" title="Insérer en dessous" aria-label="Insérer en dessous" onclick="insertRow(${idx}, 1)">
+
                         <i class="fas fa-arrow-down"></i>
+
                     </button>
+
                         <button class="btn btn-sm btn-outline-secondary" title="Ajouter Maxima au-dessus" aria-label="Ajouter Maxima au-dessus" onclick="insertMaxima(${idx}, -1)">
+
                             <i class="fas fa-superscript"></i>
+
                         </button>
+
                         <button class="btn btn-sm btn-outline-secondary" title="Ajouter Maxima en dessous" aria-label="Ajouter Maxima en dessous" onclick="insertMaxima(${idx}, 1)">
+
                             <i class="fas fa-subscript"></i>
+
                         </button>
+
                     <button class="btn btn-sm btn-outline-primary" title="Monter" aria-label="Monter" onclick="moveRow(${idx}, -1)">
+
                         <i class="fas fa-angle-double-up"></i>
+
                     </button>
+
                     <button class="btn btn-sm btn-outline-primary" title="Descendre" aria-label="Descendre" onclick="moveRow(${idx}, 1)">
+
                         <i class="fas fa-angle-double-down"></i>
+
                     </button>
+
                     <button class="btn btn-sm btn-outline-danger" title="Supprimer" aria-label="Supprimer" onclick="removeRow(${idx})">
+
                         <i class="fas fa-times"></i>
+
                     </button>
+
                 </div>
+
             </td>
+
         `;
+
         tbody.appendChild(tr);
+
     });
+
 }
+
+
 
 function updateBranchData(idx, val) {
+
     if (currentBranches[idx].type === 'domain') currentBranches[idx].domain = val;
+
     else if (currentBranches[idx].type === 'subdomain') currentBranches[idx].subdomain = val;
+
     else currentBranches[idx].name = val;
+
     renderTable(); // Re-render to show/hide category select if subtotal
+
     updatePreview();
+
 }
+
+
 
 function updateBranchCategory(idx, val) {
+
     currentBranches[idx].category = val;
+
 }
+
+
 
 function updateBranchField(idx, field, val) {
+
     const numericValue = parseFloat(val) || 0;
+
     currentBranches[idx][field] = numericValue;
+
     if (field === 'max_period_1') {
+
         currentBranches[idx].max_period_2 = numericValue;
+
         currentBranches[idx].max_period_3 = numericValue;
+
         currentBranches[idx].max_period_4 = numericValue;
+
     }
+
     if (field === 'max_exam_1') {
+
         currentBranches[idx].max_exam_2 = numericValue;
+
     }
+
     updatePreview();
+
 }
+
+
 
 function createRowLike(referenceRow = {}) {
+
     const type = referenceRow.type || 'branch';
 
+
+
     if (type === 'domain') {
+
         return {
+
             type: 'domain',
+
             domain: referenceRow.domain || 'Nouveau domaine',
+
             name: '',
+
             max_period_1: 0,
+
             max_exam_1: 0
+
         };
+
     }
+
+
 
     if (type === 'subdomain') {
+
         return {
+
             type: 'subdomain',
+
             subdomain: referenceRow.subdomain || 'Nouveau sous-domaine',
+
             name: '',
+
             max_period_1: 0,
+
             max_exam_1: 0
+
         };
+
     }
 
+
+
     return {
+
         type: 'branch',
+
         category: referenceRow.category || 'general',
+
         domain: referenceRow.domain || '',
+
         subdomain: referenceRow.subdomain || '',
+
         name: 'Nouvelle Branche',
+
         max_period_1: Number(referenceRow.max_period_1 ?? 10),
+
         max_period_2: Number(referenceRow.max_period_1 ?? 10),
+
         max_exam_1: Number(referenceRow.max_exam_1 ?? 20),
+
         max_period_3: Number(referenceRow.max_period_1 ?? 10),
+
         max_period_4: Number(referenceRow.max_period_1 ?? 10),
+
         max_exam_2: Number(referenceRow.max_exam_1 ?? 20)
+
     };
+
 }
+
+
 
 function insertRow(idx, direction) {
+
     const referenceRow = currentBranches[idx] || {};
+
     const newRow = createRowLike(referenceRow);
+
     const insertIndex = direction < 0 ? idx : idx + 1;
+
     currentBranches.splice(insertIndex, 0, newRow);
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 // Create a maxima row (flat maxima marker with editable maxima fields)
+
 function createMaximaRow(referenceRow) {
+
     const ref = referenceRow || {};
+
     return {
+
         type: 'maxima',
+
         category: ref.category || 'general',
+
         domain: ref.domain || '',
+
         subdomain: ref.subdomain || '',
+
         name: 'MAXIMA',
+
         max_period_1: Number(ref.max_period_1 ?? 0),
+
         max_period_2: Number(ref.max_period_2 ?? ref.max_period_1 ?? 0),
+
         max_exam_1: Number(ref.max_exam_1 ?? 0),
+
         max_period_3: Number(ref.max_period_3 ?? ref.max_period_1 ?? 0),
+
         max_period_4: Number(ref.max_period_4 ?? ref.max_period_1 ?? 0),
+
         max_exam_2: Number(ref.max_exam_2 ?? ref.max_exam_1 ?? 0)
+
     };
+
 }
+
+
 
 function insertMaxima(idx, direction) {
+
     const referenceRow = currentBranches[idx] || {};
+
     const newRow = createMaximaRow(referenceRow);
+
     const insertIndex = direction < 0 ? idx : idx + 1;
+
     currentBranches.splice(insertIndex, 0, newRow);
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 // Add custom functions
+
 function addRow() {
+
     const referenceRow = currentBranches[currentBranches.length - 1] || {};
+
     currentBranches.push(createRowLike({ ...referenceRow, type: 'branch' }));
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 function addDomain() {
+
     const referenceRow = currentBranches[currentBranches.length - 1] || {};
+
     currentBranches.push(createRowLike({ ...referenceRow, type: 'domain' }));
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 function addSubdomain() {
+
     const referenceRow = currentBranches[currentBranches.length - 1] || {};
+
     currentBranches.push(createRowLike({ ...referenceRow, type: 'subdomain' }));
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 function addSubtotal() {
+
     const referenceRow = currentBranches[currentBranches.length - 1] || {};
+
     const newSubtotal = {
+
         type: 'branch',
+
         domain: referenceRow.domain || '',
+
         subdomain: referenceRow.subdomain || '',
+
         name: 'Sous total',
+
         max_period_1: 0,
+
         max_period_2: 0,
+
         max_period_3: 0,
+
         max_period_4: 0,
+
         max_exam_1: 0,
+
         max_exam_2: 0
+
     };
+
     currentBranches.push(newSubtotal);
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 function removeRow(idx) {
+
     currentBranches.splice(idx, 1);
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 // Re-order rows
+
 function moveRow(idx, dir) {
+
     const newIdx = idx + dir;
+
     if (newIdx < 0 || newIdx >= currentBranches.length) return;
+
     const temp = currentBranches[idx];
+
     currentBranches[idx] = currentBranches[newIdx];
+
     currentBranches[newIdx] = temp;
+
     renderTable();
+
     updatePreview();
+
 }
+
+
 
 async function saveConfiguration() {
+
     const sectionValue = document.getElementById('sectionSelect').value;
+
     const level = document.getElementById('levelInput').value.trim();
+
     const igeNumber = document.getElementById('igeNumberInput').value.trim();
+
     
+
     if (!sectionValue || !level) { alert('Sélectionnez une section et un niveau'); return; }
+
     
+
     try {
+
         const branchesToSave = currentBranches.map(branch => {
+
             const { previewMaxima, ...cleanBranch } = branch;
+
             return cleanBranch;
+
         });
+
         const body = { level: level, branches: branchesToSave };
+
         
+
         // Include IGE number if provided
+
         if (igeNumber) {
+
             body.ige_number = igeNumber;
+
         }
+
         
+
         const parsedSectionId = Number.parseInt(sectionValue, 10);
+
         if (!Number.isNaN(parsedSectionId)) {
+
             body.section_id = parsedSectionId;
+
         } else {
+
             body.section_name = sectionValue;
+
         }
+
         const schoolId = new URLSearchParams(window.location.search).get('school_id');
+
         const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
+
         const res = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-config${query}`, {
+
             method: 'POST',
+
             headers: { 'Content-Type': 'application/json' },
+
             body: JSON.stringify(body)
+
         });
+
         const data = await res.json();
+
         if (res.ok) {
+
             alert(data.message || 'Configuration sauvegardée !');
+
             // Reload config to reflect changes
+
             loadConfig();
+
         } else {
+
             console.error('Save failed', data);
+
             alert(data.error || 'Échec de la sauvegarde');
+
         }
+
     } catch (e) {
+
         console.error('Save error', e);
+
         alert('Erreur lors de la sauvegarde');
+
     }
+
 }
+
+
 
 async function downloadConfiguration() {
+
     const sectionValue = document.getElementById('sectionSelect').value;
+
     const level = document.getElementById('levelInput').value.trim();
+
     if (!sectionValue || !level) { alert('Sélectionnez une section et un niveau avant de télécharger'); return; }
+
     const schoolId = new URLSearchParams(window.location.search).get('school_id');
+
     const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
+
     try {
+
         const response = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-config/export/${encodeURIComponent(sectionValue)}/${encodeURIComponent(level)}${query}`);
+
         if (!response.ok) {
+
             const errorText = await response.text();
+
             throw new Error(errorText || 'Échec du téléchargement');
+
         }
+
         const blob = await response.blob();
+
         const filename = `Bulletin_${sectionValue.replace(/\s+/g, '_')}_${level}.json`;
+
         const link = document.createElement('a');
+
         link.href = URL.createObjectURL(blob);
+
         link.download = filename;
+
         document.body.appendChild(link);
+
         link.click();
+
         link.remove();
+
         URL.revokeObjectURL(link.href);
+
     } catch (e) {
+
         console.error(e);
+
         alert(e.message || 'Erreur lors du téléchargement');
+
     }
+
 }
+
+
 
 function triggerImportFile() {
+
     document.getElementById('importConfigFile').click();
+
 }
+
+
 
 function validateImportJson(data) {
+
     if (typeof data !== 'object' || data === null) {
+
         return { valid: false, message: "Le contenu n'est pas un objet JSON." };
+
     }
+
+
 
     const branches = data.branches || data.config?.branches || data.payload?.branches || data.bulletin?.branches || data.data?.branches || data.bulletin_config?.branches;
+
     if (!Array.isArray(branches) || branches.length === 0) {
+
         return { valid: false, message: 'Le fichier ne contient pas de liste de branches valide.' };
+
     }
+
+
 
     const sectionName = data.section_name || data.section || data.sectionName;
+
     const level = data.level || data.niveau;
+
     const sectionSelected = document.getElementById('sectionSelect').value;
+
     const levelSelected = document.getElementById('levelInput').value.trim();
 
+
+
     if (!sectionName && !sectionSelected) {
+
         return { valid: false, message: "Le fichier ne contient pas de section et aucune section n'est sélectionnée." };
+
     }
+
     if (!level && !levelSelected) {
+
         return { valid: false, message: "Le fichier ne contient pas de niveau et aucun niveau n'est sélectionné." };
+
     }
+
+
 
     return { valid: true, message: '' };
+
 }
+
+
 
 async function handleImportFile(event) {
+
     const file = event.target.files[0];
+
     if (!file) return;
 
+
+
     try {
+
         const text = await file.text();
+
         const data = JSON.parse(text);
+
         const validation = validateImportJson(data);
+
         if (!validation.valid) {
+
             alert(`JSON invalide: ${validation.message}`);
+
             event.target.value = '';
+
             return;
+
         }
+
     } catch (e) {
+
         console.error(e);
+
         alert("Impossible de lire le fichier JSON. Vérifiez qu'il est bien formé.");
+
         event.target.value = '';
+
         return;
+
     }
 
+
+
     const sectionValue = document.getElementById('sectionSelect').value;
+
     const level = document.getElementById('levelInput').value.trim();
+
     const schoolId = new URLSearchParams(window.location.search).get('school_id');
+
     const query = schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : '';
+
     const formData = new FormData();
+
     formData.append('file', file);
+
     if (sectionValue) {
+
         formData.append('section_name', sectionValue);
+
     }
+
     if (level) {
+
         formData.append('level', level);
+
     }
+
     try {
+
         const response = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-config/import${query}`, {
+
             method: 'POST',
+
             body: formData,
+
         });
+
         const data = await response.json();
+
         if (!response.ok) {
+
             throw new Error(data.error || "Échec de l'importation");
+
         }
+
         alert(data.message || 'Configuration importée avec succès.');
+
         if (data.section_name && data.level) {
+
             document.getElementById('sectionSelect').value = data.section_name;
+
             await loadLevels(data.level);
+
             await loadConfig();
+
         } else {
+
             await loadConfig();
+
         }
+
     } catch (e) {
+
         console.error(e);
+
         alert(e.message || "Erreur lors de l'importation");
+
     } finally {
+
         event.target.value = '';
+
     }
+
 }
+
+
 
 async function validateConfiguration() {
+
     const sectionValue = document.getElementById('sectionSelect').value;
+
     const level = document.getElementById('levelInput').value.trim();
+
     if (!sectionValue || !level) { alert('Sélectionnez une section et un niveau avant de valider'); return; }
 
+
+
     try {
+
         const body = { level: level };
+
         const parsedSectionId = Number.parseInt(sectionValue, 10);
+
         if (!Number.isNaN(parsedSectionId)) {
+
             body.section_id = parsedSectionId;
+
         } else {
+
             body.section_name = sectionValue;
+
         }
+
         const res = await fetch(`${ADMIN_API_PREFIX}/api/bulletin-config/validate`, {
+
             method: 'POST',
+
             headers: { 'Content-Type': 'application/json' },
+
             body: JSON.stringify(body)
+
         });
+
         if (res.ok) {
+
             const data = await res.json();
+
             updateValidationStatus(data);
+
             alert('Configuration validée avec succès.');
+
         } else {
+
             const error = await res.text();
+
             alert(`Échec de la validation : ${error}`);
+
         }
+
     } catch (e) {
+
         console.error(e);
+
         alert('Erreur lors de la validation');
+
     }
+
 }
 
+
+
 function updatePreview() {
+
     const area = document.getElementById('previewArea');
+
     const level = document.getElementById('levelInput').value || '7';
+
     const isLevel4 = level.startsWith('4');
+
     
+
     const sectionSelect = document.getElementById('sectionSelect');
+
     const selectedOption = sectionSelect.options[sectionSelect.selectedIndex];
+
     const sectionName = selectedOption ? selectedOption.text : '';
+
     
+
     let cycleTitle = "CYCLE TERMINAL DE L'EDUCATION DE BASE (CTEB)";
+
     if (sectionName && !sectionName.toLowerCase().includes('education de base') && !sectionName.toLowerCase().includes('éducation de base')) {
+
         cycleTitle = "HUMANITES / " + sectionName.toUpperCase();
+
     }
+
     
+
     const currentAcademicYear = "{{ current_academic_year }}";
+
     const currentMinistry = {{ ((school.ministry if school else None) or "MINISTERE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE")|tojson }};
+
     const currentProvince = {{ ((school.province if school else None) or "")|tojson }};
+
     const currentCity = {{ ((school.city if school else None) or "")|tojson }};
+
     const currentCommune = {{ ((school.commune if school else None) or "")|tojson }};
+
     const currentSchoolForBulletin = {{ ((school.bulletin_school_name if school else None) or (school.name if school else ""))|tojson }};
+
     const currentSchoolCode = {{ ((school.school_code if school else None) or "")|tojson }};
+
     const currentIgeNumber = (document.getElementById('igeNumberInput')?.value || '').trim();
+
     
+
     let html = `
+
         <div id="bulletin-container">
+
             <!-- OUTER BORDER WRAPPER -->
+
             <div style="border: 1px solid #000; overflow: hidden; width: 100%; box-sizing: border-box;">
+
             <!-- TOP HEADER -->
+
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000; padding: 4px;">
+
                     <img src="/static/img/drapeau.png" style="height: 50px;">
+
                     <div style="text-align: center; padding: 2px;">
+
                         <h5 style="font-size: 11px; margin: 0; font-weight: 900; text-transform: uppercase;">République Démocratique du Congo</h5>
+
                         <p style="font-size: 11px; margin: 0; font-weight: bold; text-transform: uppercase;">${currentMinistry}</p>
+
                     </div>
+
                     <img src="/static/img/embleme.png" style="height: 50px;">
+
             </div>
+
  
+
             <!-- ID SECTION -->
+
             <div style="border-bottom: 1px solid #000; padding: 2px;">
+
                 <div style="display: flex; align-items: center; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 2px;">
-                    <span class="meta-label">N° ID</span>
+
+                    <span class="meta-label">NÂ° ID</span>
+
                     <div style="margin-left: 10px;">${Array(15).fill('<div class="id-box"></div>').join('')}</div>
+
                 </div>
+
                 <div style="display: flex; align-items: center;">
+
                     <span class="meta-label">PROVINCE :</span>
+
                     <div class="meta-value">${currentProvince || ''}</div>
+
                 </div>
+
             </div>
+
  
+
             <!-- PERSONAL INFO GRID -->
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px solid #000; padding: 4px;">
+
                 <div style="display: flex; flex-direction: column; gap: 2px;">
+
                     <div style="display: flex;"><span class="meta-label">VILLE :</span><div class="meta-value">${currentCity || ''}</div></div>
+
                     <div style="display: flex;"><span class="meta-label">COMMUNE :</span><div class="meta-value">${currentCommune || ''}</div></div>
+
                     <div style="display: flex;"><span class="meta-label">ECOLE :</span><div class="meta-value">${currentSchoolForBulletin || ''}</div></div>
+
                     <div style="display: flex; align-items: center;">
+
                         <span class="meta-label">CODE :</span>
+
                         <div style="margin-left: 5px;">${currentSchoolCode ? `<strong>${currentSchoolCode}</strong>` : Array(10).fill('<div class="id-box"></div>').join('')}</div>
+
                     </div>
+
                 </div>
+
                 <div style="display: flex; flex-direction: column; gap: 2px;">
+
                     <div style="display: flex;"><span class="meta-label">ELEVE :</span><div class="meta-value"></div><span class="meta-label" style="margin-left: 5px;">SEXE :</span><div class="meta-value" style="width: 30px;"></div></div>
+
                     <div style="display: flex;"><span class="meta-label">NE(E) A :</span><div class="meta-value">Lieu de naissance,</div><span class="meta-label" style="margin-left: 5px;">LE :</span><div class="meta-value" style="width: 120px;">..../..../....</div></div>
+
                     <div style="display: flex;"><span class="meta-label">CLASSE :</span><div class="meta-value"></div></div>
+
                     <div style="display: flex; align-items: center;">
-                        <span class="meta-label">N°PERM :</span>
+
+                        <span class="meta-label">NÂ°PERM :</span>
+
                         <div style="margin-left: 5px;">${Array(8).fill('<div class="id-box"></div>').join('')}</div>
+
                     </div>
+
                 </div>
+
             </div>
+
  
-            <div style="text-align: center; font-size: 11px; font-weight: bold !important; padding: 2px; text-transform: uppercase;">
+
+            <div id="bulletinTitle" style="text-align: center; font-size: 11px; font-weight: bold !important; padding: 2px; text-transform: uppercase;">
+
                 <strong>BULLETIN DE LA ${level}<sup>ème</sup> ANNEE ${cycleTitle}<span style="margin-left: 8rem; font-weight: bold !important;">ANNEE SCOLAIRE ${currentAcademicYear}</span></strong>
+
             </div>
+
  
+
             <!-- MAIN TABLE -->
+
             <div style="display: flex; align-items: flex-start; gap: 8px;">
-            <table class="bulletin-table" style="width: 100%; min-width: 0;">
+
+            <table id="bulletinTable" class="bulletin-table" style="width: 100%; min-width: 0;">
+
                 <colgroup>
+
                     <col class="branch-col">
+
                     <col class="narrow-col" style="width: 45px;">
+
                     <col class="narrow-col" style="width: 45px;">
+
                     <col class="exam-col" style="width: 55px;">
+
                     <col class="tot-col" style="width: 55px;">
+
                     <col class="narrow-col" style="width: 45px;">
+
                     <col class="narrow-col" style="width: 45px;">
+
                     <col class="exam-col" style="width: 55px;">
+
                     <col class="tot-col" style="width: 55px;">
+
                     <col class="totg-col" style="width: 55px;">
+
                     <col class="rep-col" style="width: 65px;">
+
                     <col class="rep-col" style="width: 65px;">
+
                 </colgroup>
+
                 <thead>
+
                     <tr>
+
                         <th rowspan="3" class="branch-col">BRANCHES</th>
+
                         <th colspan="4">PREMIER SEMESTRE</th>
+
                         <th colspan="4">SECOND SEMESTRE</th>
+
                         <th rowspan="3" class="totg-col">TOT.<br>G</th>
-                        <th colspan="2" style="white-space: normal; font-size: 9px; text-align: center; vertical-align: middle; border-right: 1px solid #000;">EXAMEN<br>DE REP.</th>
+
+                        ${isLevel4 ?
+
+                            `<th colspan="2" rowspan="3" class="rep-col" style="white-space: normal; font-size: 9px; text-align: center; vertical-align: middle; border-right: 1px solid #000;">EXAMEN<br>DE REP.</th>` :
+
+                            `<th colspan="2" style="white-space: normal; font-size: 9px; text-align: center; vertical-align: middle; border-right: 1px solid #000;">EXAMEN<br>DE REP.</th>`
+
+                        }
+
                     </tr>
+
                     <tr>
+
                         <th colspan="2">TRAVAUX<br>JOURNAL</th>
+
                         <th rowspan="2" class="exam-col">EXAMEN</th>
+
                         <th rowspan="2" class="tot-col">TOTAL</th>
+
                         <th colspan="2">TRAVAUX<br>JOURNAL</th>
+
                         <th rowspan="2" class="exam-col">EXAMEN</th>
+
                         <th rowspan="2" class="tot-col">TOTAL</th>
-                        <th rowspan="2" class="rep-col">%</th>
-                        <th rowspan="2" class="rep-col" style="white-space: normal; font-size: 9px; text-align: center; vertical-align: middle;">SIG.<br>PRF</th>
+
+                        ${isLevel4 ? '' : `<th rowspan="2" class="rep-col">%</th><th rowspan="2" class="rep-col" style="white-space: normal; font-size: 9px; text-align: center; vertical-align: middle;">SIG.<br>PRF</th>`}
+
                     </tr>
+
                     <tr>
+
                         <th class="narrow-col"><div style="line-height:1; font-size:10px;">1P</div></th><th class="narrow-col"><div style="line-height:1; font-size:10px;">2P</div></th>
+
                         <th class="narrow-col"><div style="line-height:1; font-size:10px;">3P</div></th><th class="narrow-col"><div style="line-height:1; font-size:10px;">4P</div></th>
+
                     </tr>
+
                 </thead>
+
                 <tbody>
+
     `;
+
  
+
     const previewData = buildPreviewBranches(currentBranches);
+
     const previewBranches = previewData.branches;
+
     const totals = previewData.totals;
+
+
 
     let currentDomain = null, currentSubdomain = null;
 
+
+
     previewBranches.forEach((b, idx) => {
+
         if (b.type === 'domain') {
+
             let domainHtml = `<tr class="domain-row"><td colspan="12">${b.domain}</td>`;
+
             domainHtml += `</tr>`;
+
             html += domainHtml;
+
             currentDomain = b.domain;
+
         } else if (b.type === 'subdomain') {
+
             const isMath = b.subdomain.toLowerCase().includes('mathématiques');
+
             let subdomainHtml = `<tr class="subdomain-row"><td colspan="12">${b.subdomain}</td>`;
+
             subdomainHtml += `</tr>`;
+
             html += subdomainHtml;
+
         } else if (isMaximaBranch(b) || b.type === 'maxima') {
+
             const maxima = b.previewMaxima || computeBranchMaxima(b);
+
             const maxPeriod = maxima.maxPeriod;
+
             const maxExam = maxima.maxExam;
+
             const semesterTotal = maxima.semesterTotal;
+
             const generalTotal = maxima.generalTotal;
+
             
+
             let branchHtml = `
+
                 <tr class="maxima-row">
+
                     <td class="branch-name-cell" style="text-align: left; padding-left: 5px; background:#e6e6e6; font-weight:bold;">${b.name || 'MAXIMA'}</td>
+
                     <td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${maxPeriod || ''}</td><td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${maxPeriod || ''}</td><td class="exam-col" style="background:#e6e6e6; font-weight:bold;">${maxExam || ''}</td><td class="tot-col" style="background:#e6e6e6; font-weight:bold;">${semesterTotal || ''}</td>
+
                     <td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${maxPeriod || ''}</td><td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${maxPeriod || ''}</td><td class="exam-col" style="background:#e6e6e6; font-weight:bold;">${maxExam || ''}</td><td class="tot-col" style="background:#e6e6e6; font-weight:bold;">${semesterTotal || ''}</td>
+
                     <td class="totg-col" style="background:#e6e6e6; font-weight:bold;">${generalTotal || ''}</td>
-                    <td class="rep-col" style="background:#e6e6e6;"></td><td class="rep-col" style="background:#e6e6e6;"></td>
+
+                    ${isLevel4 ? `<td class="rep-col" colspan="2" style="background:#e6e6e6;"></td>` : `<td class="rep-col" style="background:#e6e6e6;"></td><td class="rep-col" style="background:#e6e6e6;"></td>`}
+
                 </tr>`;
+
             html += branchHtml;
+
         } else {
+
             const maxima = b.previewMaxima || computeBranchMaxima(b);
+
             const semesterTotal = maxima.semesterTotal;
+
             const generalTotal = maxima.generalTotal;
+
             const isTotal = b.name.toLowerCase().includes('total');
+
             
+
             let branchHtml = `
+
                 <tr class="${isTotal?'total-row':''}">
+
                     <td class="branch-name-cell" style="text-align: left; padding-left: 5px;">${b.name}</td>
+
                     <td class="narrow-col"></td><td class="narrow-col"></td><td class="exam-col"></td><td class="tot-col"></td>
+
                     <td class="narrow-col"></td><td class="narrow-col"></td><td class="exam-col"></td><td class="tot-col"></td>
+
                     <td class="totg-col"></td>`;
+
             
-            branchHtml += `<td class="rep-col"></td><td class="rep-col"></td>`;
+
+            branchHtml += `${isLevel4 ? '<td class="rep-col" colspan="2"></td>' : '<td class="rep-col"></td><td class="rep-col"></td>'}`;
+
             branchHtml += `</tr>`;
+
             html += branchHtml;
+
         }
+
     });
+
  
+
     // SUMMARY ROWS
+
     html += `
+
         <tr class="total-row summary-row maxima-total-row">
+
             <td style="text-align: left; padding-left: 5px; background:#e6e6e6; font-weight:bold;">MAXIMA GENERAUX</td>
+
             <td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxPeriod || ''}</td><td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxPeriod || ''}</td><td class="exam-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxExam || ''}</td><td class="tot-col" style="background:#e6e6e6; font-weight:bold;"><strong>${totals.semesterTotal || ''}</strong></td>
+
             <td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxPeriod || ''}</td><td class="narrow-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxPeriod || ''}</td><td class="exam-col" style="background:#e6e6e6; font-weight:bold;">${totals.maxExam || ''}</td><td class="tot-col" style="background:#e6e6e6; font-weight:bold;"><strong>${totals.semesterTotal || ''}</strong></td>
+
             <td class="totg-col" style="background:#e6e6e6; font-weight:bold;"><strong>${totals.generalTotal || ''}</strong></td>
-            <td class="rep-col" style="background:#e6e6e6;"></td><td class="rep-col" style="background:#e6e6e6;"></td>
+
+            ${isLevel4 ? `<td class="rep-col" colspan="2" style="background:#e6e6e6;"></td>` : `<td class="rep-col" style="background:#e6e6e6;"></td><td class="rep-col" style="background:#e6e6e6;"></td>`}
+
         </tr>
+
     `;
+
+
 
     ['TOTAUX','POURCENTAGE','PLACE/NBRE ELEVES','APPLICATION','CONDUITE'].forEach((label, i) => {
+
         const slash = label.includes('PLACE');
+
         html += `<tr class="total-row summary-row"><td style="text-align: left; padding-left: 5px;">${label}</td>`;
+
         for(let j=0; j<8; j++) {
+
             let cls = 'tot-col';
+
             if ([0,1,4,5].includes(j)) cls = 'narrow-col';
+
             else if ([2,6].includes(j)) cls = 'exam-col';
+
             
+
             // For the CONDUITE and APPLICATION rows, shade EXAM and TOT
+
             const shadeJsRow = [2,3,6,7];
+
             let bgAttr = '';
+
             if ((label === 'CONDUITE' || label === 'APPLICATION') && shadeJsRow.includes(j)) bgAttr = ' style="background:#e6e6e6"';
+
             html += `<td class="${cls}"${bgAttr}> ${slash && [0,1,4,5].includes(j) ? '/' : ''} </td>`;
+
         }
+
         
+
         if (label === 'CONDUITE' || label === 'APPLICATION') {
+
             html += `<td class="totg-col" style="background:#e6e6e6"></td>`;
+
         } else {
+
             html += `<td class="totg-col"></td>`;
+
         }
+
         
+
         if (i === 0) {
+
             html += `<td rowspan="5" colspan="2" class="decision-box">
+
                 <div style="font-weight: bold; text-align: center; margin-bottom: 6px;"></div>
+
                 <div style="margin-bottom: 2px;">- Passe (1)</div>
+
                 <div style="margin-bottom: 2px;">- Double (1)</div>
+
                 <div style="margin-bottom: 6px;">- A échoué (1)</div>
+
                 <div style="font-size: 11px;">Le ....../....../20....</div>
+
                 <div style="text-align: center; font-weight: bold; margin-top: 12px;">
+
                     Le Chef d'Établissement<br><br>Sceau de l'École
+
                 </div>
+
             </td>`;
+
         }
+
         html += `</tr>`;
+
     });
 
+
+
     html += `
+
                 <tr class="signature-row"><td style="text-align: left; padding-left: 5px; height: 25px; border-bottom: 1px solid #000 !important;">Signature du Responsable</td><td colspan="9" style="border-bottom: 1px solid #000 !important;"></td><td colspan="2" style="border-bottom: 1px solid #000 !important;"></td></tr>
+
                 </tbody>
+
             </table>
+
             </div><!-- END OUTER BORDER WRAPPER -->
 
+
+
             <!-- FOOTER TEXT -->
+
             <div style="border: 1px solid #000; border-top: none; margin-top: 0; padding: 6px; font-size: 11px; line-height: 1.18;">
+
                 <p style="margin: 0 0 4px 0;">- L'élève ne pourra passer dans la classe supérieure s'il n'a subi avec succès un examen de repêchage en : ................................................................</p>
+
                 <div style="margin-top: 3px; margin-bottom: 3px;">- L'élève passe dans la classe supérieure (1)</div>
+
                 <div style="margin-bottom: 3px;">- L'élève double sa classe (1)</div>
+
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+
                     <div>- L'élève a échoué (1)</div>
+
                     <div>Fait à ................................., le ......./......./20.....</div>
+
                 </div>
+
                 <div style="display: flex; justify-content: space-between; margin-top: 5px; font-weight: bold; text-align: center;">
+
                     <div style="width: 30%; text-decoration: underline;">Signature de l'élève</div>
+
                     <div style="width: 30%;">Sceau de l'école</div>
+
                     <div style="width: 30%; text-decoration: underline;">Le chef d'Etablissement</div>
+
                 </div>
+
                 <p style="margin-top: 10px; margin-bottom: 2px; font-size: 11px; line-height: 1.18;">(1) Biffer la mention inutile</p>
+
                 <p style="margin: 0; font-size: 11px; line-height: 1.18;">Note : le bulletin est sans valeur s'il est raturé ou surchargé. <span style="float: right;">${currentIgeNumber || '...........................'}</span></p>
+
             </div>
+
         </div>
+
     `;
 
+
+
     area.innerHTML = html;
+
+
+
+    // Add a level-specific class to the table container so we can target it via CSS
+
+    const tableEl = document.getElementById('bulletinTable');
+
+    if (tableEl) {
+
+        if (String(level).trim().startsWith('4')) {
+
+            tableEl.classList.add('level-4-bulletin');
+
+        } else {
+
+            tableEl.classList.remove('level-4-bulletin');
+
+        }
+
+    }
+
 }
+
+
 
 function printBulletin() { window.print(); }
 
+
+
 document.addEventListener('DOMContentLoaded', async () => {
+
     renderTable();
+
     updatePreview();
+
     document.getElementById('igeNumberInput')?.addEventListener('input', updatePreview);
+
     const initialSectionName = {{ selected_section_name|tojson }};
+
     const initialLevel = {{ selected_level|tojson }};
+
     const sectionSelect = document.getElementById('sectionSelect');
+
     const levelInput = document.getElementById('levelInput');
 
+
+
     if (initialSectionName) {
+
         sectionSelect.value = initialSectionName;
+
         await loadLevels(initialLevel || '');
+
         if (initialLevel) {
+
             levelInput.value = initialLevel;
+
             await loadConfig();
+
         }
+
     } else {
+
         await loadLevels();
+
     }
+
 });
+
 </script>
+
 {% endblock %}
+

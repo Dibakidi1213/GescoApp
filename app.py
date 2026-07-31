@@ -4,10 +4,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from sqlalchemy import inspect, text
 from config import Config
+from flask import current_app
 
 from models import db, User, School, sync_school_activation_with_subscription
 from routes.auth import auth_bp
 from routes.admin import admin_bp
+from routes.discipline import discipline_bp
 from routes.professor import professor_bp
 from routes.secretary import secretary_bp
 
@@ -21,6 +23,14 @@ login_manager = LoginManager(app)
 login_manager.login_view = "auth.login"
 login_manager.login_message_category = "warning"
 
+# Attempt to enable CSRF protection if Flask-WTF is available.
+try:
+    from flask_wtf import CSRFProtect
+    csrf = CSRFProtect(app)
+except Exception:
+    # Flask-WTF not installed or init failed; continue but alert via logger at runtime
+    app.logger.debug('CSRFProtect not initialized (flask_wtf missing or init error)')
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
@@ -28,6 +38,7 @@ def load_user(user_id):
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(admin_bp, url_prefix='/<school_slug>/admin', name='school_admin')
+app.register_blueprint(discipline_bp, url_prefix='/<school_slug>/discipline')
 app.register_blueprint(professor_bp, url_prefix='/<school_slug>/professor')
 app.register_blueprint(secretary_bp, url_prefix='/<school_slug>/secretary')
 
@@ -42,7 +53,7 @@ def _ensure_bulletin_config_columns():
         if 'validated' not in columns:
             conn.execute(text('ALTER TABLE bulletin_configs ADD COLUMN validated BOOLEAN NOT NULL DEFAULT 0'))
         if 'validated_at' not in columns:
-            conn.execute(text('ALTER TABLE bulletin_configs ADD COLUMN validated_at DATETIME NULL'))
+            conn.execute(text('ALTER TABLE bulletin_configs ADD COLUMN validated_at TIMESTAMP NULL'))
         if 'validated_by_user_id' not in columns:
             conn.execute(text('ALTER TABLE bulletin_configs ADD COLUMN validated_by_user_id INTEGER NULL'))
         if 'ige_number' not in columns:
@@ -108,7 +119,11 @@ def _ensure_user_roles():
         return
 
     with db.engine.begin() as conn:
-        conn.execute(text("UPDATE users SET role = 'discipline' WHERE role = 'cashier'"))
+        has_legacy_cashier = conn.execute(
+            text("SELECT 1 FROM users WHERE role = 'cashier' LIMIT 1")
+        ).scalar()
+        if has_legacy_cashier:
+            conn.execute(text("UPDATE users SET role = 'discipline' WHERE role = 'cashier'"))
 
 
 @app.before_request
@@ -150,7 +165,7 @@ def add_school_slug(endpoint, values):
         return
     if not hasattr(g, 'school_slug') or not g.school_slug:
         return
-    if endpoint.startswith(('admin.', 'professor.', 'secretary.')):
+    if endpoint.startswith(('admin.', 'discipline.', 'professor.', 'secretary.')):
         values['school_slug'] = g.school_slug
 
 @app.context_processor
@@ -222,4 +237,7 @@ def test_api():
     return render_template('test_api.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Prevent accidental debug/weak-secret startup in production
+    if not app.config.get('SECRET_KEY'):
+        raise RuntimeError('SECRET_KEY environment variable must be set before starting the application')
+    app.run()

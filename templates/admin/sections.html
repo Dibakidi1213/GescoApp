@@ -1,1119 +1,2272 @@
 {% extends 'base.html' %}
+
 {% block title %}Administration - Sections{% endblock %}
+
 {% block content %}
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
+
+  <aside class="sidebar-ista">
+
     <!-- Principal -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chart-line"></i>
+
           <span>Tableau de Bord</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Gestion Académique -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.students') }}" class="sidebar-ista-link">
+
           <i class="fas fa-users"></i>
+
           <span>Inscription élèves</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link active">
+
+        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link active">
+
           <i class="fas fa-layer-group"></i>
+
           <span>Sections/Niveaux/Classes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link">
+
           <i class="fas fa-book"></i>
+
           <span>Cours/Attributions</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chalkboard-user"></i>
+
           <span>Professeurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Évaluations -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Évaluations</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
+
           <i class="fas fa-star"></i>
+
           <span>Gestion des cotes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-file-pdf"></i>
+
           <span>Paramétrage Bulletins</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
+
           <i class="fas fa-balance-scale"></i>
+
           <span>Délibération</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-sliders-h"></i>
+
           <span>Paramètres Délibération</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Configuration -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Configuration</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-ista-link">
+
           <i class="fas fa-cog"></i>
+
           <span>Paramètres école</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link">
+
           <i class="fas fa-user-shield"></i>
+
           <span>Utilisateurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
+
       <div>
+
         <h1 class="h3 mb-1 fw-bold text-dark"><i class="fas fa-layer-group me-2 text-primary"></i> Sections / Niveaux / Classes</h1>
+
         <p class="text-muted small mb-0">Gestion structurelle de l'établissement</p>
+
       </div>
+
       <div class="d-flex gap-2">
-        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="tab" data-bs-target="#add-pane">
+
+        <button class="btn-ista-primary rounded-pill px-4" data-bs-toggle="tab" data-bs-target="#add-pane">
+
           <i class="fas fa-plus me-2"></i> Nouvelle Section
+
         </button>
+
       </div>
+
     </div>
 
+
+
     <!-- TAB NAVIGATION -->
+
     <ul class="nav nav-tabs nav-modern mb-4" role="tablist">
+
       <li role="presentation">
+
         <button class="nav-link active" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-pane" type="button" role="tab" aria-controls="list-pane" aria-selected="true">
+
           <i class="fas fa-list"></i> Liste des sections
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-pane" type="button" role="tab" aria-controls="add-pane" aria-selected="false">
+
           <i class="fas fa-plus-circle"></i> Ajouter une section
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-pane" type="button" role="tab" aria-controls="config-pane" aria-selected="false">
+
           <i class="fas fa-sliders-h"></i> Configuration niveaux/classes
+
         </button>
+
       </li>
+
     </ul>
 
+
+
     <!-- TAB CONTENT -->
+
     <div class="tab-content">
+
       <!-- LIST TAB -->
+
       <div class="tab-pane fade show active" id="list-pane" role="tabpanel" aria-labelledby="list-tab">
+
         <!-- School Filter (if super admin with multiple schools) -->
+
         {% if schools %}
+
         <div class="filter-panel mb-4">
+
           <form method="get" class="d-flex align-items-center gap-3">
+
             <label class="mb-0 fw-bold">
+
               <i class="fas fa-filter"></i> Filtrer par école:
+
             </label>
+
             <select name="school_id" class="form-select filter-select">
+
               <option value="">Toutes les écoles</option>
+
               {% for school in schools %}
+
               <option value="{{ school.id }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
+
                 {{ school.name }}
+
               </option>
+
               {% endfor %}
+
             </select>
+
             <button type="submit" class="btn btn-sm btn-outline-primary">
+
               <i class="fas fa-search"></i> Filtrer
+
             </button>
+
           </form>
+
         </div>
+
         {% endif %}
+
+
 
         <!-- Sections Grid -->
+
         {% if sections %}
+
         <div class="sections-grid">
+
           {% for section in sections %}
+
           <div class="section-card">
+
             <div class="section-card-header">
+
               <div class="section-info">
+
                 <h5 class="section-name">{{ section.name }}</h5>
+
                 {% if schools and section.school %}
+
                 <p class="section-school">{{ section.school.name }}</p>
+
                 {% endif %}
+
               </div>
+
               <div class="section-badges">
+
                 {% if section.all_levels %}
+
                   {% for level in section.all_levels | sort %}
+
                   <span class="badge bg-info"><i class="fas fa-graduation-cap"></i> {{ level }}</span>
+
                   {% endfor %}
+
                 {% else %}
+
                 <span class="badge bg-secondary">Niveau non configuré</span>
+
                 {% endif %}
+
                 {% if section.all_classes %}
+
                   {% for class in section.all_classes | sort %}
+
                   <span class="badge bg-success"><i class="fas fa-chair"></i> {{ class }}</span>
+
                   {% endfor %}
+
                 {% else %}
+
                 <span class="badge bg-secondary">Classe non configurée</span>
+
                 {% endif %}
+
               </div>
+
             </div>
+
+
 
             <div class="section-card-body">
+
               <div class="section-detail">
+
                 <label class="detail-label">Niveaux</label>
+
                 <p class="detail-value">
+
                   {% if section.all_levels %}
+
                     {{ section.all_levels | sort | join(', ') }}
+
                   {% else %}
-                    <span class="text-muted">—</span>
+
+                    <span class="text-muted">â?"</span>
+
                   {% endif %}
+
                 </p>
+
               </div>
+
               <div class="section-detail">
+
                 <label class="detail-label">Classes</label>
+
                 <p class="detail-value">
+
                   {% if section.all_classes %}
+
                     {{ section.all_classes | sort | join(', ') }}
+
                   {% else %}
-                    <span class="text-muted">—</span>
+
+                    <span class="text-muted">â?"</span>
+
                   {% endif %}
+
                 </p>
+
               </div>
+
             </div>
+
+
 
             <div class="section-card-footer">
+
               <a href="{{ url_for('admin.edit_section', section_id=section.id) }}" class="btn btn-sm btn-primary-modern">
+
                 <i class="fas fa-edit"></i> Configurer
+
               </a>
+
+              <a href="{{ url_for('admin.section_students', section_id=section.id) }}" class="btn btn-sm btn-success-modern">
+
+                <i class="fas fa-users"></i> &Eacute;l&egrave;ves
+
+              </a>
+
               <button type="button" class="btn btn-sm btn-danger-modern" data-bs-toggle="modal" data-bs-target="#deleteModal{{ section.id }}">
+
                 <i class="fas fa-trash"></i> Supprimer
+
               </button>
+
             </div>
+
           </div>
+
           {% endfor %}
+
         </div>
+
         {% else %}
+
         <div class="alert alert-info alert-modern">
+
           <i class="fas fa-info-circle"></i>
+
           <div>
+
             <strong>Aucune section trouvée</strong>
+
             <p class="mb-0">Créez une nouvelle section en utilisant l'onglet "Ajouter une section".</p>
+
           </div>
+
         </div>
+
         {% endif %}
+
       </div>
 
+
+
       <!-- ADD TAB -->
+
       <div class="tab-pane fade" id="add-pane" role="tabpanel" aria-labelledby="add-tab">
-        <div class="form-card">
+
+        <div class="card-ista">
+
           <form id="createSectionForm" method="post" class="needs-validation" novalidate>
+
             <div class="form-sections">
+
               <!-- Section Information -->
+
               <div class="form-section">
+
                 <div class="section-header">
+
                   <h6><i class="fas fa-info-circle"></i> Informations de section</h6>
+
                 </div>
+
                 <div class="row g-3">
+
                   {% if schools %}
+
                   <div class="col-md-6">
+
                     <label for="school_id" class="form-label">
+
                       École <span class="text-danger">*</span>
+
                     </label>
+
                     <select name="school_id" id="school_id" class="form-select" required>
+
                       <option value="">Choisir une école</option>
+
                       {% for school in schools %}
+
                       <option value="{{ school.id }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
+
                         {{ school.name }}
+
                       </option>
+
                       {% endfor %}
+
                     </select>
+
                     <div class="invalid-feedback">
+
                       Veuillez sélectionner une école.
+
                     </div>
+
                   </div>
+
                   {% endif %}
+
                   <div class="col-md-6">
+
                     <label for="name" class="form-label">
+
                       Nom de section <span class="text-danger">*</span>
+
                     </label>
+
                     <input type="text" name="name" id="name" class="form-control" 
+
                            placeholder="Ex: LATIN PHILO, SCIENCES, EDUCATION DE BASE..." required>
+
                     <div class="invalid-feedback">
+
                       Le nom de section est requis.
+
                     </div>
+
                   </div>
+
                 </div>
+
               </div>
 
+
+
               <!-- Level / Class Rows -->
+
               <div class="form-section">
+
                 <div class="section-header d-flex flex-wrap justify-content-between gap-2 align-items-center">
+
                   <div>
+
                     <h6><i class="fas fa-sliders-h"></i> Structure section</h6>
+
                     <p class="text-muted small mb-0">Ajoutez un ou plusieurs couples niveau / classe à créer.</p>
+
                   </div>
+
                   <button type="button" class="btn btn-sm btn-outline-primary" onclick="addStructureRow()">
+
                     <i class="fas fa-plus me-1"></i> Ajouter un niveau/classe
+
                   </button>
+
                 </div>
+
+
 
                 <div id="structureRows" class="row g-3 mb-3"></div>
 
+
+
                 <div class="alert alert-secondary mb-0">
+
                   <i class="fas fa-info-circle me-2"></i>
+
                   Si vous ne précisez pas de niveau ou de classe, la section sera créée avec <strong>Niveau 1</strong> et <strong>Classe A</strong>.
+
                 </div>
+
               </div>
+
             </div>
+
+
 
             <!-- Action Buttons -->
+
             <div class="form-actions">
+
               <button type="submit" class="btn btn-primary-modern">
+
                 <i class="fas fa-save"></i> Créer la section et sa structure
+
               </button>
+
               <button type="reset" class="btn btn-outline-secondary" onclick="resetCreateForm()">
+
                 <i class="fas fa-redo"></i> Réinitialiser
+
               </button>
+
             </div>
+
           </form>
+
         </div>
+
       </div>
+
+
 
       <!-- CONFIGURATION TAB -->
+
       <div class="tab-pane fade" id="config-pane" role="tabpanel" aria-labelledby="config-tab">
-        <div class="form-card">
+
+        <div class="card-ista">
+
           <!-- Section Selector -->
+
           <div class="form-section">
+
             <div class="section-header">
+
               <h6><i class="fas fa-filter"></i> Sélectionnez une section</h6>
+
             </div>
+
             <div class="row g-3">
+
               <div class="col-md-6">
+
                 <label for="config_section" class="form-label">Section <span class="text-danger">*</span></label>
+
                 <select id="config_section" class="form-select" required>
+
                   <option value="">-- Sélectionnez une section --</option>
+
                   {% for section in sections %}
+
                   <option value="{{ section.id }}">{{ section.name }}</option>
+
                   {% endfor %}
+
                 </select>
+
               </div>
+
             </div>
+
           </div>
+
+
 
           <!-- Niveaux et Classes Management -->
+
           <div class="form-section">
+
             <div class="section-header">
+
               <h6><i class="fas fa-graduation-cap"></i> Configuration niveaux et classes</h6>
+
             </div>
+
             <p class="text-muted small">Pour chaque niveau, vous pouvez ajouter une ou plusieurs classes</p>
+
             
+
             <!-- Niveaux List -->
+
             <div class="hierarchy-container" id="hierarchy-list">
+
               <span class="text-muted small">Sélectionnez une section</span>
+
             </div>
+
+
 
             <!-- Données des sections (pour pré-charger la configuration) -->
+
             <div style="display: none;">
+
               {% for section in sections %}
+
                 {% for pair in section.level_class_pairs %}
+
                 <span data-section-id="{{ section.id }}" 
+
                       data-section-level="{{ pair.level }}"
+
                       data-section-classes="{{ pair.class }}">
+
                 </span>
+
                 {% endfor %}
+
               {% endfor %}
+
             </div>
+
+
 
             <!-- Add New Level -->
+
             <div class="row g-3 mt-4">
+
               <div class="col-md-6">
+
                 <label for="new_level" class="form-label">Ajouter un nouveau niveau</label>
+
                 <select id="new_level" class="form-select">
+
                   <option value="">-- Sélectionnez un niveau --</option>
+
                   <option>1</option>
+
                   <option>2</option>
+
                   <option>3</option>
+
                   <option>4</option>
+
                   <option>5</option>
+
                   <option>6</option>
+
                   <option>7</option>
+
                   <option>8</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-6">
+
                 <label class="form-label">&nbsp;</label>
+
                 <button type="button" class="btn btn-success w-100" onclick="addNewLevel()">
+
                   <i class="fas fa-plus"></i> Ajouter ce niveau
+
                 </button>
+
               </div>
+
             </div>
+
           </div>
+
+
 
           <!-- Info Box -->
+
           <div class="alert alert-info mt-4">
+
             <i class="fas fa-info-circle"></i>
+
             <strong>Structure:</strong> Une section doit avoir au moins 2 niveaux. Chaque niveau doit avoir au moins 1 classe.
+
           </div>
+
+
 
           <!-- Action Buttons -->
+
           <div class="form-actions">
+
             <button type="button" class="btn btn-primary-modern" onclick="saveConfiguration()">
+
               <i class="fas fa-save"></i> Enregistrer la configuration
+
             </button>
+
             <button type="reset" class="btn btn-outline-secondary" onclick="resetConfiguration()">
+
               <i class="fas fa-redo"></i> Réinitialiser
+
             </button>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   </main>
+
 </div>
+
+
 
 <!-- DELETE CONFIRMATION MODALS -->
+
 {% for section in sections %}
+
 <div class="modal fade" id="deleteModal{{ section.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ section.id }}" aria-hidden="true">
+
   <div class="modal-dialog">
+
     <div class="modal-content">
+
       <div class="modal-header border-bottom">
+
         <h5 class="modal-title" id="deleteModalLabel{{ section.id }}">
+
           <i class="fas fa-exclamation-triangle text-danger"></i> Confirmer la suppression
+
         </h5>
+
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
       </div>
+
       <div class="modal-body">
+
         <p>Êtes-vous sûr de vouloir supprimer la section <strong>{{ section.name }}</strong> ?</p>
+
         <p class="text-muted small mb-0">Cette action est irréversible et pourrait affecter les données associées.</p>
+
       </div>
+
       <div class="modal-footer border-top">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+
+        <button type="button" class="btn-ista-secondary" data-bs-dismiss="modal">Annuler</button>
+
         <form method="post" action="{{ url_for('admin.delete_section', section_id=section.id) }}" style="display: inline;">
+
           <button type="submit" class="btn btn-danger">
+
             <i class="fas fa-trash"></i> Supprimer
+
           </button>
+
         </form>
+
       </div>
+
     </div>
+
   </div>
+
 </div>
+
 {% endfor %}
 
+
+
 <style>
+
   /* SECTIONS PAGE SPECIFIC STYLES */
+
   .sections-grid {
+
     display: grid;
+
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+
     gap: 1.5rem;
+
     margin-bottom: 2rem;
+
   }
+
+
 
   .section-card {
+
     background: white;
+
     border-radius: 12px;
+
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
     overflow: hidden;
+
     transition: all 0.3s ease;
+
     display: flex;
+
     flex-direction: column;
+
   }
+
+
 
   .section-card:hover {
+
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+
     transform: translateY(-4px);
+
   }
+
+
 
   .section-card-header {
+
     padding: 1.25rem;
+
     background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+
     color: white;
+
     display: flex;
+
     justify-content: space-between;
+
     align-items: flex-start;
+
     gap: 1rem;
+
   }
+
+
 
   .section-info {
+
     flex: 1;
+
   }
+
+
 
   .section-name {
+
     font-size: 1.1rem;
+
     font-weight: 600;
+
     margin: 0;
+
   }
+
+
 
   .section-school {
+
     font-size: 0.85rem;
+
     margin: 0.5rem 0 0;
+
     opacity: 0.9;
+
   }
+
+
 
   .section-badges {
+
     display: flex;
+
     flex-wrap: wrap;
+
     gap: 0.5rem;
+
     justify-content: flex-end;
+
   }
+
+
 
   .section-badges .badge {
+
     font-size: 0.75rem;
+
     padding: 0.4rem 0.6rem;
+
   }
+
+
 
   .section-card-body {
+
     padding: 1.25rem;
+
     flex: 1;
+
     display: grid;
+
     grid-template-columns: 1fr 1fr;
+
     gap: 1rem;
+
   }
+
+
 
   .section-detail {
+
     padding: 0.75rem;
+
     background: #f8f9fa;
+
     border-radius: 8px;
+
   }
+
+
 
   .detail-label {
+
     font-size: 0.8rem;
+
     font-weight: 600;
+
     color: #666;
+
     text-transform: uppercase;
+
     display: block;
+
     margin-bottom: 0.4rem;
+
   }
+
+
 
   .detail-value {
+
     font-size: 1rem;
+
     font-weight: 500;
+
     color: #2c3e50;
+
     margin: 0;
+
   }
+
+
 
   .section-card-footer {
+
     padding: 1rem;
+
     background: #f8f9fa;
+
     border-top: 1px solid #e9ecef;
+
     display: flex;
+
+    flex-wrap: wrap;
+
     gap: 0.75rem;
+
   }
+
+
 
   .section-card-footer .btn {
+
     flex: 1;
+
     font-size: 0.85rem;
+
     padding: 0.5rem 0.75rem;
+
+    min-width: 104px;
+
   }
+
+
 
   .btn-primary-modern {
+
     background-color: #3498db;
+
     border-color: #3498db;
+
     color: white;
+
   }
+
+
 
   .btn-primary-modern:hover {
+
     background-color: #2980b9;
+
     border-color: #2980b9;
+
   }
+
+
+
+  .btn-success-modern {
+
+    background-color: #16a085;
+
+    border-color: #16a085;
+
+    color: white;
+
+  }
+
+
+
+  .btn-success-modern:hover {
+
+    background-color: #13856f;
+
+    border-color: #13856f;
+
+    color: white;
+
+  }
+
+
 
   .btn-danger-modern {
+
     background-color: #e74c3c;
+
     border-color: #e74c3c;
+
     color: white;
+
   }
+
+
 
   .btn-danger-modern:hover {
+
     background-color: #c0392b;
+
     border-color: #c0392b;
+
   }
+
+
 
   .filter-panel {
+
     background: white;
+
     padding: 1rem;
+
     border-radius: 8px;
+
     border-left: 4px solid #3498db;
+
   }
+
+
 
   .filter-select {
+
     max-width: 300px;
+
   }
 
-  .form-card {
+
+
+  .card-ista {
+
     background: white;
+
     border-radius: 12px;
+
     padding: 2rem;
+
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
   }
+
+
 
   .form-sections {
+
     display: flex;
+
     flex-direction: column;
+
     gap: 2rem;
+
     margin-bottom: 2rem;
+
   }
+
+
 
   .form-section {
+
     padding-bottom: 1.5rem;
+
     border-bottom: 1px solid #e9ecef;
+
   }
+
+
 
   .form-section:last-of-type {
+
     border-bottom: none;
+
     padding-bottom: 0;
+
   }
+
+
 
   .section-header {
+
     margin-bottom: 1.5rem;
+
   }
+
+
 
   .section-header h6 {
+
     font-size: 1rem;
+
     font-weight: 600;
+
     color: #2c3e50;
+
     margin: 0;
+
     display: flex;
+
     align-items: center;
+
     gap: 0.5rem;
+
   }
+
+
 
   .section-header i {
+
     color: #3498db;
+
     font-size: 1.1rem;
+
   }
+
+
 
   .form-actions {
+
     display: flex;
+
     gap: 1rem;
+
     padding-top: 1rem;
+
   }
+
+
 
   .form-actions button {
+
     padding: 0.6rem 1.5rem;
+
     font-weight: 500;
+
   }
+
+
 
   .alert-modern {
+
     background: #e3f2fd;
+
     border-left: 4px solid #2196F3;
+
     color: #1565c0;
+
     display: flex;
+
     align-items: flex-start;
+
     gap: 1rem;
+
   }
+
+
 
   .alert-modern i {
+
     font-size: 1.25rem;
+
     margin-top: 0.2rem;
+
   }
+
+
 
   .hierarchy-container {
+
     display: flex;
+
     flex-direction: column;
+
     gap: 1.5rem;
+
     padding: 1.5rem;
+
     background: #f8f9fa;
+
     border-radius: 8px;
+
     min-height: 100px;
+
   }
+
+
 
   .level-item {
+
     background: white;
+
     border-left: 4px solid #3498db;
+
     border-radius: 8px;
+
     padding: 1rem;
+
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
   }
+
+
 
   .level-header {
+
     display: flex;
+
     justify-content: space-between;
+
     align-items: center;
+
     margin-bottom: 1rem;
+
     padding-bottom: 0.75rem;
+
     border-bottom: 1px solid #e9ecef;
+
   }
+
+
 
   .level-title {
+
     font-weight: 600;
+
     font-size: 1rem;
+
     color: #2c3e50;
+
     display: flex;
+
     align-items: center;
+
     gap: 0.5rem;
+
   }
+
+
 
   .level-actions {
+
     display: flex;
+
     gap: 0.5rem;
+
   }
+
+
 
   .level-actions button {
+
     padding: 0.4rem 0.8rem;
+
     font-size: 0.85rem;
+
   }
+
+
 
   .classes-for-level {
+
     display: flex;
+
     flex-wrap: wrap;
+
     gap: 0.75rem;
+
     margin-bottom: 0.75rem;
+
     min-height: 35px;
+
     align-items: center;
+
   }
+
+
 
   .classes-for-level .badge {
+
     font-size: 0.8rem;
+
     padding: 0.4rem 0.6rem;
+
   }
+
+
 
   .add-class-form {
+
     display: flex;
+
     gap: 0.5rem;
+
     align-items: flex-end;
+
   }
+
+
 
   .add-class-form select {
+
     flex: 1;
+
     max-width: 150px;
+
     padding: 0.4rem 0.6rem;
+
     font-size: 0.85rem;
+
   }
+
+
 
   .add-class-form button {
+
     padding: 0.4rem 0.8rem;
+
     font-size: 0.85rem;
+
     white-space: nowrap;
+
   }
 
+
+
   @media (max-width: 768px) {
+
     .hierarchy-container {
+
       gap: 1rem;
+
     }
+
+
 
     .level-item {
+
       padding: 0.75rem;
+
     }
+
+
 
     .add-class-form {
+
       flex-direction: column;
+
     }
+
+
 
     .add-class-form select,
+
     .add-class-form button {
+
       width: 100%;
+
       max-width: 100%;
+
     }
+
+
 
     .level-header {
+
       flex-direction: column;
+
       align-items: flex-start;
+
     }
+
+
 
     .level-actions {
+
       width: 100%;
+
       margin-top: 0.5rem;
+
     }
+
+
 
     .level-actions button {
+
       flex: 1;
+
     }
+
   }
+
+
 
   @media (max-width: 768px) {
+
     .sections-grid {
+
       grid-template-columns: 1fr;
+
     }
+
+
 
     .filter-select {
+
       max-width: 100%;
+
     }
+
+
 
     .section-card-header {
+
       flex-direction: column;
+
     }
+
+
 
     .section-badges {
+
       justify-content: flex-start;
+
     }
 
-    .form-card {
+
+
+    .card-ista {
+
       padding: 1.5rem;
+
     }
+
+
 
     .form-actions {
+
       flex-direction: column;
+
     }
+
+
 
     .form-actions button {
+
       width: 100%;
+
     }
+
+
 
     .section-card-body {
+
       grid-template-columns: 1fr;
+
     }
+
+
 
     .badge-container {
+
       justify-content: flex-start;
+
     }
+
   }
+
 </style>
 
+
+
 <script>
+
   // Form validation
+
   (() => {
+
     'use strict';
+
     const forms = document.querySelectorAll('.needs-validation');
+
     Array.from(forms).forEach(form => {
+
       form.addEventListener('submit', event => {
+
         if (!form.checkValidity()) {
+
           event.preventDefault();
+
           event.stopPropagation();
+
         }
+
         form.classList.add('was-validated');
+
       }, false);
+
     });
+
   })();
 
+
+
   function createStructureRow(level = '', className = '') {
+
     const row = document.createElement('div');
+
     row.className = 'row g-3 structure-row align-items-end';
+
     row.innerHTML = `
+
       <div class="col-md-5">
+
         <label class="form-label visually-hidden">Niveau</label>
+
         <select name="level" class="form-select" required>
+
           <option value="">Niveau...</option>
+
           <option value="1" ${level === '1' ? 'selected' : ''}>1</option>
+
           <option value="2" ${level === '2' ? 'selected' : ''}>2</option>
+
           <option value="3" ${level === '3' ? 'selected' : ''}>3</option>
+
           <option value="4" ${level === '4' ? 'selected' : ''}>4</option>
+
           <option value="5" ${level === '5' ? 'selected' : ''}>5</option>
+
           <option value="6" ${level === '6' ? 'selected' : ''}>6</option>
+
           <option value="7" ${level === '7' ? 'selected' : ''}>7</option>
+
           <option value="8" ${level === '8' ? 'selected' : ''}>8</option>
+
         </select>
+
       </div>
+
       <div class="col-md-5">
+
         <label class="form-label visually-hidden">Classe</label>
+
         <select name="class_name" class="form-select" required>
+
           <option value="">Classe...</option>
+
           <option value="A" ${className === 'A' ? 'selected' : ''}>A</option>
+
           <option value="B" ${className === 'B' ? 'selected' : ''}>B</option>
+
           <option value="C" ${className === 'C' ? 'selected' : ''}>C</option>
+
           <option value="D" ${className === 'D' ? 'selected' : ''}>D</option>
+
           <option value="E" ${className === 'E' ? 'selected' : ''}>E</option>
+
           <option value="F" ${className === 'F' ? 'selected' : ''}>F</option>
+
           <option value="G" ${className === 'G' ? 'selected' : ''}>G</option>
+
           <option value="H" ${className === 'H' ? 'selected' : ''}>H</option>
+
         </select>
+
       </div>
+
       <div class="col-md-2 d-flex gap-2">
+
         <button type="button" class="btn btn-outline-secondary w-100" onclick="removeStructureRow(this)">
+
           <i class="fas fa-trash"></i>
+
         </button>
+
       </div>
+
     `;
+
     return row;
+
   }
+
+
 
   function addStructureRow(level = '', className = '') {
+
     const container = document.getElementById('structureRows');
+
     const row = createStructureRow(level, className);
+
     container.appendChild(row);
+
   }
+
+
 
   function removeStructureRow(button) {
+
     const row = button.closest('.structure-row');
+
     if (row) {
+
       row.remove();
+
     }
+
   }
+
+
 
   function resetCreateForm() {
+
     const form = document.getElementById('createSectionForm');
+
     if (form) {
+
       form.reset();
+
     }
+
     const container = document.getElementById('structureRows');
+
     if (container) {
+
       container.innerHTML = '';
+
       addStructureRow('1', 'A');
+
     }
+
   }
 
+
+
   document.addEventListener('DOMContentLoaded', function() {
+
     const container = document.getElementById('structureRows');
+
     if (container && container.children.length === 0) {
+
       addStructureRow('1', 'A');
+
     }
+
   });
+
+
 
   // Configuration Tab - Hierarchical Structure
+
   // Structure: sectionConfig[sectionId] = { "3ème": ["A", "B"], "1ère": ["A"] }
+
   const sectionConfig = {};
+
   let currentSectionId = null;
 
+
+
   // Initialize section config with existing data from backend
+
   function initializeSectionConfig() {
+
     // Get all section data from the page data attribute
+
     const sectionElements = document.querySelectorAll('[data-section-id][data-section-level][data-section-classes]');
+
     sectionElements.forEach(elem => {
+
       const sectionId = elem.getAttribute('data-section-id');
+
       const level = elem.getAttribute('data-section-level');
+
       const classStr = elem.getAttribute('data-section-classes');
+
       
+
       if (sectionId && level && classStr) {
+
         // Initialize section if not exists
+
         if (!sectionConfig[sectionId]) {
+
           sectionConfig[sectionId] = {};
+
         }
+
         
+
         // Initialize level if not exists
+
         if (!sectionConfig[sectionId][level]) {
+
           sectionConfig[sectionId][level] = [];
+
         }
+
         
+
         // Add class to level (avoid duplicates)
+
         if (!sectionConfig[sectionId][level].includes(classStr)) {
+
           sectionConfig[sectionId][level].push(classStr);
+
         }
+
       }
+
     });
+
   }
+
+
 
   // Initialize on page load
+
   document.addEventListener('DOMContentLoaded', function() {
+
     initializeSectionConfig();
+
   });
+
+
 
   document.getElementById('config_section').addEventListener('change', function() {
+
     currentSectionId = this.value;
+
     if (!currentSectionId) {
+
       document.getElementById('hierarchy-list').innerHTML = '<span class="text-muted small">Sélectionnez une section</span>';
+
       return;
+
     }
+
     
+
     // Initialize if not exists
+
     if (!sectionConfig[currentSectionId]) {
+
       sectionConfig[currentSectionId] = {};
+
     }
+
     
+
     updateHierarchyDisplay();
+
     // Auto-scroll to hierarchy display
+
     setTimeout(() => {
+
       document.getElementById('hierarchy-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     }, 100);
+
   });
 
+
+
   function updateHierarchyDisplay() {
+
     const hierarchyList = document.getElementById('hierarchy-list');
+
     if (!currentSectionId) {
+
       hierarchyList.innerHTML = '<span class="text-muted small">Sélectionnez une section</span>';
+
       return;
+
     }
 
+
+
     const config = sectionConfig[currentSectionId];
+
     const levels = Object.keys(config);
+
+
 
     if (levels.length === 0) {
+
       hierarchyList.innerHTML = '<span class="text-muted small">Aucun niveau configuré. Ajoutez un niveau ci-dessous.</span>';
+
       return;
+
     }
+
+
 
     hierarchyList.innerHTML = levels.map(level => {
+
       const classes = config[level] || [];
+
       const classesHTML = classes.length === 0 
+
         ? '<span class="text-muted small">Aucune classe pour ce niveau</span>'
+
         : classes.map(cls => `
+
             <span class="badge badge-removable" onclick="removeClass('${currentSectionId}', '${level}', '${cls}')">
+
               <i class="fas fa-chair"></i> ${cls}
+
               <i class="fas fa-times"></i>
+
             </span>
+
           `).join('');
 
+
+
       return `
+
         <div class="level-item">
+
           <div class="level-header">
+
             <div class="level-title">
+
               <i class="fas fa-graduation-cap"></i>
+
               ${level}
+
             </div>
+
             <div class="level-actions">
+
               <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLevel('${currentSectionId}', '${level}')">
+
                 <i class="fas fa-trash"></i> Supprimer le niveau
+
               </button>
+
             </div>
+
           </div>
+
           
+
           <div class="classes-for-level">
+
             ${classesHTML}
+
           </div>
+
+
 
           <div class="add-class-form">
+
             <select id="class-select-${level}" class="form-select">
+
               <option value="">Ajouter une classe</option>
+
               <option>A</option>
+
               <option>B</option>
+
               <option>C</option>
+
               <option>D</option>
+
               <option>E</option>
+
               <option>F</option>
+
               <option>G</option>
+
               <option>H</option>
+
             </select>
+
             <button type="button" class="btn btn-sm btn-info" onclick="addClassToLevel('${currentSectionId}', '${level}')">
+
               <i class="fas fa-plus"></i> Ajouter
+
             </button>
+
           </div>
+
         </div>
+
       `;
+
     }).join('');
+
   }
+
+
 
   function addNewLevel() {
+
     if (!currentSectionId) {
+
       alert('Veuillez sélectionner une section');
+
       return;
+
     }
+
+
 
     const level = document.getElementById('new_level').value;
+
     if (!level) {
+
       alert('Veuillez sélectionner un niveau');
+
       return;
+
     }
+
+
 
     if (sectionConfig[currentSectionId][level]) {
+
       alert(`Le niveau ${level} est déjà configuré pour cette section`);
+
       return;
+
     }
+
+
 
     sectionConfig[currentSectionId][level] = [];
+
     document.getElementById('new_level').value = '';
+
     updateHierarchyDisplay();
+
     showNotification(`Niveau ${level} ajouté`, 'success');
+
     
+
     // Scroll to show the new level
+
     setTimeout(() => {
+
       document.getElementById('hierarchy-list').scrollIntoView({ behavior: 'smooth', block: 'end' });
+
     }, 300);
+
   }
+
+
 
   function removeLevel(sectionId, level) {
+
     if (confirm(`Êtes-vous sûr de vouloir supprimer le niveau ${level} et toutes ses classes ?`)) {
+
       delete sectionConfig[sectionId][level];
+
       updateHierarchyDisplay();
+
       showNotification(`Niveau ${level} supprimé`, 'info');
+
     }
+
   }
+
+
 
   function addClassToLevel(sectionId, level) {
+
     const selectId = `class-select-${level}`;
+
     const classSelect = document.getElementById(selectId);
+
     const cls = classSelect.value;
 
+
+
     if (!cls) {
+
       alert('Veuillez sélectionner une classe');
+
       return;
+
     }
+
+
 
     if (!sectionConfig[sectionId][level]) {
+
       sectionConfig[sectionId][level] = [];
+
     }
+
+
 
     if (sectionConfig[sectionId][level].includes(cls)) {
+
       alert(`La classe ${cls} est déjà ajoutée à ce niveau`);
+
       return;
+
     }
+
+
 
     sectionConfig[sectionId][level].push(cls);
+
     classSelect.value = '';
+
     updateHierarchyDisplay();
+
     showNotification(`Classe ${cls} ajoutée au niveau ${level}`, 'success');
+
   }
+
+
 
   function removeClass(sectionId, level, cls) {
+
     sectionConfig[sectionId][level] = sectionConfig[sectionId][level].filter(c => c !== cls);
+
     updateHierarchyDisplay();
+
     showNotification(`Classe ${cls} supprimée`, 'info');
+
   }
+
+
 
   function saveConfiguration() {
+
     if (!currentSectionId) {
+
       alert('Veuillez sélectionner une section');
+
       return;
+
     }
+
+
 
     const config = sectionConfig[currentSectionId];
+
     const levels = Object.keys(config);
 
+
+
     if (levels.length < 2) {
+
       alert('Une section doit avoir au moins 2 niveaux');
+
       return;
+
     }
+
+
 
     // Check if each level has at least one class
+
     const invalidLevels = levels.filter(level => config[level].length === 0);
+
     if (invalidLevels.length > 0) {
+
       alert(`Les niveaux suivants n'ont pas de classes: ${invalidLevels.join(', ')}`);
+
       return;
+
     }
 
+
+
     // Send configuration to backend
+
     fetch('/admin/sections/config/save', {
+
       method: 'POST',
+
       headers: {
+
         'Content-Type': 'application/json'
+
       },
+
       body: JSON.stringify({
+
         section_id: currentSectionId,
+
         config: config
+
       })
+
     })
+
     .then(response => response.json())
+
     .then(data => {
+
       if (data.success) {
+
         showNotification('Configuration sauvegardée avec succès!', 'success');
+
       } else {
+
         showNotification('Erreur: ' + (data.error || 'Impossible de sauvegarder'), 'danger');
+
       }
+
     })
+
     .catch(error => {
+
       console.error('Erreur:', error);
+
       showNotification('Erreur réseau: ' + error.message, 'danger');
+
     });
+
   }
+
+
 
   function resetConfiguration() {
+
     document.getElementById('config_section').value = '';
+
     document.getElementById('new_level').value = '';
+
     currentSectionId = null;
+
     document.getElementById('hierarchy-list').innerHTML = '<span class="text-muted small">Sélectionnez une section</span>';
+
     showNotification('Formulaire réinitialisé', 'info');
+
   }
+
+
 
   function showNotification(message, type = 'info') {
+
     const alertDiv = document.createElement('div');
+
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+
     alertDiv.style.position = 'fixed';
+
     alertDiv.style.top = '100px';
+
     alertDiv.style.right = '20px';
+
     alertDiv.style.zIndex = '9999';
+
     alertDiv.style.minWidth = '300px';
+
     alertDiv.innerHTML = `
+
       ${message}
+
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
     `;
+
     document.body.appendChild(alertDiv);
 
+
+
     setTimeout(() => {
+
       alertDiv.remove();
+
     }, 3000);
+
   }
+
 </script>
+
 {% endblock %}
+

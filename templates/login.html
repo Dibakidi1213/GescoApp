@@ -1,29 +1,34 @@
 {% extends 'base.html' %}
-{% block title %}Connexion - JNC_Kalasi{% endblock %}
+{% block title %}Connexion - JNC_KALASI{% endblock %}
 {% block content %}
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-header">
-      <h1>JNC_Kalasi</h1>
-      <p class="tagline">Plateforme de Gestion Scolaire Moderne</p>
+<div class="login-page">
+  <div class="login-card-ista">
+    <div class="login-header-ista">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" class="login-logo-img" alt="JNC_KALASI">
+      <h1>JNC_KALASI</h1>
+      <p class="tagline">Plateforme de Gestion Scolaire</p>
+    </div>
+    <div class="login-body-ista">
       {% if school %}
-      <div class="alert alert-info mt-3" role="alert">
-        Accès à l’espace de l’école : <strong>{{ school.name }}</strong>
+      <div class="login-school-info">
+        <i class="fas fa-school me-1"></i>
+        Accès à l'espace de : <strong>{{ school.name }}</strong>
       </div>
       {% endif %}
-    </div>
-    <div class="login-body">
       <form method="post">
         <div class="mb-3">
           <label class="form-label" for="username">Nom d'utilisateur</label>
-          <input id="username" type="text" name="username" class="form-control" placeholder="Entrez votre nom d'utilisateur" title="Nom d'utilisateur" required autofocus>
+          <input id="username" type="text" name="username" class="form-control" placeholder="Entrez votre nom d'utilisateur" required autofocus>
         </div>
         <div class="mb-3">
           <label class="form-label" for="password">Mot de passe</label>
-          <input id="password" type="password" name="password" class="form-control" placeholder="Entrez votre mot de passe" title="Mot de passe" required>
+          <input id="password" type="password" name="password" class="form-control" placeholder="Entrez votre mot de passe" required>
         </div>
-        <button type="submit" class="btn-login">Se connecter</button>
+        <button type="submit" class="btn-login-ista"><span>Se connecter</span></button>
       </form>
+    </div>
+    <div class="login-footer-ista">
+      &copy; {{ now().year if now is defined else '2026' }} JNC_KALASI
     </div>
   </div>
 </div>

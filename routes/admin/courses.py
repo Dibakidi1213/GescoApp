@@ -124,17 +124,27 @@ def courses(school_slug=None):
                 flash('Aucun cours valide n\'a été soumis.', 'warning')
         return redirect(url_for('admin.courses', school_slug=school_slug))
 
+    filter_section_id = request.args.get('filter_section_id', type=int)
+
     if effective_school_id:
         sections = Section.query.filter_by(school_id=effective_school_id).order_by(
             Section.name, Section.level, Section.class_name
         ).all()
-        courses_list = Course.query.filter_by(school_id=effective_school_id).order_by(Course.title).all()
+        
+        query = Course.query.filter_by(school_id=effective_school_id)
+        if filter_section_id:
+            query = query.filter_by(section_id=filter_section_id)
+        courses_list = query.order_by(Course.title).all()
+        
         professors = User.query.filter_by(school_id=effective_school_id, role='professor').order_by(
             User.full_name
         ).all()
     else:
         sections = []
-        courses_list = Course.query.order_by(Course.title).all()
+        query = Course.query
+        if filter_section_id:
+            query = query.filter_by(section_id=filter_section_id)
+        courses_list = query.order_by(Course.title).all()
         professors = []
 
     selected_section_id = request.args.get('section_id', type=int)
@@ -171,6 +181,7 @@ def courses(school_slug=None):
         selected_section=selected_section,
         initial_branch_options=initial_branch_options,
         selected_section_id=selected_section_id,
+        filter_section_id=filter_section_id,
         open_add_tab=bool(request.args.get('add')),
     )
 

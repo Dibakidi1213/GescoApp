@@ -8,3 +8,5 @@ reportlab
 Werkzeug
 SQLAlchemy
 weasyprint
+psycopg2-binary
+gunicorn

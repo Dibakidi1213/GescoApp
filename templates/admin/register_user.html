@@ -1,217 +1,434 @@
 {% extends 'base.html' %}
+
 {% block title %}Créer un Utilisateur - JNC_Kalasi{% endblock %}
+
 {% block content %}
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
-    <div class="sidebar-menu-group">
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+  <aside class="sidebar-ista">
+
+    <div class="sidebar-ista-group">
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
             <i class="fas fa-chart-line"></i>
+
             <span>Tableau de Bord</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
+
+
 
     {% if current_user.is_super_admin() %}
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Administration</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.schools') }}" class="sidebar-menu-link">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Administration</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.schools') }}" class="sidebar-ista-link">
+
             <i class="fas fa-school"></i>
+
             <span>Gestion des écoles</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.users') }}" class="sidebar-menu-link active">
+
+        <li>
+
+          <a href="{{ url_for('admin.users') }}" class="sidebar-ista-link active">
+
             <i class="fas fa-users-cog"></i>
+
             <span>Admins des écoles</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
             <i class="fas fa-file-pdf"></i>
+
             <span>Paramétrage Bulletins</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
+
     {% endif %}
+
+
 
     {% if not current_user.is_super_admin() %}
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.students') }}" class="sidebar-ista-link">
+
             <i class="fas fa-user-graduate"></i>
+
             <span>Inscription élèves</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
+
             <i class="fas fa-layer-group"></i>
+
             <span>Sections/Niveaux/Classes</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link">
+
             <i class="fas fa-book"></i>
+
             <span>Cours/Attributions</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
+
     {% endif %}
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <div class="page-header mb-4">
-      <h1 class="page-title"><i class="fas fa-user-plus" style="color: #27ae60;"></i> Nouvel Utilisateur</h1>
+
+      <h1 class="page-title-ista"><i class="fas fa-user-plus" style="color: #27ae60;"></i> Nouvel Utilisateur</h1>
+
       <p class="text-muted">Créez un nouveau compte pour accéder à la plateforme.</p>
+
     </div>
 
+
+
     <div class="row justify-content-center">
+
       <div class="col-xl-8 col-lg-10">
-        <div class="card form-card shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
-          <div class="card-header bg-success text-white py-3 d-flex align-items-center gap-2" style="border: none;">
+
+        <div class="card card-ista shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
+
+          <div class="card-ista-header py-3 d-flex align-items-center gap-2" style="border: none;">
+
             <i class="fas fa-id-card"></i>
+
             <h5 class="mb-0" style="color: white; font-size: 1.1rem;">Informations d'Inscription</h5>
+
           </div>
+
           <div class="card-body p-4 p-md-5">
+
             <form method="post">
-              <div class="row">
-                <div class="col-md-6 mb-4">
-                  <label class="form-label">Nom Complet <span class="text-danger">*</span></label>
-                  <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
-                    <input type="text" name="full_name" class="form-control border-start-0" placeholder="Ex: Jean Dupont" required>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                  <label class="form-label">Nom d'utilisateur <span class="text-danger">*</span></label>
-                  <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-at text-muted"></i></span>
-                    <input type="text" name="username" class="form-control border-start-0" placeholder="Ex: jdupont" required>
-                  </div>
-                </div>
-              </div>
 
               <div class="row">
+
                 <div class="col-md-6 mb-4">
-                  <label class="form-label">Email</label>
+
+                  <label class="form-label">Nom Complet <span class="text-danger">*</span></label>
+
                   <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
-                    <input type="email" name="email" class="form-control border-start-0" placeholder="exemple@ecole.com">
+
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
+
+                    <input type="text" name="full_name" class="form-control border-start-0" placeholder="Ex: Jean Dupont" required>
+
                   </div>
+
                 </div>
+
                 <div class="col-md-6 mb-4">
-                  <label class="form-label">Mot de Passe <span class="text-danger">*</span></label>
+
+                  <label class="form-label">Nom d'utilisateur <span class="text-danger">*</span></label>
+
                   <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
-                    <input type="password" name="password" class="form-control border-start-0" placeholder="Minimum 6 caractères" required>
+
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-at text-muted"></i></span>
+
+                    <input type="text" name="username" class="form-control border-start-0" placeholder="Ex: jdupont" required>
+
                   </div>
+
                 </div>
+
               </div>
+
+
+
+              <div class="row">
+
+                <div class="col-md-6 mb-4">
+
+                  <label class="form-label">Email</label>
+
+                  <div class="input-group">
+
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+
+                    <input type="email" name="email" class="form-control border-start-0" placeholder="exemple@ecole.com">
+
+                  </div>
+
+                </div>
+
+                <div class="col-md-6 mb-4">
+
+                  <label class="form-label">Mot de Passe <span class="text-danger">*</span></label>
+
+                  <div class="input-group">
+
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+
+                    <input type="password" name="password" class="form-control border-start-0" placeholder="Minimum 6 caractères" required>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
 
               <hr class="my-4 opacity-10">
 
+
+
               <div class="row align-items-end">
+
                 {% if current_user.is_super_admin() %}
+
                 <div class="col-md-6 mb-4">
+
                   <label class="form-label">École d'Attache <span class="text-danger">*</span></label>
+
                   <div class="input-group">
+
                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-school text-muted"></i></span>
+
                     <select name="school_id" class="form-select border-start-0" required>
+
                       <option value="">Sélectionner une école</option>
+
                       {% for school in schools %}
+
                       <option value="{{ school.id }}">{{ school.name }}</option>
+
                       {% endfor %}
+
                     </select>
+
                   </div>
+
                 </div>
+
                 <div class="col-md-6 mb-4">
+
                   <label class="form-label">Rôle Attribué <span class="text-danger">*</span></label>
+
                   <div class="input-group">
+
                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-shield-halved text-muted"></i></span>
+
                     <select name="role" class="form-select border-start-0" required>
+
                       <option value="school_admin">Administrateur d'école</option>
+
                     </select>
+
                   </div>
+
                   <div class="form-text text-muted small">Le Super Admin ne crée que des Admins d'école.</div>
+
                 </div>
+
                 {% else %}
+
                 <div class="col-md-12 mb-4">
+
                   <label class="form-label">Rôle de l'Utilisateur <span class="text-danger">*</span></label>
+
                   <div class="input-group">
+
                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-user-tag text-muted"></i></span>
+
                     <select name="role" class="form-select border-start-0" required>
+
                       <option value="school_admin">Administrateur d'école</option>
+
                       <option value="discipline">Discipline</option>
+
                       <option value="secretary">Secrétaire</option>
+
                       <option value="professor">Professeur</option>
+
                     </select>
+
                   </div>
+
                 </div>
+
                 {% endif %}
+
               </div>
+
+
 
               <div class="d-flex justify-content-between align-items-center mt-4">
+
                 <a href="{{ url_for('admin.users') }}" class="btn btn-light px-4">
+
                   <i class="fas fa-arrow-left me-2"></i> Annuler
+
                 </a>
+
                 <button type="submit" class="btn btn-success px-5 py-2 fw-bold shadow-sm">
+
                   <i class="fas fa-check-circle me-2"></i> Créer l'utilisateur
+
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   </main>
+
 </div>
 
+
+
 <style>
-  .form-card {
+
+  .card-ista {
+
     background: #ffffff;
+
   }
+
   
+
   .input-group-text {
+
     border-color: #e0e0e0;
+
   }
+
   
+
   .form-control, .form-select {
+
     border-color: #e0e0e0;
+
     font-size: 0.95rem;
+
   }
+
   
+
   .form-control:focus, .form-select:focus {
+
     border-color: #27ae60;
+
     box-shadow: 0 0 0 0.25rem rgba(39, 174, 96, 0.1);
+
   }
+
   
+
   .btn-success {
+
     background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+
     border: none;
+
     border-radius: 8px;
+
     transition: all 0.3s;
+
   }
+
   
+
   .btn-success:hover {
+
     transform: translateY(-2px);
+
     box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3) !important;
+
   }
+
   
+
   .btn-light {
+
     border-radius: 8px;
+
     font-weight: 600;
+
   }
+
 </style>
+
 {% endblock %}
+

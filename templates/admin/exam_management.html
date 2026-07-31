@@ -1,372 +1,744 @@
 {% extends 'base.html' %}
+
 {% block title %}Gestion des Examens{% endblock %}
+
 {% block content %}
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+  <aside class="sidebar-ista">
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
             <i class="fas fa-chart-line"></i>
+
             <span>Tableau de Bord</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
 
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.students') }}" class="sidebar-menu-link">
+
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.students') }}" class="sidebar-ista-link">
+
             <i class="fas fa-user-graduate"></i>
+
             <span>Inscription élèves</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
+
             <i class="fas fa-layer-group"></i>
+
             <span>Sections/Niveaux/Classes</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link">
+
             <i class="fas fa-book"></i>
+
             <span>Cours/Attributions</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
+
             <i class="fas fa-chalkboard-user"></i>
+
             <span>Professeurs</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="/admin/attendance" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="/admin/attendance" class="sidebar-ista-link">
+
             <i class="fas fa-clipboard-list"></i>
+
             <span>Gestion des présences</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
 
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Évaluations</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
+
             <i class="fas fa-star"></i>
+
             <span>Gestion des cotes</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-ista-link">
+
             <i class="fas fa-user-tie"></i>
+
             <span>Deverrouillage cours</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
             <i class="fas fa-file-pdf"></i>
+
             <span>Paramétrage Bulletins</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="/admin/exam_management" class="sidebar-menu-link active">
+
+        <li>
+
+          <a href="/admin/exam_management" class="sidebar-ista-link active">
+
             <i class="fas fa-graduation-cap"></i>
+
             <span>Gestion Examen</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
+
             <i class="fas fa-balance-scale"></i>
+
             <span>Délibération</span>
+
           </a>
+
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
+
             <i class="fas fa-sliders-h"></i>
+
             <span>Paramètres Délibération</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
 
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.edit_school', school_id=current_user.school_id) }}" class="sidebar-menu-link">
+
+
+    <div class="sidebar-ista-group">
+
+      <h6 class="sidebar-ista-group-title">Configuration</h6>
+
+      <ul>
+
+        <li>
+
+          <a href="{{ url_for('admin.edit_school', school_id=current_user.school_id) }}" class="sidebar-ista-link">
+
             <i class="fas fa-school"></i>
+
             <span>Paramètres école</span>
+
           </a>
+
         </li>
+
         
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.register_user_redirect') }}" class="sidebar-menu-link">
+
+        <li>
+
+          <a href="{{ url_for('admin.register_user_redirect') }}" class="sidebar-ista-link">
+
             <i class="fas fa-user-plus"></i>
+
             <span>Ajouter utilisateur</span>
+
           </a>
+
         </li>
+
       </ul>
+
     </div>
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <div class="page-header">
+
       <h1><i class="fas fa-graduation-cap"></i> Gestion des Examens</h1>
+
       <p>Gérez l'organisation des examens : affectation des salles, impression des badges et listes</p>
+
     </div>
+
+
 
     <!-- TAB INTERFACE -->
+
     <ul class="nav nav-tabs nav-modern">
+
       <li role="presentation">
+
         <button class="nav-link active" id="allocation-tab" data-bs-toggle="tab" data-bs-target="#allocation-content" type="button">
+
           <i class="fas fa-door-open"></i> Affectation des salles
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link" id="badges-tab" data-bs-toggle="tab" data-bs-target="#badges-content" type="button">
+
           <i class="fas fa-print"></i> Macarons d'examen
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link" id="lists-tab" data-bs-toggle="tab" data-bs-target="#lists-content" type="button">
+
           <i class="fas fa-list-check"></i> Listes d'examen
+
         </button>
+
       </li>
+
       <li role="presentation">
+
         <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports-content" type="button">
+
           <i class="fas fa-file-export"></i> Rapports
+
         </button>
+
       </li>
+
     </ul>
 
+
+
     <div class="tab-content">
+
       <!-- TAB 1: AFFECTATION DES SALLES -->
+
       <div class="tab-pane fade show active" id="allocation-content">
+
         <div class="card">
-          <div class="card-header bg-light">
+
+          <div class="card-ista-header">
+
             <h6 class="mb-0"><i class="fas fa-filter"></i> Critères d'affectation</h6>
+
           </div>
+
           <div class="card-body">
+
             <div class="row g-3">
+
               <div class="col-md-3">
+
                 <label class="form-label">Session d'examen</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3">
+
                 <label class="form-label">Cours</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3">
+
                 <label class="form-label">Section</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3">
-                <button class="btn btn-primary w-100">
+
+                <button class="btn-ista-primary w-100">
+
                   <i class="fas fa-search"></i> Charger
+
                 </button>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
+
 
         <div class="card mt-3">
-          <div class="card-header bg-primary text-white">
+
+          <div class="card-ista-header">
+
             <h6 class="mb-0"><i class="fas fa-users"></i> Affectation des élèves aux locaux</h6>
+
           </div>
+
           <div class="card-body p-0">
+
             <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+
               <table class="table table-striped table-hover mb-0">
+
                 <thead class="table-light sticky-top">
+
                   <tr>
+
                     <th style="width: 25%;">Élève</th>
+
                     <th style="width: 25%;">Classe</th>
+
                     <th style="width: 25%;">Local assigné</th>
+
                     <th style="width: 25%;">Actions</th>
+
                   </tr>
+
                 </thead>
+
                 <tbody>
+
                   <tr>
+
                     <td colspan="4" class="text-center text-muted py-4">
+
                       <i class="fas fa-inbox"></i> Sélectionnez un cours et une section
+
                     </td>
+
                   </tr>
+
                 </tbody>
+
               </table>
+
             </div>
+
           </div>
+
           <div class="card-footer">
+
             <button class="btn btn-success">
+
               <i class="fas fa-save"></i> Enregistrer l'affectation
+
             </button>
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <!-- TAB 2: MACARONS D'EXAMEN -->
+
       <div class="tab-pane fade" id="badges-content">
+
         <div class="card">
-          <div class="card-header bg-light">
+
+          <div class="card-ista-header">
+
             <h6 class="mb-0"><i class="fas fa-cog"></i> Paramètres d'impression</h6>
+
           </div>
+
           <div class="card-body">
+
             <div class="row g-3">
+
               <div class="col-md-4">
+
                 <label class="form-label">Session d'examen</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-4">
+
                 <label class="form-label">Section</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-4">
+
                 <label class="form-label">Format</label>
+
                 <select class="form-select">
+
                   <option value="">-- A4 (10 macarons par page) --</option>
+
                   <option value="">-- A3 (20 macarons par page) --</option>
+
                 </select>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
+
 
         <div class="alert alert-info mt-3">
+
           <i class="fas fa-info-circle"></i> 
+
           <strong>Macarons d'examen :</strong> Badges personnalisés à imprimer contenant le numéro d'inscription, le nom de l'élève, sa classe et son local d'examen.
+
         </div>
+
+
 
         <button class="btn btn-danger btn-lg w-100 mt-3">
+
           <i class="fas fa-print"></i> Imprimer les macarons
+
         </button>
+
       </div>
+
+
 
       <!-- TAB 3: LISTES D'EXAMEN -->
+
       <div class="tab-pane fade" id="lists-content">
+
         <div class="card">
-          <div class="card-header bg-light">
+
+          <div class="card-ista-header">
+
             <h6 class="mb-0"><i class="fas fa-filter"></i> Génération des listes</h6>
+
           </div>
+
           <div class="card-body">
+
             <div class="row g-3 mb-4">
+
               <div class="col-md-3">
+
                 <label class="form-label">Session d'examen</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3">
+
                 <label class="form-label">Cours</label>
+
                 <select class="form-select">
+
                   <option value="">-- Sélectionner --</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3">
+
                 <label class="form-label">Type de liste</label>
+
                 <select class="form-select">
+
                   <option value="by_room">Par local</option>
+
                   <option value="by_class">Par classe</option>
+
                   <option value="combined">Combinée</option>
+
                 </select>
+
               </div>
+
               <div class="col-md-3 d-flex align-items-end">
+
                 <button class="btn btn-warning w-100">
+
                   <i class="fas fa-print"></i> Imprimer
+
                 </button>
+
               </div>
+
             </div>
+
+
 
             <div class="row">
+
               <div class="col-md-6">
+
                 <div class="card border-info">
-                  <div class="card-header bg-info text-white">
+
+                  <div class="card-ista-header">
+
                     <h6 class="mb-0"><i class="fas fa-door-open"></i> Liste par local</h6>
+
                   </div>
+
                   <div class="card-body">
+
                     <p class="text-muted">Les élèves sont groupés par local d'examen avec leur numéro d'inscription et leur classe.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="col-md-6">
+
                 <div class="card border-info">
-                  <div class="card-header bg-info text-white">
+
+                  <div class="card-ista-header">
+
                     <h6 class="mb-0"><i class="fas fa-layer-group"></i> Liste par classe</h6>
+
                   </div>
+
                   <div class="card-body">
+
                     <p class="text-muted">Les élèves sont groupés par classe avec leur numéro d'inscription et leur local assigné.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
 
+
+
       <!-- TAB 4: RAPPORTS -->
+
       <div class="tab-pane fade" id="reports-content">
+
         <div class="card">
-          <div class="card-header bg-light">
+
+          <div class="card-ista-header">
+
             <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Rapports d'examen</h6>
+
           </div>
+
           <div class="card-body">
+
             <div class="row g-3">
+
               <div class="col-md-4">
+
                 <div class="card border-secondary">
+
                   <div class="card-body text-center">
+
                     <div class="mb-3" style="font-size: 2.5rem; color: #3498db;">
+
                       <i class="fas fa-users"></i>
+
                     </div>
+
                     <h6>Rapport des présences</h6>
+
                     <p class="text-muted small">Visualiser les absences et présences par session</p>
-                    <button class="btn btn-sm btn-primary w-100">Générer</button>
+
+                    <button class="btn-ista-primary btn-sm w-100">Générer</button>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="col-md-4">
+
                 <div class="card border-secondary">
+
                   <div class="card-body text-center">
+
                     <div class="mb-3" style="font-size: 2.5rem; color: #27ae60;">
+
                       <i class="fas fa-building"></i>
+
                     </div>
+
                     <h6>Rapport des salles</h6>
+
                     <p class="text-muted small">Voir la distribution des élèves par local</p>
-                    <button class="btn btn-sm btn-primary w-100">Générer</button>
+
+                    <button class="btn-ista-primary btn-sm w-100">Générer</button>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="col-md-4">
+
                 <div class="card border-secondary">
+
                   <div class="card-body text-center">
+
                     <div class="mb-3" style="font-size: 2.5rem; color: #e74c3c;">
+
                       <i class="fas fa-list-check"></i>
+
                     </div>
+
                     <h6>Récapitulatif global</h6>
+
                     <p class="text-muted small">Synthèse complète de l'organisation</p>
-                    <button class="btn btn-sm btn-primary w-100">Générer</button>
+
+                    <button class="btn-ista-primary btn-sm w-100">Générer</button>
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   </main>
+
 </div>
+
 {% endblock %}
+

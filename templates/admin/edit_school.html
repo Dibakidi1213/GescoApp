@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block title %}Modifier l'école{% endblock %}
 {% block content %}
 <div class="container mt-4">
@@ -85,8 +85,8 @@
               <input type="text" class="form-control" id="ministry" name="ministry" value="{{ school.ministry or 'MINISTERE DE L\'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE' }}" required>
             </div>
             <div class="d-flex justify-content-between">
-              <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Retour</a>
-              <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+              <a href="{{ url_for('admin.dashboard') }}" class="btn-ista-secondary">Retour</a>
+              <button type="submit" class="btn-ista-primary">Enregistrer les modifications</button>
             </div>
           </form>
         </div>

@@ -16,24 +16,25 @@ def get_today_formatted():
 
 
 def get_max_for_period(period, branch):
-    """Récupère le maximum pour une période donnée depuis la branche du bulletin."""
-    if not branch:
-        return 20  # valeur par défaut
-    
-    # Mapper les périodes aux champs max correspondants
-def get_max_for_period(period, branch):
     """Retourne le maximum autorisé pour une période donnée."""
+    if not branch:
+        return 20
+        
     # Maximum fixé pour REPECHAGE
     if period == 'REPECHAGE':
         return 100
     
     period_to_max = {
+        '1èP': 'max_period_1',
+        '2èP': 'max_period_2',
+        'EXA1': 'max_exam_1',
+        '3èP': 'max_period_3',
+        '4èP': 'max_period_4',
+        'EXA2': 'max_exam_2',
         'PERIODE 1': 'max_period_1',
         'PERIODE 2': 'max_period_2',
-        'EXA1': 'max_exam_1',
         'PERIODE 3': 'max_period_3',
         'PERIODE 4': 'max_period_4',
-        'EXA2': 'max_exam_2',
     }
     
     max_field = period_to_max.get(period, 'max_value')
@@ -61,7 +62,7 @@ def is_student_failed_for_course(student_id, course_id, school_id, year):
     # Calculer le maximum annuel
     branch = course.branch
     max_annual = (float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0)) + \
-                 (float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0))
+                 (float(branch.max_period_3 or 0) * 2) + (float(branch.max_exam_2 or 0))
     
     if max_annual == 0:
         return False
@@ -78,6 +79,7 @@ def _create_notification(*, school_id, recipient_id, title, message, notificatio
         notification_type=notification_type,
         title=title,
         message=message,
+        url=None,
     )
     db.session.add(notification)
     return notification
@@ -117,7 +119,8 @@ def grades_management(school_slug=None):
     )
     courses = []
     students = []
-    grades_map = {}
+    grades_by_period = {}
+    branch_limits = {p: 20 for p in PERIODS}
     selected_course = None
     selected_course_submitted_count = 0
 
@@ -136,27 +139,25 @@ def grades_management(school_slug=None):
             if selected_period == 'REPECHAGE':
                 students = [s for s in students if is_student_failed_for_course(s.id, selected_course.id, school_id, year)]
             
+            from routes.professor import _branch_period_limits, _get_course_branch
+            branch = _get_course_branch(selected_course)
+            if branch:
+                branch_limits = _branch_period_limits(branch)
             grades = Grade.query.filter_by(
                 school_id=school_id,
                 course_id=selected_course.id,
-                period=selected_period,
                 academic_year=year,
             ).all()
-            grades_map = {grade.student_id: float(grade.value) if grade.value is not None else '' for grade in grades}
-            selected_course_submitted_count = Grade.query.filter_by(
-                school_id=school_id,
-                course_id=selected_course.id,
-                period=selected_period,
-                academic_year=year,
-                submitted=True,
-            ).count()
+            
+            for grade in grades:
+                if grade.student_id not in grades_by_period:
+                    grades_by_period[grade.student_id] = {}
+                grades_by_period[grade.student_id][grade.period] = float(grade.value)
+                
+            # Count how many grades are submitted overall (can be useful for UI, but the UI might not need it exactly like this anymore)
+            selected_course_submitted_count = sum(1 for grade in grades if grade.submitted)
 
     section_name_options = sorted({section.name for section in sections}, key=lambda value: value.lower())
-
-    # Get the maximum for the selected period and course branch
-    max_for_period = 20  # default
-    if selected_course and selected_course.branch:
-        max_for_period = get_max_for_period(selected_period, selected_course.branch)
 
     return render_template(
         'admin/grades.html',
@@ -172,11 +173,115 @@ def grades_management(school_slug=None):
         selected_course=selected_course,
         selected_course_submitted_count=selected_course_submitted_count,
         period_options=PERIOD_OPTIONS,
+        periods=[p for p in PERIODS if p != 'REPECHAGE'],
         courses=courses,
         students=students,
-        grades_map=grades_map,
-        max_for_period=max_for_period,
+        grades_by_period=grades_by_period,
+        branch_limits=branch_limits,
     )
+
+
+@admin_bp.route('/api/save-grades-bulk', methods=['POST'])
+@login_required
+def save_grades_bulk(school_slug=None):
+    school_id = get_school_id_for_admin_context() or current_user.school_id
+    data = request.get_json() or {}
+    course_id = data.get('course_id')
+    entries = data.get('grades') or []
+    year = session.get('academic_year', '2025 - 2026')
+
+    if not course_id:
+        return jsonify({'error': 'course_id est requis.'}), 400
+    if not isinstance(entries, list):
+        return jsonify({'error': 'grades doit etre une liste.'}), 400
+
+    course = Course.query.filter_by(id=course_id, school_id=school_id).first()
+    if not course:
+        return jsonify({'error': 'Cours introuvable.'}), 404
+
+    saved_count = 0
+    skipped_count = 0
+    new_count = 0
+    modified_count = 0
+
+    for item in entries:
+        if not isinstance(item, dict):
+            skipped_count += 1
+            continue
+
+        student_id = item.get('student_id')
+        period = item.get('period')
+        value = item.get('value')
+
+        if value in (None, ''):
+            skipped_count += 1
+            continue
+            
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            skipped_count += 1
+            continue
+
+        grade = Grade.query.filter_by(
+            school_id=school_id,
+            student_id=student_id,
+            course_id=course_id,
+            period=period,
+            academic_year=year,
+        ).first()
+        
+        old_value = float(grade.value) if grade and grade.value is not None else None
+        
+        if grade is None:
+            grade = Grade(
+                school_id=school_id,
+                student_id=student_id,
+                course_id=course_id,
+                period=period,
+                value=numeric_value,
+                academic_year=year,
+                submitted=True,
+                submitted_at=datetime.now(),
+                submitted_by=current_user.id
+            )
+            db.session.add(grade)
+            new_count += 1
+            saved_count += 1
+        else:
+            if float(grade.value) != numeric_value:
+                grade.value = numeric_value
+                grade.submitted = True
+                grade.submitted_at = datetime.now()
+                grade.submitted_by = current_user.id
+                modified_count += 1
+                saved_count += 1
+
+    professor = course.professor
+    if professor and (new_count > 0 or modified_count > 0):
+        messages = []
+        if new_count > 0:
+            messages.append(f"{new_count} nouvelle(s) cote(s) saisie(s)")
+        if modified_count > 0:
+            messages.append(f"{modified_count} cote(s) modifiée(s)")
+        
+        action_desc = " et ".join(messages)
+        _create_notification(
+            school_id=school_id,
+            recipient_id=professor.id,
+            actor_id=current_user.id,
+            notification_type='grade_updated_by_secretary',
+            title='Cotes saisies/modifiées par le secrétariat',
+            message=f'Le secrétariat a procédé à la mise à jour ({action_desc}) pour votre cours {course.title}.'
+        )
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'saved_count': saved_count,
+        'skipped_count': skipped_count,
+        'message': f'{saved_count} notes enregistrées.'
+    })
 
 
 @admin_bp.route('/grades/save', methods=['POST'])
@@ -443,6 +548,7 @@ def bulletins_report(school_slug=None):
         conducts=conducts,
         deliberation_result=deliberation_result,
         embedded=embedded,
+        preview_mode=preview,
         failed_courses=failed_courses,
         today=get_today_formatted(),
     )

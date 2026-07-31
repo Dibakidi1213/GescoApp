@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+*.db
+*.db.*
+gescoapp.db
+backups/
+scripts/data/*.db*
+static/uploads/
+*.log
+.env

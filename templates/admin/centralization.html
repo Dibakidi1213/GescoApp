@@ -3,11 +3,11 @@
 {% block content %}
 <div class="dashboard-wrapper">
   <aside class="sidebar no-print">
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+      <ul>
+        <li>
+          <a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
             <i class="fas fa-chart-line"></i>
             <span>Tableau de Bord</span>
           </a>
@@ -15,42 +15,42 @@
       </ul>
     </div>
 
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Evaluations</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Evaluations</h6>
+      <ul>
+        <li>
+          <a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
             <i class="fas fa-star"></i>
             <span>Gestion des cotes</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.grades_management') ~ '#deverrouillage-cours' }}" class="sidebar-ista-link">
             <i class="fas fa-user-tie"></i>
             <span>Deverrouillage cours</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
             <i class="fas fa-file-pdf"></i>
             <span>Parametrage Bulletins</span>
           </a>
         </li>
         
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-menu-link active">
+        <li>
+          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-ista-link active">
             <i class="fas fa-table"></i>
             <span>Centralisation</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
             <i class="fas fa-balance-scale"></i>
             <span>Délibération</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
             <i class="fas fa-cogs"></i>
             <span>Paramètres Délibération</span>
           </a>
@@ -59,10 +59,10 @@
     </div>
   </aside>
 
-  <main class="main-content">
+  <main class="main-content-ista">
     <div class="page-header d-flex justify-content-between align-items-center mb-4 no-print">
       <div>
-        <h1 class="page-title mb-1">
+        <h1 class="page-title-ista mb-1">
           <i class="fas fa-table" style="color: #2c3e50;"></i> Centralisation des cotes
         </h1>
         <p class="text-muted mb-0">Modèle fiche centralisatrice + impression.</p>
@@ -72,7 +72,7 @@
           <i class="fas fa-print"></i> Imprimer la centralisation
         </button>
         {% if selected_section and student_ids %}
-        <button type="button" class="btn btn-primary" onclick="previewClassBulletins()">
+        <button type="button" class="btn-ista-primary" onclick="previewClassBulletins()">
           <i class="fas fa-eye"></i> Aperçu des bulletins de la classe
         </button>
         {% endif %}
@@ -102,7 +102,7 @@
             </select>
           </div>
           <div class="col-md-4 d-grid">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn-ista-primary">
               <i class="fas fa-search"></i> Charger la centralisation
             </button>
           </div>
@@ -122,7 +122,7 @@
           </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-          <button type="button" id="print-preview-bulletins-btn" class="btn btn-primary btn-sm">
+          <button type="button" id="print-preview-bulletins-btn" class="btn-ista-primary btn-sm">
             <i class="fas fa-print me-1"></i> Imprimer
           </button>
           <button type="button" id="close-preview-bulletins-btn" class="btn btn-outline-secondary btn-sm">
@@ -540,9 +540,8 @@
       display: none !important;
     }
 
-    .dashboard-container,
     .dashboard-wrapper,
-    .main-content {
+    .main-content-ista {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;

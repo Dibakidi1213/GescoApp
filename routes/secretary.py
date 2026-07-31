@@ -99,6 +99,30 @@ def _get_course_branch(course):
     return None
 
 
+def _coerce_branch_value(branch, field_name, fallback_field=None, default_value=0):
+    value = getattr(branch, field_name, None)
+    if value is None or (isinstance(value, str) and str(value).strip() == ''):
+        if fallback_field:
+            value = getattr(branch, fallback_field, None)
+    if value is None or (isinstance(value, str) and str(value).strip() == ''):
+        value = default_value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default_value)
+
+
+def _branch_period_limits(branch):
+    return {
+        '1èP': _coerce_branch_value(branch, 'max_period_1', default_value=10),
+        '2èP': _coerce_branch_value(branch, 'max_period_2', 'max_period_1', 10),
+        'EXA1': _coerce_branch_value(branch, 'max_exam_1', default_value=20),
+        '3èP': _coerce_branch_value(branch, 'max_period_3', 'max_period_1', 10),
+        '4èP': _coerce_branch_value(branch, 'max_period_4', 'max_period_1', 10),
+        'EXA2': _coerce_branch_value(branch, 'max_exam_2', 'max_exam_1', 20),
+    }
+
+
 def _get_period_field_name(period):
     field_names = (
         'max_period_1',
@@ -174,7 +198,7 @@ def _build_class_period_stats(school_id, section, academic_year):
     return stats, courses
 
 
-def _create_notification(*, school_id, recipient_id, title, message, notification_type, actor_id=None):
+def _create_notification(*, school_id, recipient_id, title, message, notification_type, actor_id=None, url=None):
     notification = Notification(
         school_id=school_id,
         recipient_id=recipient_id,
@@ -182,6 +206,7 @@ def _create_notification(*, school_id, recipient_id, title, message, notificatio
         notification_type=notification_type,
         title=title,
         message=message,
+        url=url,
     )
     db.session.add(notification)
     return notification
@@ -195,7 +220,8 @@ def _serialize_notification(notification):
         'type': notification.notification_type,
         'is_read': bool(notification.is_read),
         'created_at': notification.created_at.isoformat() if notification.created_at else None,
-        'read_at': notification.read_at.isoformat() if notification.read_at else None
+        'read_at': notification.read_at.isoformat() if notification.read_at else None,
+        'url': notification.url
     }
 
 
@@ -476,24 +502,14 @@ def get_locked_grades(course_id, school_slug=None):
 
     grades_by_period = {}
     branch = _get_course_branch(course)
-    period_max_map = {
-        '1èP': 'max_period_1',
-        '2èP': 'max_period_2',
-        'EXA1': 'max_exam_1',
-        '3èP': 'max_period_3',
-        '4èP': 'max_period_4',
-        'EXA2': 'max_exam_2',
-    }
+    period_limits = _branch_period_limits(branch) if branch else {}
 
     for grade in grades:
         if grade.period not in grades_by_period:
             grades_by_period[grade.period] = []
 
         student = db.session.get(Student, grade.student_id)
-        max_allowed = 20
-        field_name = _get_period_field_name(grade.period)
-        if branch and field_name:
-            max_allowed = float(getattr(branch, field_name, 20) or 20)
+        max_allowed = period_limits.get(grade.period, 20)
 
         grades_by_period[grade.period].append({
             'grade_id': grade.id,
@@ -539,20 +555,11 @@ def update_grade(grade_id, school_slug=None):
     if course:
         branch = _get_course_branch(course)
         period = grade.period
-        period_max_map = {
-            '1èP': 'max_period_1',
-            '2èP': 'max_period_2',
-            'EXA1': 'max_exam_1',
-            '3èP': 'max_period_3',
-            '4èP': 'max_period_4',
-            'EXA2': 'max_exam_2',
-        }
+        period_limits = _branch_period_limits(branch) if branch else {}
 
-        field_name = _get_period_field_name(period)
-        if branch and field_name:
-            max_allowed = float(getattr(branch, field_name, 20) or 20)
-            if new_value > max_allowed:
-                return jsonify({'error': f'La note maximale pour {period} est {max_allowed}.'}), 400
+        max_allowed = period_limits.get(period, 20)
+        if new_value > max_allowed:
+            return jsonify({'error': f'La note maximale pour {period} est {max_allowed}.'}), 400
 
     grade.value = new_value
     professor = course.professor if course else None
@@ -610,6 +617,10 @@ def unlock_period(course_id, school_slug=None):
         grade.submitted = False
 
     if professor and grades:
+        # Link to the secretary dashboard with course and period pre-selected
+        school_slug_param = school_slug or (current_user.school.slug if current_user.school else None)
+        course_link = url_for('secretary.dashboard', school_slug=school_slug_param) + f"?course_id={course.id}&period={period}"
+        student_names = ', '.join(sorted({g.student.full_name() for g in grades if g.student}))
         _create_notification(
             school_id=school_id,
             recipient_id=professor.id,
@@ -617,9 +628,11 @@ def unlock_period(course_id, school_slug=None):
             notification_type='period_unlocked_by_secretary',
             title='Période déverrouillée par le secrétariat',
             message=(
-                f'Le secrétariat a déverrouillé la période {period} '
-                f'pour le cours {course.title}. Vous pouvez reprendre les modifications.'
+                f'Le secrétariat a déverrouillé {len(grades)} note(s) de la période {period} '
+                f'pour le cours {course.title}. '
+                f"Élèves affectés : {student_names}. Vous pouvez reprendre les modifications."
             ),
+            url=course_link,
         )
 
     db.session.commit()
@@ -666,14 +679,41 @@ def unlock_class_period(section_id, school_slug=None):
     affected_professors = defaultdict(list)
     class_label = _format_class_label(section)
 
+    # Map professor_id -> {'count': int, 'students': set(), 'courses': set(), 'course_ids': set()}
+    affected_professors = defaultdict(lambda: {'count': 0, 'students': set(), 'courses': set(), 'course_ids': set()})
+
     for grade in grades:
         grade.submitted = False
         course = grade.course
         professor = course.professor if course else None
+        student = grade.student
         if professor:
-            affected_professors[professor.id].append(course.title)
+            ap = affected_professors[professor.id]
+            ap['count'] += 1
+            if student:
+                ap['students'].add(student.full_name())
+            if course:
+                ap['courses'].add(course.title)
+                ap['course_ids'].add(course.id)
 
-    for professor_id, course_titles in affected_professors.items():
+    for professor_id, info in affected_professors.items():
+        student_list = ', '.join(sorted(info['students'])) if info['students'] else 'N/A'
+        courses_list = ', '.join(sorted(info['courses'])) if info['courses'] else 'N/A'
+        # Limit student list display to avoid overly long notifications
+        max_names = 12
+        student_display = student_list
+        if len(info['students']) > max_names:
+            first_names = sorted(info['students'])[:max_names]
+            student_display = f"{', '.join(first_names)} (+{len(info['students'])-max_names} autres)"
+
+        # Build a link to the secretary dashboard pre-selecting a relevant course if available
+        school_slug_param = school_slug or (current_user.school.slug if current_user.school else None)
+        if info['course_ids']:
+            first_course_id = next(iter(info['course_ids']))
+            notif_url = url_for('secretary.dashboard', school_slug=school_slug_param) + f"?course_id={first_course_id}&period={period}"
+        else:
+            notif_url = url_for('secretary.dashboard', school_slug=school_slug_param) + f"?section_id={section.id}&period={period}"
+
         _create_notification(
             school_id=school_id,
             recipient_id=professor_id,
@@ -681,10 +721,11 @@ def unlock_class_period(section_id, school_slug=None):
             notification_type='period_unlocked_by_secretary',
             title='Période déverrouillée par le secrétariat',
             message=(
-                f'Le secrétariat a déverrouillé la période {period} pour la classe {class_label}. '
-                f'Cours concernés : {", ".join(sorted(set(course_titles)))}. '
-                f'Vous pouvez reprendre les modifications.'
+                f'Le secrétariat a déverrouillé {info["count"]} note(s) de la période {period} pour la classe {class_label}. '
+                f'Cours concernés : {courses_list}. '
+                f'Elèves affectés : {student_display}. Vous pouvez reprendre les modifications.'
             ),
+            url=notif_url,
         )
 
     db.session.commit()
@@ -700,6 +741,15 @@ def unlock_class_period(section_id, school_slug=None):
 @secretary_bp.route('/conduite')
 def conduite(school_slug=None):
     """Secretary interface to input Conduct grades."""
+    target_slug = school_slug or (current_user.school.slug if current_user.school else None)
+    if current_user.is_discipline():
+        if target_slug:
+            return redirect(url_for('discipline.dashboard', school_slug=target_slug) + '#conduite')
+        return redirect(url_for('auth.redirect_by_role'))
+    if target_slug:
+        return redirect(url_for('admin.attendance_management', school_slug=target_slug))
+    return redirect(url_for('auth.redirect_by_role'))
+
     school_id = current_user.school_id
     sections = Section.query.filter_by(school_id=school_id).order_by(Section.name, Section.level, Section.class_name).all()
     school_slug = school_slug or (current_user.school.slug if current_user.school else None)
@@ -722,6 +772,9 @@ def conduite(school_slug=None):
 @secretary_bp.route('/api/conduite/<int:section_id>', methods=['GET'])
 @login_required
 def get_conduite(section_id, school_slug=None):
+    if not current_user.is_discipline():
+        return jsonify({'error': 'Acces refuse.'}), 403
+
     school_id = current_user.school_id
     year = session.get('academic_year', '2025 - 2026')
     
@@ -761,6 +814,9 @@ def get_conduite(section_id, school_slug=None):
 @secretary_bp.route('/api/conduite/<int:section_id>', methods=['POST'])
 @login_required
 def save_conduite(section_id, school_slug=None):
+    if not current_user.is_discipline():
+        return jsonify({'error': 'Acces refuse.'}), 403
+
     school_id = current_user.school_id
     year = session.get('academic_year', '2025 - 2026')
     

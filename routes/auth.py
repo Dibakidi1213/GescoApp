@@ -1,6 +1,6 @@
 ﻿from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, School, sync_school_activation_with_subscription
+from models import db, User, School, LoginHistory, sync_school_activation_with_subscription
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates')
 
@@ -19,15 +19,33 @@ def login(school_slug=None):
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
+        ip_address = request.remote_addr
+        user_agent = request.headers.get('User-Agent')[:255] if request.headers.get('User-Agent') else None
+
         if user and user.check_password(password):
             if not user.is_super_admin() and user.school:
                 sync_school_activation_with_subscription(user.school)
                 db.session.commit()
             if not user.is_super_admin() and user.school and not user.school.is_active:
                 flash("Cette école est désactivée. Connexion indisponible.", 'danger')
+                db.session.add(LoginHistory(user_id=user.id, school_id=user.school_id, ip_address=ip_address, user_agent=user_agent, success=False))
+                db.session.commit()
                 return render_template('login.html', school=school)
             login_user(user)
+            db.session.add(LoginHistory(user_id=user.id, school_id=user.school_id, ip_address=ip_address, user_agent=user_agent, success=True))
+            user.last_login_at = db.func.now()
+            user.last_login_ip = ip_address
+            user.login_failed_attempts = 0
+            db.session.commit()
             return redirect(url_for('auth.redirect_by_role'))
+
+        if user:
+            user.login_failed_attempts = (user.login_failed_attempts or 0) + 1
+            user.last_failed_login_at = db.func.now()
+            user.last_failed_login_ip = ip_address
+            db.session.add(LoginHistory(user_id=user.id, school_id=user.school_id, ip_address=ip_address, user_agent=user_agent, success=False))
+            db.session.commit()
+
         flash('Identifiants invalides.', 'danger')
 
     return render_template('login.html', school=school)
@@ -54,7 +72,7 @@ def redirect_by_role():
         if current_user.is_professor():
             return redirect(url_for('professor.dashboard', school_slug=school_slug))
         if current_user.is_discipline():
-            return redirect(url_for('professor.dashboard', school_slug=school_slug))
+            return redirect(url_for('discipline.dashboard', school_slug=school_slug))
         if current_user.role == 'cashier':
             return redirect(url_for('admin.discipline_redirect', school_slug=school_slug))
 

@@ -6,10 +6,11 @@ from datetime import datetime, date, timedelta
 from io import BytesIO
 import re
 import unicodedata
+import openpyxl
 
 professor_bp = Blueprint('professor', __name__, template_folder='../templates')
 
-PERIODS = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2']
+PERIODS = ['1èP', '2èP', 'EXA1', '3èP', '4èP', 'EXA2', 'REPECHAGE']
 PERIOD_FIELD_MAP = {
     '1èP': 'max_period_1',
     '2èP': 'max_period_2',
@@ -244,15 +245,43 @@ def _lower_trimmed(value):
     return normalized.lower() if normalized is not None else None
 
 
+def _coerce_branch_value(branch, field_name, fallback_field=None, default_value=0):
+    value = getattr(branch, field_name, None)
+    if value is None or (isinstance(value, str) and str(value).strip() == ''):
+        if fallback_field:
+            value = getattr(branch, fallback_field, None)
+    if value is None or (isinstance(value, str) and str(value).strip() == ''):
+        value = default_value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default_value)
+
+
 def _branch_period_limits(branch):
     return {
-        '1èP': float(getattr(branch, 'max_period_1', 20) or 20),
-        '2èP': float(getattr(branch, 'max_period_2', 20) or 20),
-        'EXA1': float(getattr(branch, 'max_exam_1', 20) or 20),
-        '3èP': float(getattr(branch, 'max_period_3', 20) or 20),
-        '4èP': float(getattr(branch, 'max_period_4', 20) or 20),
-        'EXA2': float(getattr(branch, 'max_exam_2', 20) or 20),
+        '1èP': _coerce_branch_value(branch, 'max_period_1', default_value=10),
+        '2èP': _coerce_branch_value(branch, 'max_period_2', 'max_period_1', 10),
+        'EXA1': _coerce_branch_value(branch, 'max_exam_1', default_value=20),
+        '3èP': _coerce_branch_value(branch, 'max_period_3', 'max_period_1', 10),
+        '4èP': _coerce_branch_value(branch, 'max_period_4', 'max_period_1', 10),
+        'EXA2': _coerce_branch_value(branch, 'max_exam_2', 'max_exam_1', 20),
+        'REPECHAGE': 100.0,
     }
+
+
+def _get_repechage_eligible_student_ids(school_id, year, student_ids):
+    if not student_ids:
+        return set()
+    from models import DeliberationResult
+    results = DeliberationResult.query.filter(
+        DeliberationResult.school_id == school_id,
+        DeliberationResult.academic_year == year,
+        DeliberationResult.period == 'ANNEE',
+        DeliberationResult.student_id.in_(student_ids),
+        DeliberationResult.decision == 'PASSAGE APRES REPECHAGE'
+    ).all()
+    return {result.student_id for result in results}
 
 
 def _parse_attendance_date(raw_value):
@@ -293,21 +322,50 @@ def _section_matches_hierarchy(section, section_name=None, level=None, class_nam
 
 
 def _visible_sections_for_current_user(school_id):
+    """Retourne les sections visibles pour l'utilisateur connecte.
+
+    Pour les utilisateurs 'discipline' : toutes les sections de l'ecole.
+    Pour les professeurs : sections liees a leurs cours (via professor_id).
+    Fallback : si aucun cours n'est attribue au professeur, retourne les sections
+    issues des BulletinConfig pour permettre la navigation.
+    """
     if _is_discipline_user():
         return Section.query.filter_by(school_id=school_id).order_by(
             Section.name, Section.level, Section.class_name
         ).all()
 
+    # Filtre sur les cours non-attendance (gere les encodages corrompus avec LIKE multiple)
+    attendance_prefix = ATTENDANCE_COURSE_TITLE_PREFIX  # 'Présence de classe'
     query = Section.query.join(Course, Course.section_id == Section.id).filter(
         Section.school_id == school_id,
         Course.school_id == school_id,
         Course.section_id.isnot(None),
-        ~Course.title.like(f'{ATTENDANCE_COURSE_TITLE_PREFIX}%')
+        ~Course.title.like(f'{attendance_prefix}%'),
+        ~Course.title.like('Pr_sence de classe%'),
+        ~Course.title.like('Presence de classe%'),
     )
     if _is_professor_user():
         query = query.filter(Course.professor_id == current_user.id)
 
-    return query.distinct().order_by(Section.name, Section.level, Section.class_name).all()
+    sections = query.distinct().order_by(Section.name, Section.level, Section.class_name).all()
+
+    # Fallback : si aucune section trouvee pour un professeur (pas encore de cours assignes),
+    # on retourne les sections liees aux BulletinConfigs de l'ecole pour permettre
+    # au moins la navigation hierarchique
+    if not sections and _is_professor_user():
+        sections = (
+            Section.query
+            .join(BulletinConfig, BulletinConfig.section_id == Section.id)
+            .filter(
+                Section.school_id == school_id,
+                BulletinConfig.school_id == school_id,
+            )
+            .distinct()
+            .order_by(Section.name, Section.level, Section.class_name)
+            .all()
+        )
+
+    return sections
 
 
 def _matching_visible_sections(school_id, section_name=None, level=None, class_name=None):
@@ -385,11 +443,12 @@ def _serialize_notification(notification):
         'type': notification.notification_type,
         'is_read': bool(notification.is_read),
         'created_at': notification.created_at.isoformat() if notification.created_at else None,
-        'read_at': notification.read_at.isoformat() if notification.read_at else None
+        'read_at': notification.read_at.isoformat() if notification.read_at else None,
+        'url': notification.url
     }
 
 
-def _create_notification(*, school_id, recipient_id, title, message, notification_type, actor_id=None):
+def _create_notification(*, school_id, recipient_id, title, message, notification_type, actor_id=None, url=None):
     notification = Notification(
         school_id=school_id,
         recipient_id=recipient_id,
@@ -397,6 +456,7 @@ def _create_notification(*, school_id, recipient_id, title, message, notificatio
         notification_type=notification_type,
         title=title,
         message=message,
+        url=url,
     )
     db.session.add(notification)
     return notification
@@ -431,6 +491,11 @@ def dashboard(school_slug=None):
     can_manage_attendance = _is_discipline_user()
     can_view_notifications = can_manage_grades
 
+    if can_manage_attendance and not can_manage_grades:
+        if school_slug:
+            return redirect(url_for('discipline.dashboard', school_slug=school_slug))
+        return redirect(url_for('auth.redirect_by_role'))
+
     # Query parameters are used to restore the hierarchical selection in the UI.
     section_name = _normalize_lookup_value(request.args.get('section_name', type=str))
     if not section_name:
@@ -447,9 +512,11 @@ def dashboard(school_slug=None):
     course = None
     students = []
     grades_by_period = {}
+    submitted_periods = set()
     branch_limits = None
     branch_enabled = None
     branch_name = None
+    repechage_eligible_student_ids = set()
     selected_section_name = section_name
     selected_level = level
     selected_class_name = class_name
@@ -468,31 +535,6 @@ def dashboard(school_slug=None):
             Course.section_id.isnot(None),
             Course.professor_id == current_user.id
         )
-
-        if selected_section_name:
-            default_course_query = default_course_query.filter(
-                func.lower(func.trim(Section.name)) == _lower_trimmed(selected_section_name)
-            )
-        if selected_level:
-            default_course_query = default_course_query.filter(
-                func.lower(func.trim(Section.level)) == _lower_trimmed(selected_level)
-            )
-        if selected_class_name:
-            default_course_query = default_course_query.filter(
-                func.lower(func.trim(Section.class_name)) == _lower_trimmed(selected_class_name)
-            )
-
-        if course_id:
-            default_course_query = default_course_query.filter(Course.id == course_id)
-
-        default_course = default_course_query.order_by(Section.name, Section.level, Section.class_name, Course.id).first()
-        if default_course and default_course.section:
-            selected_course_id = default_course.id
-            selected_section_name = default_course.section.name
-            selected_level = default_course.section.level
-            selected_class_name = default_course.section.class_name
-            if not course_id:
-                course_id = selected_course_id
 
         if selected_section_name:
             default_course_query = default_course_query.filter(
@@ -542,9 +584,9 @@ def dashboard(school_slug=None):
                         bool(branch.include_period_3),
                         bool(branch.include_period_4),
                         bool(branch.include_comp_2),
+                        True,
                     ]))
                     branch_name = branch.name
-
                 year = session.get('academic_year', '2025 - 2026')
                 students = Student.query.filter_by(
                     school_id=school_id,
@@ -557,25 +599,103 @@ def dashboard(school_slug=None):
                         grades_by_period[grade.student_id] = {}
                     grades_by_period[grade.student_id][grade.period] = float(grade.value)
 
-    unread_notifications_count = 0
+                # Calcul des périodes verrouillées (toutes les notes de cette période sont submitted)
+                period_submitted_flags = {}  # period -> [True/False, ...]
+                for grade in all_grades:
+                    period_submitted_flags.setdefault(grade.period, []).append(bool(grade.submitted))
+                submitted_periods = {
+                    p for p, flags in period_submitted_flags.items() if flags and all(flags)
+                }
+
+                student_ids = [student.id for student in students]
+                repechage_eligible_student_ids = _get_repechage_eligible_student_ids(school_id, year, student_ids)
+
+    selected_class_label = ' / '.join(part for part in [selected_section_name, selected_level, selected_class_name] if part)
+
+    # --- Preload all hierarchical data server-side so dropdowns fill immediately without AJAX ---
+    attendance_prefix = ATTENDANCE_COURSE_TITLE_PREFIX
+    all_visible_sections = _visible_sections_for_current_user(school_id)
+
+    # Unique sorted section names
+    seen_set = set()
+    all_section_names = []
+    for s in all_visible_sections:
+        n = s.name.strip()
+        if n.lower() not in seen_set:
+            seen_set.add(n.lower())
+            all_section_names.append(n)
+    all_section_names.sort()
+
+    # Unique levels for selected section
+    all_levels = []
+    if selected_section_name:
+        seen_set = set()
+        for s in all_visible_sections:
+            if s.name.strip().lower() == selected_section_name.strip().lower():
+                lv = s.level.strip()
+                if lv.lower() not in seen_set:
+                    seen_set.add(lv.lower())
+                    all_levels.append(lv)
+        all_levels.sort()
+
+    # Unique classes for selected section + level
+    all_classes = []
+    if selected_section_name and selected_level:
+        seen_set = set()
+        for s in all_visible_sections:
+            if (s.name.strip().lower() == selected_section_name.strip().lower()
+                    and s.level.strip().lower() == selected_level.strip().lower()):
+                cn = s.class_name.strip()
+                if cn.lower() not in seen_set:
+                    seen_set.add(cn.lower())
+                    all_classes.append(cn)
+        all_classes.sort()
+
+    # Courses for selected section + level + class
+    all_courses_for_class = []
+    if selected_section_name and selected_level and selected_class_name:
+        section_ids_for_class = [s.id for s in all_visible_sections
+                                  if (s.name.strip().lower() == selected_section_name.strip().lower()
+                                      and s.level.strip().lower() == selected_level.strip().lower()
+                                      and s.class_name.strip().lower() == selected_class_name.strip().lower())]
+        if section_ids_for_class:
+            cq = Course.query.filter(
+                Course.school_id == school_id,
+                Course.section_id.in_(section_ids_for_class),
+                ~Course.title.like(f'{attendance_prefix}%'),
+                ~Course.title.like('Pr_sence de classe%'),
+                ~Course.title.like('Presence de classe%'),
+            )
+            if can_manage_grades:
+                cq = cq.filter(Course.professor_id == current_user.id)
+            all_courses_for_class = [{'id': c.id, 'title': c.title} for c in cq.order_by(Course.title).all()]
+
+    # Students list for preload
+    all_students_for_class = [{'id': st.id, 'full_name': st.full_name()} for st in students]
+
     notifications = []
+    unread_notifications_count = 0
     if can_view_notifications:
+        notifications = Notification.query.filter_by(
+            school_id=school_id,
+            recipient_id=current_user.id
+        ).order_by(Notification.is_read.asc(), Notification.created_at.desc(), Notification.id.desc()).limit(5).all()
         unread_notifications_count = Notification.query.filter_by(
             school_id=school_id,
             recipient_id=current_user.id,
             is_read=False
         ).count()
-        notifications = Notification.query.filter_by(
-            school_id=school_id,
-            recipient_id=current_user.id
-        ).order_by(Notification.is_read.asc(), Notification.created_at.desc(), Notification.id.desc()).limit(5).all()
 
-    selected_class_label = ' / '.join(part for part in [selected_section_name, selected_level, selected_class_name] if part)
+    school_obj = current_user.school if current_user.school else None
+    school_name_display = school_obj.name if school_obj else ''
+    professor_name = current_user.full_name if hasattr(current_user, 'full_name') else current_user.username
+    dashboard_title = f'Bienvenue {professor_name} - Saisie des cotes' if can_manage_grades else 'Gestion des présences et de la conduite'
 
-    return render_template('professor/dashboard.html', 
-                           course=course, 
-                           students=students, 
+    return render_template('professor/dashboard.html',
+                           course=course,
+                           students=students,
                            grades_by_period=grades_by_period,
+                           submitted_periods=submitted_periods,
                            periods=PERIODS,
                            selected_section_name=selected_section_name,
                            selected_level=selected_level,
@@ -584,15 +704,22 @@ def dashboard(school_slug=None):
                            branch_limits=branch_limits,
                            branch_enabled=branch_enabled,
                            branch_name=branch_name,
+                           repechage_eligible_student_ids=list(repechage_eligible_student_ids) if course else [],
                            notifications=notifications,
                            unread_notifications_count=unread_notifications_count,
                            can_manage_grades=can_manage_grades,
                            can_manage_attendance=can_manage_attendance,
                            can_view_notifications=can_view_notifications,
                            school_slug=school_slug,
-                           conduite_url=url_for('secretary.conduite', school_slug=school_slug) if can_manage_attendance and school_slug else None,
+                           school_name=school_name_display,
+                           conduite_url=url_for('discipline.dashboard', school_slug=school_slug) if can_manage_attendance and school_slug else None,
                            selected_class_label=selected_class_label,
-                           dashboard_title='Saisie des notes et des présences' if can_manage_grades else 'Gestion des présences et de la conduite')
+                           all_section_names=all_section_names,
+                           all_levels=all_levels,
+                           all_classes=all_classes,
+                           all_courses_for_class=all_courses_for_class,
+                           all_students_for_class=all_students_for_class,
+                           dashboard_title=dashboard_title)
 
 @professor_bp.route('/api/sections')
 @login_required
@@ -662,14 +789,30 @@ def get_courses(section_name=None, level=None, class_name=None, school_slug=None
     if not section_ids:
         return jsonify([])
 
+    attendance_prefix = ATTENDANCE_COURSE_TITLE_PREFIX
     query = Course.query.filter(
         Course.school_id == school_id,
         Course.section_id.in_(section_ids),
-        ~Course.title.like(f'{ATTENDANCE_COURSE_TITLE_PREFIX}%')
+        ~Course.title.like(f'{attendance_prefix}%'),
+        ~Course.title.like('Pr_sence de classe%'),
+        ~Course.title.like('Presence de classe%'),
     )
     if _is_professor_user():
         query = query.filter(Course.professor_id == current_user.id)
+
     courses = query.order_by(Course.title).all()
+
+    # Fallback : si aucun cours avec professor_id, retourne tous les cours de la section
+    # (cas ou le professeur n'a pas encore de cours assignes dans la base)
+    if not courses and _is_professor_user():
+        query_fallback = Course.query.filter(
+            Course.school_id == school_id,
+            Course.section_id.in_(section_ids),
+            ~Course.title.like(f'{attendance_prefix}%'),
+            ~Course.title.like('Pr_sence de classe%'),
+            ~Course.title.like('Presence de classe%'),
+        )
+        courses = query_fallback.order_by(Course.title).all()
 
     return jsonify([{
         'id': c.id,
@@ -711,13 +854,8 @@ def get_students(section_name=None, level=None, class_name=None, school_slug=Non
         Student.section_id.in_(section_ids),
     )
 
-    if _is_professor_user():
-        query = query.join(Course, Course.section_id == Student.section_id).filter(
-            Course.school_id == school_id,
-            Course.professor_id == current_user.id,
-            ~Course.title.like(f'{ATTENDANCE_COURSE_TITLE_PREFIX}%')
-        ).distinct()
-
+    # Students are already scoped to sections where the professor has courses.
+    # No extra Course JOIN needed (avoids duplicates and missed students).
     students = query.order_by(Student.last_name, Student.first_name).all()
     return jsonify([{
         'id': student.id,
@@ -1043,15 +1181,18 @@ def save_grade(school_slug=None):
 
     branch = _get_course_branch(course)
     if branch:
-        if period not in PERIOD_FIELD_MAP:
+        if period != 'REPECHAGE' and period not in PERIOD_FIELD_MAP:
             return jsonify({'error': f'Période invalide : {period}'}), 400
 
-        if not getattr(branch, PERIOD_INCLUDE_MAP.get(period), True):
+        if period != 'REPECHAGE' and not getattr(branch, PERIOD_INCLUDE_MAP.get(period), True):
             return jsonify({'error': f'La période {period} n’est pas active pour ce cours.'}), 400
 
-        max_allowed = _branch_period_limits(branch).get(period, 20)
+        max_allowed = _branch_period_limits(branch).get(period, 100 if period == 'REPECHAGE' else 20)
         if value > max_allowed:
             return jsonify({'error': f'La note maximale pour {period} est {max_allowed}.'}), 400
+
+        if period == 'REPECHAGE' and student_id not in _get_repechage_eligible_student_ids(school_id, year, [student_id]):
+            return jsonify({'error': 'L’élève n’est pas éligible au repêchage.'}), 403
 
     grade = Grade.query.filter_by(school_id=school_id, student_id=student_id, 
                                   course_id=course.id, period=period, academic_year=year).first()
@@ -1074,28 +1215,34 @@ def _save_grade_draft_entry(course, school_id, student_id, period, value, year):
         academic_year=year
     ).first()
 
-    if existing_grade and existing_grade.submitted and not current_user.is_secretary():
-        return None, {'error': f'Les notes de {period} ont ete verrouillees par le secretariat. Seul le secretaire peut les modifier.'}, 403
-
     try:
         numeric_value = float(value)
     except (TypeError, ValueError):
         return None, {'error': 'Valeur de note invalide.'}, 400
+
+    if existing_grade and existing_grade.submitted and not current_user.is_secretary():
+        if existing_grade.value is not None and float(existing_grade.value) == numeric_value:
+            # Si la note est verrouillée mais n'a pas été modifiée, on l'ignore sans erreur
+            return existing_grade, None, None
+        return None, {'error': f'Les notes de {period} ont ete verrouillees par le secretariat. Seul le secretaire peut les modifier.'}, 403
 
     if numeric_value < 0:
         return None, {'error': 'La note ne peut pas etre inferieure a 0.'}, 400
 
     branch = _get_course_branch(course)
     if branch:
-        if period not in PERIOD_FIELD_MAP:
+        if period != 'REPECHAGE' and period not in PERIOD_FIELD_MAP:
             return None, {'error': f'Periode invalide : {period}'}, 400
 
-        if not getattr(branch, PERIOD_INCLUDE_MAP.get(period), True):
+        if period != 'REPECHAGE' and not getattr(branch, PERIOD_INCLUDE_MAP.get(period), True):
             return None, {'error': f"La periode {period} n'est pas active pour ce cours."}, 400
 
-        max_allowed = _branch_period_limits(branch).get(period, 20)
+        max_allowed = _branch_period_limits(branch).get(period, 100 if period == 'REPECHAGE' else 20)
         if numeric_value > max_allowed:
             return None, {'error': f'La note maximale pour {period} est {max_allowed}.'}, 400
+
+        if period == 'REPECHAGE' and student_id not in _get_repechage_eligible_student_ids(school_id, year, [student_id]):
+            return None, {'error': "L'élève n'est pas éligible au repêchage."}, 403
 
     if existing_grade is None:
         grade = Grade(
@@ -1253,10 +1400,13 @@ def get_period_status(course_id, school_slug=None):
     if not course:
         return jsonify({'error': 'Aucun cours associé.'}), 403
 
+    requested_period = request.args.get('period', type=str)
+    if requested_period and requested_period not in PERIODS:
+        return jsonify({'error': f'Période invalide : {requested_period}'}), 400
+
     status = {}
     year = session.get('academic_year', '2025 - 2026')
     for period in PERIODS:
-        # Check if any grade is submitted for this period
         submitted_count = Grade.query.filter_by(
             school_id=school_id,
             course_id=course.id,
@@ -1277,6 +1427,9 @@ def get_period_status(course_id, school_slug=None):
             'total_count': total_count,
             'percentage': (submitted_count / total_count * 100) if total_count > 0 else 0
         }
+
+    if requested_period:
+        return jsonify({requested_period: status[requested_period]})
 
     return jsonify(status)
 
@@ -1349,9 +1502,11 @@ def export_fiche_cotes(school_slug=None):
     return send_file(file_stream, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @professor_bp.route('/api/export-grades', methods=['GET'])
+@login_required
 def export_grades_model(school_slug=None):
+    import openpyxl
     from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
-    is_template = request.path.endswith('/export-template')
+    is_template = request.path.endswith('/export-template') or request.args.get('template_only') in ('1', 'true', 'True')
 
     if not (_is_professor_user() or current_user.is_admin() or current_user.is_secretary()):
         return jsonify({'error': 'Accès refusé.'}), 403

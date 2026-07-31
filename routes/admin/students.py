@@ -316,8 +316,16 @@ def reset_student_level(school_slug=None):
 def delete_student(student_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
     student = Student.query.filter_by(id=student_id, school_id=school_id).first_or_404()
+    
+    # Import local des modèles dépendants pour la suppression en cascade
+    from models import Grade, Payment, ConductGrade, AttendanceRecord, DeliberationResult
+    
     Grade.query.filter_by(student_id=student.id).delete(synchronize_session=False)
     Payment.query.filter_by(student_id=student.id).delete(synchronize_session=False)
+    ConductGrade.query.filter_by(student_id=student.id).delete(synchronize_session=False)
+    AttendanceRecord.query.filter_by(student_id=student.id).delete(synchronize_session=False)
+    DeliberationResult.query.filter_by(student_id=student.id).delete(synchronize_session=False)
+    
     db.session.delete(student)
     db.session.commit()
     flash('Élève supprimé avec succès.', 'success')

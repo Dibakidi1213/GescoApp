@@ -1,982 +1,1964 @@
 {% extends 'base.html' %}
+
 {% block title %}Inscription élèves - JNC_Kalasi{% endblock %}
+
 {% block content %}
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+
+
 <div class="dashboard-wrapper">
+
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
+
+  <aside class="sidebar-ista">
+
     <!-- Principal -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Principal</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Principal</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chart-line"></i>
+
           <span>Tableau de Bord</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Gestion Académique -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Gestion Académique</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.students') }}" class="sidebar-menu-link active">
+
+      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.students') }}" class="sidebar-ista-link active">
+
           <i class="fas fa-users"></i>
+
           <span>Inscription élèves</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
+
           <i class="fas fa-layer-group"></i>
+
           <span>Sections/Niveaux/Classes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link">
+
           <i class="fas fa-book"></i>
+
           <span>Cours/Attributions</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
+
           <i class="fas fa-chalkboard-user"></i>
+
           <span>Professeurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Évaluations -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Évaluations</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Évaluations</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
+
           <i class="fas fa-star"></i>
+
           <span>Gestion des cotes</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
+
           <i class="fas fa-file-pdf"></i>
+
           <span>Paramétrage Bulletins</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
+
 
     <!-- Configuration -->
+
     <div class="sidebar-group">
-      <h6 class="sidebar-group-title">Configuration</h6>
-      <ul class="sidebar-menu">
-        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-menu-link">
+
+      <h6 class="sidebar-ista-group-title">Configuration</h6>
+
+      <ul>
+
+        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-ista-link">
+
           <i class="fas fa-cog"></i>
+
           <span>Paramètres école</span>
+
         </a></li>
-        <li><a href="{{ url_for('admin.users') }}" class="sidebar-menu-link">
+
+        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link">
+
           <i class="fas fa-user-shield"></i>
+
           <span>Utilisateurs</span>
+
         </a></li>
+
       </ul>
+
     </div>
+
   </aside>
 
+
+
   <!-- MAIN CONTENT -->
-  <main class="main-content">
+
+  <main class="main-content-ista">
+
     <!-- PAGE HEADER -->
+
     <div class="mb-4">
-      <h1 class="page-title">
+
+      <h1 class="page-title-ista">
+
         <i class="fas fa-user-graduate"></i> Inscription des élèves
+
       </h1>
+
       <p class="text-muted">Gérez les inscriptions des élèves, importez en masse ou ajoutez-les individuellement</p>
+
     </div>
+
+
 
     <!-- TABS FOR DIFFERENT VIEWS -->
+
     <ul class="nav nav-tabs nav-modern mb-4" id="studentTabs" role="tablist">
+
       <li class="nav-item" role="presentation">
+
         <button class="nav-link active" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-pane" type="button" role="tab" aria-controls="list-pane" aria-selected="true">
+
           <i class="fas fa-list"></i> Liste des élèves
+
         </button>
+
       </li>
+
       <li class="nav-item" role="presentation">
+
         <button class="nav-link" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-pane" type="button" role="tab" aria-controls="add-pane" aria-selected="false">
+
           <i class="fas fa-plus-circle"></i> Ajouter un élève
+
         </button>
+
       </li>
+
       <li class="nav-item" role="presentation">
+
         <button class="nav-link" id="quick-import-tab" data-bs-toggle="tab" data-bs-target="#quick-import-pane" type="button" role="tab" aria-controls="quick-import-pane" aria-selected="false">
+
           <i class="fas fa-list-check"></i> Import rapide
+
         </button>
+
       </li>
+
       <li class="nav-item" role="presentation">
+
         <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import-pane" type="button" role="tab" aria-controls="import-pane" aria-selected="false">
+
           <i class="fas fa-file-upload"></i> Importer Excel
+
         </button>
+
       </li>
+
     </ul>
 
+
+
     <!-- TAB CONTENT -->
+
     <div class="tab-content" id="studentTabsContent">
+
       <!-- LIST TAB -->
+
       <div class="tab-pane fade show active" id="list-pane" role="tabpanel" aria-labelledby="list-tab">
-        <div class="card form-card" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);">
+
+        <div class="card card-ista" style="border: none; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);">
+
           <div class="card-header" style="background: linear-gradient(135deg, #f5f7fb 0%, #f8f9fc 100%); border-bottom: 2px solid #e9ecef; padding: 2rem 2rem;">
+
             <div class="d-flex justify-content-between align-items-center mb-3">
+
               <div>
+
                 <h5 style="margin: 0; color: #2c3e50; font-weight: 700; font-size: 1.3rem;">
+
                   <i class="fas fa-list" style="color: #667eea; margin-right: 0.75rem;"></i>Liste des élèves
+
                 </h5>
+
               </div>
+
               <span class="badge bg-primary" style="font-size: 1rem; padding: 0.65rem 1.25rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);">
+
                 <i class="fas fa-graduation-cap" style="margin-right: 0.5rem;"></i><span id="total-count">{{ total_students }}</span> élève(s)
+
               </span>
+
             </div>
+
             <!-- SEARCH BAR -->
+
             <div style="position: relative;">
+
               <input 
+
                 type="text" 
+
                 id="studentSearch" 
+
                 placeholder="Rechercher un élève par nom..." 
+
                 style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.95rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);"
+
                 onfocus="this.style.borderColor = '#667eea'; this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';"
+
                 onblur="this.style.borderColor = '#e9ecef'; this.style.boxShadow = 'none';"
+
               />
+
               <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #667eea; pointer-events: none;"></i>
+
             </div>
+
           </div>
+
           <div class="card-body p-0" style="padding: 2rem !important;">
+
             {% if grouped_students %}
+
               <div class="accordion" id="studentAccordion">
+
               {% for section in grouped_students %}
+
                 {% set section_idx = loop.index0 %}
+
                 <!-- LEVEL 1: SECTION -->
+
                 <div class="accordion-item" style="margin-bottom: 1rem;">
+
                   <h2 class="accordion-header">
+
                     <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#section-{{ section_idx }}" aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="section-{{ section_idx }}">
+
                       <i class="fas fa-building" style="font-size: 1.1rem; margin-right: 0.5rem;"></i>
+
                       <strong style="letter-spacing: 0.5px;">{{ section.section_name }}</strong>
+
                       <span class="badge bg-secondary ms-auto" style="display: flex; align-items: center; gap: 0.5rem;">
+
                         <i class="fas fa-users"></i>
+
                         {{ section.student_count }}
+
                       </span>
+
                     </button>
+
                   </h2>
+
                   
+
                   <div id="section-{{ section_idx }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" data-bs-parent="#studentAccordion">
+
                     <div class="accordion-body p-0">
+
                       <!-- LEVEL 2: LEVEL ACCORDION (nested) -->
+
                       <div class="accordion" id="levelAccordion-{{ section_idx }}" style="background: #f8f9fc; padding: 1rem;">
+
                       {% for level in section.levels %}
+
                         {% set level_idx = loop.index0 %}
+
                         <div class="accordion-item" style="margin-bottom: 0.75rem; border-left: 3px solid #667eea;">
+
                           <h2 class="accordion-header">
+
                             <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#section-{{ section_idx }}-level-{{ level_idx }}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.9rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">
+
                               <i class="fas fa-layer-group" style="font-size: 0.95rem; margin-right: 0.5rem;"></i>
+
                               <strong>{{ level.level_name or 'N.D.' }}</strong>
+
                               <span class="badge bg-light ms-auto" style="display: flex; align-items: center; gap: 0.4rem; color: #667eea; font-weight: 600;">
+
                                 {{ level.classes|length }} classe(s)
+
                               </span>
+
                             </button>
+
                           </h2>
+
                           
+
                           <div id="section-{{ section_idx }}-level-{{ level_idx }}" class="accordion-collapse collapse">
+
                             <div class="accordion-body p-0">
+
                               <!-- LEVEL 3: CLASS ACCORDION (nested) -->
+
                               <div class="accordion" id="classAccordion-{{ section_idx }}-{{ level_idx }}" style="padding: 0.75rem;">
+
                               {% for class in level.classes %}
+
                                 {% set class_idx = loop.index0 %}
+
                                 <div class="accordion-item" style="margin-bottom: 0.5rem; border-left: 3px solid #764ba2;">
+
                                   <h2 class="accordion-header">
+
                                     <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#section-{{ section_idx }}-level-{{ level_idx }}-class-{{ class_idx }}" style="background: linear-gradient(135deg, #e9ecef 0%, #f0f2f5 100%); color: #2c3e50; padding: 0.75rem 1rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer;">
+
                                       <i class="fas fa-door-open" style="font-size: 0.9rem; margin-right: 0.5rem; color: #667eea;"></i>
+
                                       <strong>Classe {{ class.class_name or 'N.D.' }}</strong>
+
                                       <span class="badge bg-secondary ms-auto" style="display: flex; align-items: center; gap: 0.3rem;">
+
                                         <i class="fas fa-users"></i>{{ class.students|length }}
+
                                       </span>
+
                                     </button>
+
                                   </h2>
+
                                   
+
                                   <div id="section-{{ section_idx }}-level-{{ level_idx }}-class-{{ class_idx }}" class="accordion-collapse collapse">
+
                                     <div class="accordion-body p-0">
+
                                       <!-- TABLE OF STUDENTS -->
+
                                       <div class="table-responsive" style="margin: 0;">
+
                                         <table class="table table-hover mb-0" style="margin: 0;">
+
                                           <thead>
+
                                             <tr style="background: linear-gradient(135deg, #f5f7fb 0%, #f8f9fc 100%); border-bottom: 2px solid #e9ecef;">
+
                                               <th style="width: 50%; padding: 1rem 1.5rem; font-weight: 700; color: #2c3e50; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">
+
                                                 <i class="fas fa-user" style="color: #667eea; margin-right: 0.5rem;"></i>Nom & Postnom
+
                                               </th>
+
                                               <th style="width: 30%; padding: 1rem 1.5rem; font-weight: 700; color: #2c3e50; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">
+
                                                 <i class="fas fa-envelope" style="color: #667eea; margin-right: 0.5rem;"></i>Contact
+
                                               </th>
+
                                               <th style="width: 20%; padding: 1rem 1.5rem; font-weight: 700; color: #2c3e50; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; text-align: center;">
+
                                                 <i class="fas fa-sliders-h" style="color: #667eea; margin-right: 0.5rem;"></i>Actions
+
                                               </th>
+
                                             </tr>
+
                                           </thead>
+
                                           <tbody>
+
                                             {% for student in class.students %}
+
                                             <tr style="border-bottom: 1px solid #e9ecef; transition: all 0.25s ease;" onmouseover="this.style.backgroundColor='#f8f9fc'; this.style.boxShadow='inset 4px 0 0 #667eea';" onmouseout="this.style.backgroundColor='#fff'; this.style.boxShadow='none';">
+
                                               <td style="padding: 1rem 1.5rem; vertical-align: middle;">
+
                                                 <div style="display: flex; align-items: center; gap: 0.75rem;">
+
                                                   <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.9rem;">
+
                                                     {{ ((student.first_name[:1] if student.first_name else '') ~ (student.last_name[:1] if student.last_name else ''))|upper }}
+
                                                   </div>
+
                                                   <strong style="color: #2c3e50;">{{ ((student.last_name or '') ~ ' ' ~ (student.first_name or ''))|trim }}</strong>
+
                                                 </div>
+
                                               </td>
+
                                               <td style="padding: 1rem 1.5rem; vertical-align: middle; color: #7f8c8d;">
+
                                                 {% if student.email %}
+
                                                 <i class="fas fa-at" style="margin-right: 0.3rem; color: #95a5a6;"></i>{{ student.email }}
+
                                                 {% else %}
-                                                <span style="color: #bdc3c7; font-style: italic;">—</span>
+
+                                                <span style="color: #bdc3c7; font-style: italic;">â?"</span>
+
                                                 {% endif %}
+
                                               </td>
+
                                               <td style="padding: 1rem 1.5rem; vertical-align: middle; text-align: center;">
+
                                                 <div class="d-flex justify-content-center gap-2">
+
                                                   <a href="{{ url_for('admin.student_detail', student_id=student.id) }}" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 0.5rem 0.75rem; font-weight: 600; transition: all 0.25s ease; box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;" title="Voir détails">
+
                                                     <i class="fas fa-eye"></i> Voir
+
                                                   </a>
+
                                                   <a href="{{ url_for('admin.edit_student', student_id=student.id) }}" class="btn btn-sm btn-outline-warning" style="border-radius: 8px; padding: 0.5rem 0.75rem; font-weight: 600; transition: all 0.25s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;" title="Modifier">
+
                                                     <i class="fas fa-edit"></i> Modifier
+
                                                   </a>
+
                                                   <button type="button" class="btn btn-sm btn-outline-danger btn-delete-student" data-student-id="{{ student.id }}" data-student-name="{{ student.last_name }} {{ student.first_name }}" style="border-radius: 8px; padding: 0.5rem 0.75rem; font-weight: 600; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 0.3rem;" title="Supprimer">
+
                                                     <i class="fas fa-trash"></i> Supprimer
+
                                                   </button>
+
                                                 </div>
+
                                               </td>
+
                                             </tr>
+
                                             {% endfor %}
+
                                           </tbody>
+
                                         </table>
+
                                       </div>
+
                                     </div>
+
                                   </div>
+
                                 </div>
+
                               {% endfor %}
+
                               </div>
+
                             </div>
+
                           </div>
+
                         </div>
+
                       {% endfor %}
+
                       </div>
+
                     </div>
+
                   </div>
+
                 </div>
+
               {% endfor %}
+
               </div>
+
             {% else %}
+
             <div class="text-center py-5" style="padding: 4rem 2rem !important;">
+
               <i class="fas fa-inbox" style="font-size: 4rem; color: #e9ecef; margin-bottom: 1.5rem; display: block;"></i>
+
               <h5 style="color: #7f8c8d; margin-bottom: 0.5rem; font-weight: 600;">Aucun élève trouvé</h5>
+
               <p class="text-muted" style="margin-bottom: 0;">Commencez par ajouter des élèves ou importer un fichier Excel.</p>
+
             </div>
+
             {% endif %}
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <!-- ADD STUDENT TAB -->
+
       <div class="tab-pane fade" id="add-pane" role="tabpanel" aria-labelledby="add-tab">
+
         <div class="row g-3">
+
           <div class="col-lg-8">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-user-plus"></i> Ajouter un nouvel élève
+
               </div>
+
               <div class="card-body">
+
                 <form method="post" id="add-student-form">
+
                   <input type="hidden" id="manual_section_name" name="section_name">
+
                   <input type="hidden" id="manual_level" name="level">
+
                   <input type="hidden" id="manual_class_name" name="class_name">
 
+
+
                   <!-- Infos personnelles -->
+
                   <div class="section-title mb-4">
+
                     <i class="fas fa-id-card"></i> Informations personnelles
+
                   </div>
+
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-user"></i> Nom *</label>
+
                       <input type="text" name="last_name" class="form-control" required>
+
                     </div>
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-user"></i> Postnom</label>
+
                       <input type="text" name="first_name" class="form-control">
+
                     </div>
+
                   </div>
 
+
+
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-calendar"></i> Date de naissance</label>
+
                       <input type="date" name="birth_date" class="form-control">
+
                     </div>
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-map-pin"></i> Lieu de naissance</label>
+
                       <input type="text" name="place_of_birth" class="form-control">
+
                     </div>
+
                   </div>
 
+
+
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-venus-mars"></i> Genre</label>
+
                       <select name="gender" class="form-select">
+
                         <option value="">-- Non spécifié --</option>
+
                         <option value="M">Masculin</option>
+
                         <option value="F">Féminin</option>
+
                       </select>
+
                     </div>
+
                     <div class="col-md-6 mb-3">
-                      <label class="form-label"><i class="fas fa-id-card"></i> N° ID</label>
+
+                      <label class="form-label"><i class="fas fa-id-card"></i> NÂ° ID</label>
+
                       <input type="text" name="student_id_number" class="form-control">
+
                     </div>
+
                   </div>
 
+
+
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-id-badge"></i> Numéro de série / Matricule</label>
+
                       <input type="text" name="serial_number" class="form-control">
+
                     </div>
+
                   </div>
+
+
 
                   <!-- Infos parents -->
+
                   <div class="section-title mb-4 mt-4">
+
                     <i class="fas fa-family"></i> Informations des parents
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label"><i class="fas fa-male"></i> Nom du père</label>
-                      <input type="text" name="father_name" class="form-control">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label"><i class="fas fa-female"></i> Nom de la mère</label>
-                      <input type="text" name="mother_name" class="form-control">
-                    </div>
+
                   </div>
 
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
-                      <label class="form-label"><i class="fas fa-phone"></i> Téléphone parents</label>
-                      <input type="text" name="parent_phone" class="form-control">
+
+                      <label class="form-label"><i class="fas fa-male"></i> Nom du père</label>
+
+                      <input type="text" name="father_name" class="form-control">
+
                     </div>
+
                     <div class="col-md-6 mb-3">
-                      <label class="form-label"><i class="fas fa-envelope"></i> Email</label>
-                      <input type="email" name="email" class="form-control">
+
+                      <label class="form-label"><i class="fas fa-female"></i> Nom de la mère</label>
+
+                      <input type="text" name="mother_name" class="form-control">
+
                     </div>
+
                   </div>
+
+
+
+                  <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                      <label class="form-label"><i class="fas fa-phone"></i> Téléphone parents</label>
+
+                      <input type="text" name="parent_phone" class="form-control">
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                      <label class="form-label"><i class="fas fa-envelope"></i> Email</label>
+
+                      <input type="email" name="email" class="form-control">
+
+                    </div>
+
+                  </div>
+
+
 
                   <!-- Infos contact -->
+
                   <div class="section-title mb-4 mt-4">
+
                     <i class="fas fa-address-card"></i> Coordonnées
+
                   </div>
+
                   <div class="row">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-phone"></i> Téléphone</label>
+
                       <input type="text" name="phone" class="form-control">
+
                     </div>
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-map-marker-alt"></i> Adresse</label>
+
                       <input type="text" name="address" class="form-control">
+
                     </div>
+
                   </div>
+
+
 
                   <hr class="my-4">
-                  <button type="submit" class="btn btn-primary btn-lg w-100">
+
+                  <button type="submit" class="btn-ista-primary btn-lg w-100">
+
                     <i class="fas fa-check-circle"></i> Enregistrer l'élève
+
                   </button>
+
                 </form>
+
               </div>
+
             </div>
+
           </div>
 
+
+
           <div class="col-lg-4">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-filter"></i> Sélection de classe
+
               </div>
+
               <div class="card-body">
+
                 <div class="mb-3">
+
                   <label class="form-label">Section</label>
+
                   <select id="manual_section_selector" class="form-select" required>
+
                     <option value="">Choisir une section</option>
+
                     {% for section_name in section_names %}
+
                     <option value="{{ section_name }}">{{ section_name }}</option>
+
                     {% endfor %}
+
                   </select>
+
                 </div>
+
                 <div class="mb-3">
+
                   <label class="form-label">Niveau</label>
+
                   <select id="manual_level_selector" class="form-select" required disabled>
+
                     <option value="">Choisir un niveau</option>
+
                   </select>
+
                 </div>
+
                 <div class="mb-3">
+
                   <label class="form-label">Classe</label>
+
                   <select id="manual_class_selector" class="form-select" required disabled>
+
                     <option value="">Choisir une classe</option>
+
                   </select>
+
                 </div>
+
                 <div class="alert alert-info" role="alert">
+
                   <i class="fas fa-info-circle"></i> 
+
                   <strong>Conseil:</strong> Sélectionnez d'abord la section, niveau et classe, puis remplissez le formulaire.
+
                 </div>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <!-- QUICK IMPORT TAB -->
+
       <div class="tab-pane fade" id="quick-import-pane" role="tabpanel" aria-labelledby="quick-import-tab">
+
         <div class="row g-3">
+
           <div class="col-lg-8">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-list-check"></i> Import rapide par noms complets
+
               </div>
+
               <div class="card-body">
+
                 <form id="student-quick-import-form" method="post">
+
                   <input type="hidden" name="student_import_mode" value="quick_list">
 
+
+
                   <div class="alert alert-primary" role="alert">
+
                     <i class="fas fa-lightbulb"></i>
+
                     <strong>Principe:</strong> collez une liste d'élèves, un élève par ligne. Le sexe est facultatif.
+
                   </div>
+
+
 
                   <div class="row mb-4">
+
                     <div class="col-md-4 mb-3">
+
                       <label class="form-label"><i class="fas fa-layer-group"></i> Section *</label>
+
                       <select id="quick_section_name" name="quick_section_name" class="form-select" required>
+
                         <option value="">Choisir une section</option>
+
                         {% for section_name in section_names %}
+
                         <option value="{{ section_name }}">{{ section_name }}</option>
+
                         {% endfor %}
+
                       </select>
+
                     </div>
+
                     <div class="col-md-4 mb-3">
+
                       <label class="form-label"><i class="fas fa-bookmark"></i> Niveau *</label>
+
                       <select id="quick_level" name="quick_level" class="form-select" required disabled>
+
                         <option value="">Choisir un niveau</option>
+
                       </select>
+
                     </div>
+
                     <div class="col-md-4 mb-3">
+
                       <label class="form-label"><i class="fas fa-door-open"></i> Classe *</label>
+
                       <select id="quick_class_name" name="quick_class_name" class="form-select" required disabled>
+
                         <option value="">Choisir une classe</option>
+
                       </select>
+
                     </div>
+
                   </div>
 
+
+
                   <div class="mb-4">
+
                     <label class="form-label"><i class="fas fa-clipboard-list"></i> Liste des élèves *</label>
+
                     <textarea id="quick_students_list" name="quick_students_list" class="form-control" rows="12" placeholder="Jean Pierre&#10;Marie Claire; F&#10;Aminata Traore | M" required></textarea>
+
                     <small class="text-muted d-block mt-2">
+
                       <i class="fas fa-info-circle"></i> Format accepté: <code>Nom complet</code> ou <code>Nom complet; M/F</code> ou <code>Nom complet | M/F</code>. M = Masculin, F = Féminin.
+
                     </small>
+
                   </div>
+
+
 
                   <div class="alert alert-warning" role="alert">
+
                     <i class="fas fa-exclamation-triangle"></i>
+
                     Les autres informations pourront être complétées plus tard dans la fiche élève.
+
                   </div>
 
-                  <button id="student-quick-import-button" type="submit" class="btn btn-primary btn-lg w-100">
+
+
+                  <button id="student-quick-import-button" type="submit" class="btn-ista-primary btn-lg w-100">
+
                     <span id="student-quick-import-spinner" class="spinner-border spinner-border-sm d-none me-2" role="status"></span>
+
                     <span id="student-quick-import-button-text"><i class="fas fa-check-circle"></i> Valider et enregistrer</span>
+
                   </button>
+
                 </form>
+
               </div>
+
             </div>
+
           </div>
 
+
+
           <div class="col-lg-4">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-book"></i> Aide rapide
+
               </div>
+
               <div class="card-body">
+
                 <h6 class="mb-3">Exemples de lignes</h6>
+
                 <ul class="list-unstyled mb-0">
+
                   <li><small><strong>Jean Pierre</strong></small></li>
+
                   <li><small><strong>Marie Claire; F</strong></small></li>
+
                   <li><small><strong>Aminata Traore | M</strong></small></li>
+
                 </ul>
+
                 <hr>
+
                 <h6 class="mb-3">Enregistrement</h6>
+
                 <ul class="list-unstyled mb-0">
+
                   <li><small>Nom complet obligatoire</small></li>
+
                   <li><small>Sexe optionnel</small></li>
+
                   <li><small>Section, niveau et classe obligatoires</small></li>
+
                 </ul>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
+
 
       <!-- IMPORT TAB -->
+
       <div class="tab-pane fade" id="import-pane" role="tabpanel" aria-labelledby="import-tab">
+
         <div class="row g-3">
+
           <div class="col-lg-8">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-file-upload"></i> Importer des élèves depuis Excel
+
               </div>
+
               <div class="card-body">
+
                 <form id="student-import-form" method="post" enctype="multipart/form-data">
+
                   <div class="alert alert-primary" role="alert">
+
                     <i class="fas fa-lightbulb"></i>
+
                     <strong>Avant de commencer:</strong> préparez votre fichier Excel avec les colonnes: Nom, Postnom, Date de naissance, puis les colonnes optionnelles.
+
                   </div>
 
+
+
                   <div class="row mb-4">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-layer-group"></i> Section *</label>
+
                       <select id="excel_section_name" name="import_section_name" class="form-select" required>
+
                         <option value="">Choisir une section</option>
+
                         {% for section_name in section_names %}
+
                         <option value="{{ section_name }}">{{ section_name }}</option>
+
                         {% endfor %}
+
                       </select>
+
                     </div>
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-bookmark"></i> Niveau *</label>
+
                       <select id="excel_level" name="import_level" class="form-select" required disabled>
+
                         <option value="">Choisir un niveau</option>
+
                       </select>
+
                     </div>
+
                   </div>
 
+
+
                   <div class="row mb-4">
+
                     <div class="col-md-6 mb-3">
+
                       <label class="form-label"><i class="fas fa-door-open"></i> Classe *</label>
+
                       <select id="excel_class_name" name="import_class_name" class="form-select" required disabled>
+
                         <option value="">Choisir une classe</option>
+
                       </select>
+
                     </div>
+
                   </div>
+
+
 
                   <div class="mb-4">
+
                     <label class="form-label"><i class="fas fa-file-excel"></i> Sélectionnez votre fichier (.xls ou .xlsx) *</label>
+
                     <div class="input-group">
+
                       <input type="file" name="import_file" class="form-control" accept=".xls,.xlsx" required>
+
                       <a class="btn btn-outline-secondary" href="{{ url_for('static', filename='templates/template_import_eleves.xlsx') }}" download title="Télécharger le template">
+
                         <i class="fas fa-download"></i> Template
+
                       </a>
+
                     </div>
+
                     <small class="text-muted d-block mt-2">
+
                       <i class="fas fa-info-circle"></i> Téléchargez le template pour voir la structure requise
+
                     </small>
+
                   </div>
 
+
+
                   <button id="student-import-button" type="submit" class="btn btn-success btn-lg w-100">
+
                     <span id="student-import-spinner" class="spinner-border spinner-border-sm d-none me-2" role="status"></span>
+
                     <span id="student-import-button-text"><i class="fas fa-upload"></i> Importer le fichier</span>
+
                   </button>
+
                 </form>
+
               </div>
+
             </div>
+
           </div>
 
+
+
           <div class="col-lg-4">
-            <div class="card form-card">
+
+            <div class="card card-ista">
+
               <div class="card-header">
+
                 <i class="fas fa-book"></i> Guide d'import
+
               </div>
+
               <div class="card-body">
+
                 <h6 class="mb-3"><i class="fas fa-check-circle" style="color: #27ae60;"></i> Colonnes requises:</h6>
+
                 <ul class="list-unstyled">
+
                   <li><small><strong>Nom</strong> - Nom de famille</small></li>
+
                   <li><small><strong>Postnom</strong> - Postnom de l'élève</small></li>
+
                   <li><small><strong>Sexe</strong> - M ou F</small></li>
+
                   <li><small><strong>Date de naissance</strong> - Format JJ/MM/AAAA</small></li>
+
                 </ul>
+
+
 
                 <hr>
 
+
+
                   <h6 class="mb-3"><i class="fas fa-lightbulb" style="color: #f39c12;"></i> Colonnes optionnelles:</h6>
+
                   <ul class="list-unstyled">
+
                     <li><small>Lieu de naissance</small></li>
+
                     <li><small>Père / Mère</small></li>
+
                     <li><small>Téléphone parents</small></li>
+
                     <li><small>Email</small></li>
+
                     <li><small>Adresse</small></li>
+
                   </ul>
 
+
+
                 <div class="alert alert-warning mt-4" role="alert">
+
                   <i class="fas fa-exclamation-triangle"></i>
+
                   <small><strong>Attention:</strong> Vérifiez vos données avant l'import!</small>
+
                 </div>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
   </main>
+
 </div>
+
+
 
 <div id="student-import-overlay" class="loading-overlay">
+
   <div class="loading-card">
+
     <div class="spinner-border text-primary" role="status"></div>
+
     <p class="mt-3">Importation en cours... Merci de patienter.</p>
+
   </div>
+
 </div>
+
+
 
 <style>
+
 .nav-modern {
+
   border-bottom: 2px solid #e0e0e0;
+
 }
+
+
 
 .nav-modern .nav-link {
+
   color: #7f8c8d;
+
   border: none;
+
   border-bottom: 3px solid transparent;
+
   padding: 1rem 1.5rem;
+
   font-weight: 600;
+
   transition: all 0.3s ease;
+
   margin-bottom: -2px;
+
 }
+
+
 
 .nav-modern .nav-link:hover {
+
   color: #3498db;
+
   border-bottom-color: #3498db;
+
 }
+
+
 
 .nav-modern .nav-link.active {
+
   color: #3498db;
+
   border-bottom-color: #3498db;
+
   background: transparent;
+
 }
+
+
 
 .section-title {
+
   font-size: 1rem;
+
   font-weight: 700;
+
   color: #2c3e50;
+
   padding-bottom: 0.5rem;
+
   border-bottom: 2px solid #3498db;
+
   display: inline-block;
+
 }
+
+
 
 .table-responsive {
+
   max-height: 70vh;
+
   overflow-y: auto;
+
 }
+
+
 
 .table thead {
+
   position: sticky;
+
   top: 0;
+
   z-index: 10;
+
 }
+
 </style>
 
+
+
 <script>
+
   document.addEventListener('DOMContentLoaded', function () {
+
     const sectionsCatalog = {{ sections_catalog|tojson }};
 
+
+
     function uniqueSorted(values) {
+
       return [...new Set(values.filter(value => value !== null && value !== undefined && String(value).trim() !== ''))]
+
         .sort((left, right) => String(left).localeCompare(String(right), 'fr', { numeric: true, sensitivity: 'base' }));
+
     }
+
+
 
     function fillSelect(selectElement, placeholder, values) {
+
       if (!selectElement) {
+
         return;
+
       }
+
+
 
       const currentValue = selectElement.value;
+
       selectElement.innerHTML = '';
 
+
+
       const placeholderOption = document.createElement('option');
+
       placeholderOption.value = '';
+
       placeholderOption.textContent = placeholder;
+
       selectElement.appendChild(placeholderOption);
 
+
+
       values.forEach(value => {
+
         const option = document.createElement('option');
+
         option.value = value;
+
         option.textContent = value;
+
         if (String(value) === String(currentValue)) {
+
           option.selected = true;
+
         }
+
         selectElement.appendChild(option);
+
       });
+
+
 
       selectElement.disabled = values.length === 0;
+
       if (!values.length) {
+
         selectElement.value = '';
+
       } else if (!values.includes(currentValue)) {
+
         selectElement.value = '';
+
       }
+
     }
+
+
 
     function getLevels(sectionName) {
+
       return uniqueSorted(
+
         sectionsCatalog
+
           .filter(item => item.name === sectionName)
+
           .map(item => item.level)
+
       );
+
     }
+
+
 
     function getClasses(sectionName, level) {
+
       return uniqueSorted(
+
         sectionsCatalog
+
           .filter(item => item.name === sectionName && item.level === level)
+
           .map(item => item.class_name)
+
       );
+
     }
+
+
 
     function setupHierarchy(config) {
+
       const sectionEl = document.getElementById(config.sectionId);
+
       const levelEl = document.getElementById(config.levelId);
+
       const classEl = document.getElementById(config.classId);
+
       const hiddenTargets = Array.isArray(config.hiddenTargets) ? config.hiddenTargets : [];
 
+
+
       function syncHiddenValues() {
+
         hiddenTargets.forEach(target => {
+
           const source = target.sourceId ? document.getElementById(target.sourceId) : null;
+
           const destination = target.targetId ? document.getElementById(target.targetId) : null;
+
           if (destination) {
+
             destination.value = source ? (source.value || '') : '';
+
           }
+
         });
+
       }
+
+
 
       function refreshLevels() {
+
         const sectionName = sectionEl ? sectionEl.value.trim() : '';
+
         fillSelect(levelEl, config.levelPlaceholder, sectionName ? getLevels(sectionName) : []);
+
         refreshClasses();
+
       }
+
+
 
       function refreshClasses() {
+
         const sectionName = sectionEl ? sectionEl.value.trim() : '';
+
         const levelName = levelEl ? levelEl.value.trim() : '';
+
         if (classEl) {
+
           fillSelect(classEl, config.classPlaceholder, sectionName && levelName ? getClasses(sectionName, levelName) : []);
+
         }
+
         syncHiddenValues();
+
       }
+
+
 
       if (sectionEl) {
+
         sectionEl.addEventListener('change', refreshLevels);
+
       }
+
       if (levelEl) {
+
         levelEl.addEventListener('change', refreshClasses);
+
       }
+
       if (classEl) {
+
         classEl.addEventListener('change', syncHiddenValues);
+
       }
+
+
 
       refreshLevels();
+
       refreshClasses();
+
       syncHiddenValues();
+
     }
 
+
+
     setupHierarchy({
+
       sectionId: 'manual_section_selector',
+
       levelId: 'manual_level_selector',
+
       classId: 'manual_class_selector',
+
       levelPlaceholder: 'Choisir un niveau',
+
       classPlaceholder: 'Choisir une classe',
+
       hiddenTargets: [
+
         { sourceId: 'manual_section_selector', targetId: 'manual_section_name' },
+
         { sourceId: 'manual_level_selector', targetId: 'manual_level' },
+
         { sourceId: 'manual_class_selector', targetId: 'manual_class_name' }
+
       ]
+
     });
 
+
+
     setupHierarchy({
+
       sectionId: 'quick_section_name',
+
       levelId: 'quick_level',
+
       classId: 'quick_class_name',
+
       levelPlaceholder: 'Choisir un niveau',
+
       classPlaceholder: 'Choisir une classe'
+
     });
 
+
+
     setupHierarchy({
+
       sectionId: 'excel_section_name',
+
       levelId: 'excel_level',
+
       classId: 'excel_class_name',
+
       levelPlaceholder: 'Choisir un niveau',
+
       classPlaceholder: 'Choisir une classe'
+
     });
 
+
+
     setupHierarchy({
+
       sectionId: 'reset_class_section_selector',
+
       levelId: 'reset_class_level_selector',
+
       classId: 'reset_class_class_selector',
+
       levelPlaceholder: 'Choisir un niveau',
+
       classPlaceholder: 'Choisir une classe'
+
     });
 
+
+
     setupHierarchy({
+
       sectionId: 'reset_level_section_selector',
+
       levelId: 'reset_level_level_selector',
+
       classId: null,
+
       levelPlaceholder: 'Choisir un niveau',
+
       classPlaceholder: ''
+
     });
+
+
 
     const quickImportForm = document.getElementById('student-quick-import-form');
+
     const quickImportBtn = document.getElementById('student-quick-import-button');
+
     const quickSpinner = document.getElementById('student-quick-import-spinner');
+
     const quickButtonText = document.getElementById('student-quick-import-button-text');
+
     const overlay = document.getElementById('student-import-overlay');
+
     if (quickImportForm) {
+
       quickImportForm.addEventListener('submit', function () {
+
         if (quickImportBtn) quickImportBtn.disabled = true;
+
         if (quickSpinner) quickSpinner.classList.remove('d-none');
+
         if (quickButtonText) quickButtonText.textContent = 'Enregistrement en cours...';
+
         if (overlay) {
+
           overlay.classList.add('show');
+
         }
+
       });
+
     }
+
+
 
     const importForm = document.getElementById('student-import-form');
+
     const importBtn = document.getElementById('student-import-button');
+
     const spinner = document.getElementById('student-import-spinner');
+
     const buttonText = document.getElementById('student-import-button-text');
+
     if (importForm) {
+
       importForm.addEventListener('submit', function () {
+
         if (importBtn) importBtn.disabled = true;
+
         if (spinner) spinner.classList.remove('d-none');
+
         if (buttonText) buttonText.textContent = 'Importation en cours...';
+
         if (overlay) {
+
           overlay.classList.add('show');
+
         }
+
       });
+
     }
+
   });
+
+
 
   // SEARCH FUNCTIONALITY
+
   document.addEventListener('DOMContentLoaded', function() {
+
     const searchInput = document.getElementById('studentSearch');
+
     const accordion = document.getElementById('studentAccordion');
+
     const totalCountSpan = document.getElementById('total-count');
+
     
+
     if (searchInput) {
+
       searchInput.addEventListener('input', function() {
+
         const searchTerm = this.value.toLowerCase().trim();
+
         
+
         if (accordion) {
+
           let visibleCount = 0;
+
           const sections = accordion.querySelectorAll('.accordion-item');
+
           
+
           sections.forEach(section => {
+
             const sectionButton = section.querySelector('.accordion-button');
+
             const levelAccordion = section.querySelector('[id^="levelAccordion"]');
+
             let sectionHasVisibleStudents = false;
+
             let levelHasVisibleStudents = false;
+
             
+
             if (levelAccordion) {
+
               const levels = levelAccordion.querySelectorAll('.accordion-item');
+
               
+
               levels.forEach(level => {
+
                 let classHasVisibleStudents = false;
+
                 const classAccordion = level.querySelector('[id^="classAccordion"]');
+
                 
+
                 if (classAccordion) {
+
                   const classes = classAccordion.querySelectorAll('.accordion-item');
+
                   
+
                   classes.forEach(classItem => {
+
                     const table = classItem.querySelector('table');
+
                     let tableHasVisibleRows = false;
+
                     
+
                     if (table) {
+
                       const rows = table.querySelectorAll('tbody tr');
+
                       rows.forEach(row => {
+
                         const nameCell = row.querySelector('td:first-child');
+
                         if (nameCell) {
+
                           const studentName = nameCell.textContent.toLowerCase();
+
                           const isVisible = searchTerm === '' || studentName.includes(searchTerm);
+
                           row.style.display = isVisible ? '' : 'none';
+
                           if (isVisible) {
+
                             tableHasVisibleRows = true;
+
                             visibleCount++;
+
                           }
+
                         }
+
                       });
+
                     }
+
                     
+
                     classItem.style.display = tableHasVisibleRows ? '' : 'none';
+
                     if (tableHasVisibleRows) {
+
                       classHasVisibleStudents = true;
+
                     }
+
                   });
+
                 }
+
                 
+
                 level.style.display = classHasVisibleStudents ? '' : 'none';
+
                 if (classHasVisibleStudents) {
+
                   levelHasVisibleStudents = true;
+
                 }
+
               });
+
             }
+
             
+
             section.style.display = levelHasVisibleStudents ? '' : 'none';
+
             if (levelHasVisibleStudents) {
+
               sectionHasVisibleStudents = true;
+
             }
+
           });
+
           
+
           // Update total count
+
           if (totalCountSpan) {
+
             totalCountSpan.textContent = visibleCount;
+
           }
+
           
+
           // Show "no results" message if needed
+
           if (visibleCount === 0 && searchTerm !== '') {
+
             if (!document.getElementById('no-results-message')) {
+
               const noResults = document.createElement('div');
+
               noResults.id = 'no-results-message';
+
               noResults.className = 'alert alert-info mt-3';
+
               noResults.innerHTML = '<i class="fas fa-search"></i> Aucun élève trouvé pour "<strong>' + searchTerm + '</strong>"';
+
               accordion.parentElement.appendChild(noResults);
+
             }
+
           } else {
+
             const noResults = document.getElementById('no-results-message');
+
             if (noResults) {
+
               noResults.remove();
+
             }
+
           }
+
         }
+
       });
+
     }
+
   });
+
+
 
   // Handle student delete modal populating
+
   document.addEventListener('DOMContentLoaded', function() {
+
     const deleteButtons = document.querySelectorAll('.btn-delete-student');
+
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteStudentModal'));
+
     const deleteForm = document.getElementById('delete-student-form');
+
     const namePlaceholder = document.getElementById('delete-student-name-placeholder');
 
+
+
     deleteButtons.forEach(button => {
+
       button.addEventListener('click', function() {
+
         const studentId = this.getAttribute('data-student-id');
+
         const studentName = this.getAttribute('data-student-name');
+
         
+
         namePlaceholder.textContent = studentName;
+
         deleteForm.action = `/admin/students/${studentId}/delete`;
+
         
+
         deleteModal.show();
+
       });
+
     });
+
   });
+
 </script>
 
+
+
 <!-- DELETE STUDENT CONFIRMATION MODAL -->
+
 <div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true">
+
   <div class="modal-dialog">
+
     <div class="modal-content" style="border: none; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+
       <div class="modal-header border-bottom" style="background: #f8f9fa;">
+
         <h5 class="modal-title" id="deleteStudentModalLabel" style="font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 0.5rem;">
+
           <i class="fas fa-exclamation-triangle text-danger"></i> Confirmer la suppression
+
         </h5>
+
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
       </div>
+
       <div class="modal-body" style="padding: 1.5rem;">
+
         <p style="font-size: 1rem; color: #2c3e50;">Êtes-vous sûr de vouloir supprimer définitivement l'élève <strong id="delete-student-name-placeholder"></strong> ?</p>
+
         <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i> Cette action supprimera également toutes ses notes et tous ses paiements associés. Cette opération est irréversible.</p>
+
       </div>
+
       <div class="modal-footer border-top" style="background: #f8f9fa;">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Annuler</button>
+
+        <button type="button" class="btn-ista-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Annuler</button>
+
         <form method="post" id="delete-student-form" style="display: inline;">
+
           <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-weight: 600;">
+
             <i class="fas fa-trash me-1"></i> Supprimer définitivement
+
           </button>
+
         </form>
+
       </div>
+
     </div>
+
   </div>
+
 </div>
+
 {% endblock %}
+

@@ -3,23 +3,23 @@
 {% block content %}
 <div class="dashboard-wrapper">
   <aside class="sidebar no-print">
-    <div class="sidebar-menu-group">
-      <h6 class="sidebar-group-title">Evaluations</h6>
-      <ul class="sidebar-menu">
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-menu-link">
+    <div class="sidebar-ista-group">
+      <h6 class="sidebar-ista-group-title">Evaluations</h6>
+      <ul>
+        <li>
+          <a href="{{ url_for('admin.secretary_centralization') }}" class="sidebar-ista-link">
             <i class="fas fa-table"></i>
             <span>Centralisation</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-menu-link">
+        <li>
+          <a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
             <i class="fas fa-balance-scale"></i>
             <span>Délibération</span>
           </a>
         </li>
-        <li class="sidebar-menu-item">
-          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-menu-link active">
+        <li>
+          <a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link active">
             <i class="fas fa-cogs"></i>
             <span>Paramètres Délibération</span>
           </a>
@@ -28,10 +28,10 @@
     </div>
   </aside>
 
-  <main class="main-content">
+  <main class="main-content-ista">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="page-title mb-1">
+        <h1 class="page-title-ista mb-1">
           <i class="fas fa-cogs text-primary"></i> Critères de Délibération
         </h1>
         <p class="text-muted mb-0">Paramétrez les critères pour délibérer les cotes des élèves selon le règlement.</p>
@@ -104,7 +104,7 @@
         </div>
       </div>
       <div class="card-footer text-end">
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn-ista-primary">
           <i class="fas fa-save"></i> Enregistrer tous les critères
         </button>
       </div>

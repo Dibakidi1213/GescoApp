@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+{% block title %}Discipline - Présences et conduite{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+  <aside class="sidebar-ista">
+    <div class="sidebar-ista-group">
+      <div class="sidebar-ista-group-title">Discipline</div>
+      <a href="#presence" class="sidebar-ista-link active"><i class="fas fa-clipboard-check"></i> Présences</a>
+      <a href="#conduite" class="sidebar-ista-link"><i class="fas fa-user-check"></i> Conduite</a>
+    </div>
+  </aside>
+
+  <main class="main-content-ista">
+    <div class="page-header-ista">
+      <div>
+        <h1 class="page-title-ista"><i class="fas fa-clipboard-list"></i> Discipline</h1>
+        <div class="page-subtitle-ista" id="selectedClassLabel">Aucune classe sélectionnée</div>
+      </div>
+      <span class="badge-ista badge-ista-blue">{{ current_academic_year }}</span>
+    </div>
+
+    <!-- Class Selection -->
+    <div class="card-ista mb-3">
+      <div class="card-ista-header"><i class="fas fa-filter me-1"></i> Sélection de la classe</div>
+      <div class="card-ista-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label-ista">Section</label>
+            <select id="sectionSelect" class="form-control-ista form-select"><option value="">-- Section --</option></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label-ista">Niveau</label>
+            <select id="levelSelect" class="form-control-ista form-select" disabled><option value="">-- Niveau --</option></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label-ista">Classe</label>
+            <select id="classSelect" class="form-control-ista form-select" disabled><option value="">-- Classe --</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="presence-tab" data-bs-toggle="tab" data-bs-target="#presencePane" type="button" role="tab">
+          <i class="fas fa-calendar-check me-1"></i> Présence journalière
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="conduct-tab" data-bs-toggle="tab" data-bs-target="#conductPane" type="button" role="tab">
+          <i class="fas fa-user-check me-1"></i> Conduite
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- Presence Tab -->
+      <section class="tab-pane fade show active" id="presencePane" role="tabpanel">
+        <div class="card-ista mb-3">
+          <div class="card-ista-header">Paramètres de présence</div>
+          <div class="card-ista-body">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label-ista">Date</label>
+                <input type="date" class="form-control-ista" id="attendanceDate">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-ista">Période mensuelle</label>
+                <input type="month" class="form-control-ista" id="attendanceMonth">
+              </div>
+              <div class="col-md-6 d-flex flex-wrap gap-2">
+                <button type="button" class="btn-ista-outline flex-fill" id="loadAttendanceBtn"><i class="fas fa-rotate me-1"></i> Recharger</button>
+                <button type="button" class="btn-ista-primary flex-fill" id="saveAttendanceBtn" disabled><i class="fas fa-floppy-disk me-1"></i> Enregistrer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-ista">
+          <div class="card-ista-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>Liste nominative</span>
+            <span class="badge-ista badge-ista-blue" id="attendanceMeta">Aucune saisie chargée</span>
+          </div>
+          <div class="card-ista-body p-0">
+            <div id="attendanceStatus"></div>
+            <div class="table-responsive">
+              <table class="table-ista table-hover align-middle mb-0">
+                <thead>
+                  <tr><th>Élève</th><th style="width: 110px;">Sexe</th><th style="width: 360px;">Statut</th></tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                  <tr><td colspan="3" class="text-center text-muted py-4">Sélectionnez une classe.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Conduct Tab -->
+      <section class="tab-pane fade" id="conductPane" role="tabpanel">
+        <div class="card-ista">
+          <div class="card-ista-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>Conduite par période</span>
+            <button type="button" class="btn-ista-primary btn-sm" id="saveConductBtn" disabled><i class="fas fa-floppy-disk me-1"></i> Enregistrer</button>
+          </div>
+          <div class="card-ista-body p-0">
+            <div id="conductStatus"></div>
+            <div class="table-responsive">
+              <table class="table-ista table-striped table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Élève</th>
+                    {% for period in conduct_periods %}
+                    <th class="text-center" style="width: 120px;">{{ period.replace('è', ' ') }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody id="conductTableBody">
+                  <tr><td colspan="5" class="text-center text-muted py-4">Sélectionnez une classe.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<style>
+  .status-buttons { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; }
+  .status-buttons .btn { min-width: 96px; }
+  .conduct-select { min-width: 82px; }
+  .grades-table thead th { background: linear-gradient(135deg, var(--ista-blue), var(--ista-blue-dark)); color: white; }
+</style>
+
+<script>
+const sectionsData = {{ sections_catalog|tojson }};
+const attendanceGetTemplate = {{ url_for('discipline.get_attendance', section_id=0)|tojson }};
+const attendanceSaveTemplate = {{ url_for('discipline.save_attendance', section_id=0)|tojson }};
+const conductGetTemplate = {{ url_for('discipline.get_conduct', section_id=0)|tojson }};
+const conductSaveTemplate = {{ url_for('discipline.save_conduct', section_id=0)|tojson }};
+const conductPeriods = {{ conduct_periods|tojson }};
+const conductValues = {{ conduct_values|tojson }};
+const todayIso = {{ today_iso|tojson }} || new Date().toISOString().slice(0, 10);
+
+const sectionSelect = document.getElementById('sectionSelect');
+const levelSelect = document.getElementById('levelSelect');
+const classSelect = document.getElementById('classSelect');
+const selectedClassLabel = document.getElementById('selectedClassLabel');
+const attendanceDate = document.getElementById('attendanceDate');
+const attendanceMonth = document.getElementById('attendanceMonth');
+const attendanceTableBody = document.getElementById('attendanceTableBody');
+const attendanceStatus = document.getElementById('attendanceStatus');
+const attendanceMeta = document.getElementById('attendanceMeta');
+const saveAttendanceBtn = document.getElementById('saveAttendanceBtn');
+const loadAttendanceBtn = document.getElementById('loadAttendanceBtn');
+const conductTableBody = document.getElementById('conductTableBody');
+const conductStatus = document.getElementById('conductStatus');
+const saveConductBtn = document.getElementById('saveConductBtn');
+
+let currentSection = null;
+let currentAttendanceStudents = [];
+let currentConductStudents = [];
+
+function endpoint(template, id) {
+  return template.replace('/0', `/${id}`);
+}
+
+function normalize(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fillSelect(select, rows, placeholder) {
+  select.innerHTML = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = placeholder;
+  select.appendChild(empty);
+  rows.forEach(row => {
+    const o = document.createElement('option');
+    o.value = row.value;
+    o.textContent = row.label;
+    select.appendChild(o);
+  });
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }));
+}
+
+function setMessage(target, message, kind = 'info') {
+  const map = { success: 'alert-ista-success', danger: 'alert-ista-danger', warning: 'alert-ista-warning', info: 'alert-ista-info' };
+  target.innerHTML = `<div class="${map[kind] || map.info} m-3">${escapeHtml(message)}</div>`;
+}
+
+function clearMessage(target) { target.innerHTML = ''; }
+
+function resetWorkTables(message = 'Sélectionnez une section, un niveau et une classe.') {
+  attendanceTableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">${message}</td></tr>`;
+  conductTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">${message}</td></tr>`;
+  attendanceMeta.textContent = 'Aucune saisie chargée';
+  saveAttendanceBtn.disabled = true;
+  saveConductBtn.disabled = true;
+  currentAttendanceStudents = [];
+  currentConductStudents = [];
+  clearMessage(attendanceStatus);
+  clearMessage(conductStatus);
+}
+
+function renderStatusButton(status, active) {
+  const meta = {
+    present: ['PRESENT', 'btn-success', 'btn-outline-success', 'fa-check'],
+    absent: ['ABSENT', 'btn-danger', 'btn-outline-danger', 'fa-xmark'],
+    malade: ['MALADE', 'btn-warning', 'btn-outline-warning', 'fa-notes-medical'],
+  }[status];
+  const cls = active ? meta[1] : meta[2];
+  return `<button type="button" class="btn btn-sm ${cls}${active ? ' active' : ''}" data-status="${status}"><i class="fas ${meta[3]} me-1"></i>${meta[0]}</button>`;
+}
+
+function setRowStatus(row, status) {
+  row.dataset.status = status;
+  row.querySelector('.status-buttons').innerHTML = ['present', 'absent', 'malade'].map(s => renderStatusButton(s, s === status)).join('');
+}
+
+function renderAttendance(students) {
+  currentAttendanceStudents = students || [];
+  if (!currentAttendanceStudents.length) {
+    attendanceTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Aucun élève trouvé.</td></tr>';
+    saveAttendanceBtn.disabled = true;
+    return;
+  }
+  attendanceTableBody.innerHTML = currentAttendanceStudents.map(s =>
+    `<tr data-student-id="${s.student_id}" data-status="${s.status || 'present'}">
+      <td class="fw-semibold">${escapeHtml(s.full_name)}</td>
+      <td><span class="badge-ista badge-ista-blue">${escapeHtml(s.gender === 'M' ? 'M' : s.gender === 'F' ? 'F' : '-')}</span></td>
+      <td><div class="status-buttons"></div></td>
+    </tr>`
+  ).join('');
+  attendanceTableBody.querySelectorAll('tr[data-student-id]').forEach(row => setRowStatus(row, row.dataset.status || 'present'));
+  saveAttendanceBtn.disabled = false;
+}
+
+async function loadAttendance() {
+  if (!currentSection) { resetWorkTables(); setMessage(attendanceStatus, 'Veuillez sélectionner une classe.', 'warning'); return; }
+  const dateValue = attendanceDate.value;
+  const monthValue = attendanceMonth.value;
+  if (!dateValue || !monthValue) { setMessage(attendanceStatus, 'Date ou période manquante.', 'warning'); return; }
+  clearMessage(attendanceStatus);
+  saveAttendanceBtn.disabled = true;
+  attendanceTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Chargement...</td></tr>';
+  try {
+    const res = await fetch(`${endpoint(attendanceGetTemplate, currentSection.id)}?date=${encodeURIComponent(dateValue)}&month=${encodeURIComponent(monthValue)}`);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Chargement impossible.');
+    attendanceMeta.textContent = `${data.class_label || currentSection.label} - ${data.attendance_date}`;
+    renderAttendance(data.students || []);
+  } catch (e) {
+    attendanceTableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Aucune saisie disponible.</td></tr>';
+    setMessage(attendanceStatus, e.message, 'warning');
+  }
+}
+
+async function saveAttendance() {
+  if (!currentSection) return;
+  const entries = [...attendanceTableBody.querySelectorAll('tr[data-student-id]')].map(row => ({ student_id: Number(row.dataset.studentId), status: row.dataset.status || 'present' }));
+  saveAttendanceBtn.disabled = true;
+  saveAttendanceBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
+  clearMessage(attendanceStatus);
+  try {
+    const res = await fetch(endpoint(attendanceSaveTemplate, currentSection.id), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attendance_date: attendanceDate.value, month: attendanceMonth.value, entries })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Enregistrement impossible.');
+    setMessage(attendanceStatus, data.message || 'Présence enregistrée.', 'success');
+  } catch (e) {
+    setMessage(attendanceStatus, e.message, 'danger');
+  } finally {
+    saveAttendanceBtn.innerHTML = '<i class="fas fa-floppy-disk me-1"></i> Enregistrer';
+    saveAttendanceBtn.disabled = !currentAttendanceStudents.length;
+  }
+}
+
+function conductSelect(studentId, period, value) {
+  const options = [''].concat(conductValues).map(v => `<option value="${escapeHtml(v)}"${v === value ? ' selected' : ''}>${escapeHtml(v || '-')}</option>`).join('');
+  return `<select class="form-select form-select-sm text-center conduct-select" data-student-id="${studentId}" data-period="${escapeHtml(period)}">${options}</select>`;
+}
+
+async function loadConduct() {
+  if (!currentSection) { resetWorkTables(); return; }
+  clearMessage(conductStatus);
+  saveConductBtn.disabled = true;
+  conductTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Chargement...</td></tr>';
+  try {
+    const res = await fetch(endpoint(conductGetTemplate, currentSection.id));
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Chargement impossible.');
+    currentConductStudents = data.students || [];
+    if (!currentConductStudents.length) { conductTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Aucun élève trouvé.</td></tr>'; return; }
+    conductTableBody.innerHTML = currentConductStudents.map(s =>
+      `<tr data-student-id="${s.student_id}"><td class="fw-semibold">${escapeHtml(s.full_name)}</td>
+      ${conductPeriods.map(p => `<td class="text-center">${conductSelect(s.student_id, p, s.conducts?.[p] || '')}</td>`).join('')}</tr>`
+    ).join('');
+    saveConductBtn.disabled = false;
+  } catch (e) {
+    conductTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Aucune conduite disponible.</td></tr>';
+    setMessage(conductStatus, e.message, 'warning');
+  }
+}
+
+async function saveConduct() {
+  if (!currentSection) return;
+  const grades = [...conductTableBody.querySelectorAll('.conduct-select')].map(s => ({ student_id: Number(s.dataset.studentId), period: s.dataset.period, value: s.value }));
+  saveConductBtn.disabled = true;
+  saveConductBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...';
+  clearMessage(conductStatus);
+  try {
+    const res = await fetch(endpoint(conductSaveTemplate, currentSection.id), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grades })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Enregistrement impossible.');
+    setMessage(conductStatus, data.message || 'Conduites enregistrées.', 'success');
+  } catch (e) {
+    setMessage(conductStatus, e.message, 'danger');
+  } finally {
+    saveConductBtn.innerHTML = '<i class="fas fa-floppy-disk me-1"></i> Enregistrer';
+    saveConductBtn.disabled = !currentConductStudents.length;
+  }
+}
+
+function selectCurrentSection() {
+  currentSection = sectionsData.find(item => String(item.id) === String(classSelect.value)) || null;
+  selectedClassLabel.textContent = currentSection ? currentSection.label : 'Aucune classe sélectionnée';
+  currentSection ? (loadAttendance(), loadConduct()) : resetWorkTables();
+}
+
+sectionSelect.addEventListener('change', () => {
+  const sectionName = sectionSelect.value;
+  const levels = uniqueSorted(sectionsData.filter(item => normalize(item.name) === normalize(sectionName)).map(item => item.level));
+  fillSelect(levelSelect, levels.map(l => ({ value: l, label: l })), '-- Niveau --');
+  levelSelect.disabled = levels.length === 0;
+  fillSelect(classSelect, [], '-- Classe --');
+  classSelect.disabled = true;
+  currentSection = null;
+  selectedClassLabel.textContent = 'Aucune classe sélectionnée';
+  resetWorkTables();
+});
+
+levelSelect.addEventListener('change', () => {
+  const classes = sectionsData.filter(item => normalize(item.name) === normalize(sectionSelect.value) && normalize(item.level) === normalize(levelSelect.value));
+  fillSelect(classSelect, classes.map(item => ({ value: item.id, label: item.class_name })), '-- Classe --');
+  classSelect.disabled = classes.length === 0;
+  currentSection = null;
+  selectedClassLabel.textContent = 'Aucune classe sélectionnée';
+  resetWorkTables();
+});
+
+classSelect.addEventListener('change', selectCurrentSection);
+loadAttendanceBtn.addEventListener('click', loadAttendance);
+saveAttendanceBtn.addEventListener('click', saveAttendance);
+saveConductBtn.addEventListener('click', saveConduct);
+attendanceDate.addEventListener('change', () => { attendanceMonth.value = attendanceDate.value.slice(0, 7); if (currentSection) loadAttendance(); });
+attendanceMonth.addEventListener('change', () => { if (currentSection) loadAttendance(); });
+
+attendanceTableBody.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-status]');
+  if (btn) setRowStatus(btn.closest('tr[data-student-id]'), btn.dataset.status);
+});
+
+function init() {
+  fillSelect(sectionSelect, uniqueSorted(sectionsData.map(item => item.name)).map(n => ({ value: n, label: n })), '-- Section --');
+  attendanceDate.value = todayIso;
+  attendanceMonth.value = todayIso.slice(0, 7);
+}
+
+init();
+</script>
+{% endblock %}
