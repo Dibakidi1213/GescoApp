@@ -1140,3 +1140,90 @@ body {
   .btn { font-size: 0.75rem !important; padding: 0.3rem 0.6rem !important; }
   .badge { font-size: 0.65rem !important; padding: 0.2rem 0.4rem !important; }
 }
+
+/* ===== DARK MODE: overrides Bootstrap utilitaires codés en dur ===== */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-light {
+  background-color: var(--bg-card) !important;
+}
+
+[data-theme="dark"] .text-dark,
+[data-theme="dark"] .text-body {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* Couleurs sémantiques éclaircies pour lisibilité sur fond sombre */
+[data-theme="dark"] .text-success,
+[data-theme="dark"] .text-success-emphasis { color: #4ade80 !important; }
+[data-theme="dark"] .text-danger,
+[data-theme="dark"] .text-danger-emphasis { color: #f87171 !important; }
+[data-theme="dark"] .text-warning,
+[data-theme="dark"] .text-warning-emphasis { color: #fbbf24 !important; }
+[data-theme="dark"] .text-info,
+[data-theme="dark"] .text-info-emphasis { color: #38bdf8 !important; }
+[data-theme="dark"] .text-primary,
+[data-theme="dark"] .text-primary-emphasis { color: #60a5fa !important; }
+[data-theme="dark"] .text-secondary-emphasis { color: #c4c4c4 !important; }
+
+[data-theme="dark"] select option {
+  background-color: var(--bg-dropdown) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .dropdown-menu {
+  background-color: var(--bg-dropdown) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .dropdown-item {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .dropdown-item:hover {
+  background-color: var(--bg-table-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Badges : garder un texte sombre sur les fonds colorés, clair sur fond neutre */
+[data-theme="dark"] .badge.bg-warning.text-dark,
+[data-theme="dark"] .badge.bg-info.text-dark,
+[data-theme="dark"] .badge.bg-success.text-dark,
+[data-theme="dark"] .badge.bg-danger.text-dark,
+[data-theme="dark"] .badge.bg-primary.text-dark,
+[data-theme="dark"] .badge.bg-secondary.text-dark {
+  color: #212529 !important;
+}
+[data-theme="dark"] .badge.bg-light.text-dark {
+  color: var(--text-primary) !important;
+}
+
+/* Fonds "subtle" des badges (définis en dur dans les templates) */
+[data-theme="dark"] .bg-success-subtle { background-color: #0f2e1d !important; }
+[data-theme="dark"] .bg-danger-subtle { background-color: #3a1515 !important; }
+[data-theme="dark"] .bg-warning-subtle { background-color: #3a2c0f !important; }
+[data-theme="dark"] .bg-info-subtle { background-color: #12263a !important; }
+[data-theme="dark"] .bg-primary-subtle { background-color: #141f3a !important; }
+[data-theme="dark"] .bg-secondary-subtle { background-color: #2a2a2a !important; }
+
+/* Page de connexion */
+[data-theme="dark"] .login-card-ista {
+  background: var(--bg-card) !important;
+}
+[data-theme="dark"] .login-body-ista .form-label {
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .login-body-ista .form-control {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
