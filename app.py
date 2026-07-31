@@ -139,6 +139,18 @@ def ensure_schema():
         if not AcademicYear.query.first():
             db.session.add(AcademicYear(name="2025 - 2026", is_active=True))
             db.session.commit()
+        from models import User
+        if not User.query.filter_by(role='super_admin').first():
+            default_admin = User(
+                username='superadmin',
+                role='super_admin',
+                full_name='Super Administrateur',
+                email='superadmin@gescoapp.com',
+            )
+            default_admin.set_password('super123')
+            db.session.add(default_admin)
+            db.session.commit()
+            app.logger.warning('Super admin par défaut créé (superadmin / super123). Changez ce mot de passe rapidement.')
         app.config['SCHEMA_INITIALIZED'] = True
 
 
