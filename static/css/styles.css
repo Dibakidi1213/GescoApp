@@ -741,6 +741,18 @@ body {
   color: var(--text-primary);
 }
 
+/* En-têtes TOTAL / TOTAL GÉNÉRAL / % : texte sombre sur fond clair (lisible en mode clair) */
+.table-ista thead th[style*="background"] {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* Tracer les lignes et colonnes de la grille de saisie */
+.table-ista.table-bordered th,
+.table-ista.table-bordered td {
+  border: 1px solid var(--border-color);
+}
+
 /* Bootstrap table overrides */
 .table { color: var(--text-primary) !important; border-color: var(--border-color) !important; }
 .table thead th { color: var(--text-secondary) !important; border-color: var(--border-color) !important; }
