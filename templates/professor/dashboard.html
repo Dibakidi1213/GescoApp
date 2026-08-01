@@ -340,6 +340,11 @@ async function updateColumnLocking() {
   const selectedPeriod = getSelectedPeriod();
   if (!selectedPeriod) return;
 
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const highlightBg = dark ? '#1d3b5c' : '#cfe2ff';
+  const disabledBg = dark ? '#3a3a3a' : '#e9ecef';
+  const disabledColor = '#999';
+
   let isLocked = false;
   try {
     const res = await fetch(`${professorBaseUrl.replace(/\/$/, '')}/api/get-period-status/${currentCourseId}?period=${selectedPeriod}`);
@@ -356,28 +361,40 @@ async function updateColumnLocking() {
   } catch(e) {}
 
   document.querySelectorAll('.grade-input').forEach(input => {
+    const applyBg = (color) => {
+      if (color) input.style.setProperty('background-color', color, 'important');
+      else input.style.removeProperty('background-color');
+    };
+    const applyColor = (color) => {
+      if (color) input.style.setProperty('color', color, 'important');
+      else input.style.removeProperty('color');
+    };
     if (input.dataset.period === selectedPeriod) {
       if (selectedPeriod === 'REPECHAGE' && !repechageEligibleStudentIds.has(input.dataset.studentId)) {
         input.disabled = true;
-        input.style.backgroundColor = '#e9ecef';
-        input.style.color = '#888';
+        applyBg(disabledBg);
+        applyColor(disabledColor);
         input.style.cursor = 'not-allowed';
       } else {
         input.disabled = isLocked;
         input.dataset.locked = isLocked ? 'true' : 'false';
-        input.style.backgroundColor = isLocked ? '#e9ecef' : '#e0f7fa';
-        input.style.color = isLocked ? '#888' : 'inherit';
+        applyBg(isLocked ? disabledBg : highlightBg);
+        applyColor(isLocked ? disabledColor : '');
         input.style.cursor = isLocked ? 'not-allowed' : 'text';
       }
     } else {
       input.disabled = true;
       input.dataset.locked = 'false';
-      input.style.backgroundColor = '';
-      input.style.color = 'inherit';
+      applyBg('');
+      applyColor('');
       input.style.cursor = 'text';
     }
   });
 }
+
+new MutationObserver(function() {
+  if (document.getElementById('profGradesTable')) updateColumnLocking();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 document.querySelectorAll('.period-select').forEach(radio => {
   radio.addEventListener('change', function() {
