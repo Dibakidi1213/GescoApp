@@ -78,6 +78,9 @@
           {% endfor %}
         </div>
         <div class="d-flex flex-wrap align-items-center gap-2">
+          <button type="button" id="toggle-all-btn" class="btn-ista-outline btn-sm" {% if not course %}disabled{% endif %}>
+            <i class="fas fa-table"></i> Afficher tout le tableau
+          </button>
           <form id="import-grades-form" class="d-flex align-items-center gap-2 m-0" enctype="multipart/form-data">
             <input type="file" name="file" id="grade-file-input" accept=".xlsx,.xls" class="form-control form-control-sm" style="max-width: 180px;" {% if not course %}disabled{% endif %}>
             <button type="button" id="import-grades-btn" class="btn-ista-primary btn-sm" {% if not course %}disabled{% endif %}>Importer</button>
@@ -337,8 +340,9 @@ function updateExportLinks() {
 
 function updatePeriodColumnVisibility() {
   const selected = getSelectedPeriod();
+  const showAll = showAllPeriodColumns || !selected;
   document.querySelectorAll('#profGradesTable th[data-period], #profGradesTable td[data-period]').forEach(cell => {
-    cell.style.display = (!selected || cell.dataset.period === selected) ? '' : 'none';
+    cell.style.display = (showAll || cell.dataset.period === selected) ? '' : 'none';
   });
 }
 
@@ -555,6 +559,15 @@ document.getElementById('save-draft-btn')?.addEventListener('click', function() 
 const submittedPeriods = new Set({{ submitted_periods | list | tojson }});
 const pollingIntervalMs = 5000;
 let pollingTimerId = null;
+let showAllPeriodColumns = false;
+
+document.getElementById('toggle-all-btn')?.addEventListener('click', function() {
+  showAllPeriodColumns = !showAllPeriodColumns;
+  this.innerHTML = showAllPeriodColumns
+    ? '<i class="fas fa-columns"></i> Afficher la période sélectionnée'
+    : '<i class="fas fa-table"></i> Afficher tout le tableau';
+  updateColumnLocking();
+});
 
 document.getElementById('submit-period-btn')?.addEventListener('click', async function() {
   const selectedPeriod = getSelectedPeriod();
