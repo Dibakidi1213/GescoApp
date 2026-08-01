@@ -1227,3 +1227,53 @@ body {
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
+
+/* ===== DARK MODE: tableaux de saisie des cotes ===== */
+/* Lignes de grille visibles en sombre */
+[data-theme="dark"] .table-bordered th,
+[data-theme="dark"] .table-bordered td {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .table-light {
+  background-color: var(--bg-card-header) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .table-light th {
+  background-color: var(--bg-card-header) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Table admin : fonds en dur (white / #f8f9fa / #e9ecef) -> sombre */
+[data-theme="dark"] #adminGradesTable th,
+[data-theme="dark"] #adminGradesTable td {
+  background-color: var(--bg-card) !important;
+}
+[data-theme="dark"] #adminGradesTable thead th {
+  background-color: var(--bg-card-header) !important;
+}
+[data-theme="dark"] #adminGradesTable td.totalGeneral { background-color: #0f2e1d !important; }
+[data-theme="dark"] #adminGradesTable td.percentage { background-color: #3a1515 !important; }
+[data-theme="dark"] #adminGradesTable .grade-input {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Table professeur : fonds en dur (white / #f8f9fa / #f0f0f0 / #fff3cd) -> sombre */
+[data-theme="dark"] #profGradesTable th,
+[data-theme="dark"] #profGradesTable td {
+  background-color: var(--bg-card) !important;
+}
+[data-theme="dark"] #profGradesTable thead th {
+  background-color: var(--bg-card-header) !important;
+}
+[data-theme="dark"] #profGradesTable td.totalGeneral,
+[data-theme="dark"] #profGradesTable th[style*="fff3cd"] { background-color: #3a2c0f !important; }
+[data-theme="dark"] #profGradesTable td.percentage { background-color: #3a2c0f !important; }
+[data-theme="dark"] #profGradesTable .grade-input {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] #profGradesTable .grade-input[disabled] {
+  color: var(--text-muted) !important;
+}
