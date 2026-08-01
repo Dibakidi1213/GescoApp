@@ -130,12 +130,12 @@
               <th style="width: 200px;">ÉLÈVE</th>
               {% for p in periods %}
                 {% if 'EXA' not in p %}
-                  <th class="text-center" style="width: 80px;">
+                  <th class="text-center" style="width: 80px;" data-period="{{ p }}">
                     {{ p }}
                     {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
                   </th>
                 {% else %}
-                  <th class="text-center" style="width: 80px;">
+                  <th class="text-center" style="width: 80px;" data-period="{{ p }}">
                     {{ p }}
                     {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
                   </th>
@@ -160,7 +160,7 @@
                 {% set is_repechage = p == 'REPECHAGE' %}
                 {% set repechage_allowed = (not is_repechage) or (st.id in repechage_eligible_student_ids) %}
                 {% set bg_col = '#f0f0f0' if is_locked or (is_repechage and not repechage_allowed) else ('#f8f9fa' if is_exa else 'white') %}
-                <td class="text-center p-1" style="background-color: {{ bg_col }};">
+                <td class="text-center p-1" style="background-color: {{ bg_col }};" data-period="{{ p }}">
                   <input type="number" step="0.1" min="0" max="{{ branch_limits.get(p, 20) if branch_limits else (100 if p == 'REPECHAGE' else 20) }}"
                          placeholder="/{{ branch_limits.get(p, 20) if branch_limits else (100 if p == 'REPECHAGE' else 20) }}"
                          class="form-control form-control-sm text-center grade-input"
@@ -335,8 +335,16 @@ function updateExportLinks() {
   }
 }
 
+function updatePeriodColumnVisibility() {
+  const selected = getSelectedPeriod();
+  document.querySelectorAll('#profGradesTable th[data-period], #profGradesTable td[data-period]').forEach(cell => {
+    cell.style.display = (!selected || cell.dataset.period === selected) ? '' : 'none';
+  });
+}
+
 async function updateColumnLocking() {
   if (!currentCourseId) return;
+  updatePeriodColumnVisibility();
   const selectedPeriod = getSelectedPeriod();
   if (!selectedPeriod) return;
 
