@@ -2,7 +2,7 @@
 {% block title %}{{ dashboard_title }}{% endblock %}
 
 {% block content %}
-<div class="main-content-ista">
+<div class="main-content-ista" id="professor-page">
   <div class="page-header-ista">
     <h1 class="page-title-ista"><i class="fas fa-star"></i> {{ dashboard_title }}</h1>
   </div>
@@ -56,7 +56,7 @@
   <div class="alert-ista-info mb-3"><strong>Instruction :</strong> Sélectionnez une section, un niveau, une classe et un cours.</div>
 
   <!-- Tabs -->
-  <div class="d-flex w-100 mb-3 gap-1">
+  <div class="d-flex w-100 mb-3 gap-1 tabs-row">
     <div class="flex-grow-1 text-center py-2 text-white fw-bold rounded-top" style="background: var(--ista-blue); cursor: default;">
       Saisie des cotes
     </div>
@@ -130,33 +130,33 @@
         <table class="table-ista table-bordered table-hover align-middle bg-white" id="profGradesTable">
           <thead>
             <tr>
-              <th style="width: 200px;">ÉLÈVE</th>
+              <th style="width: 150px;">ÉLÈVE</th>
               {% for p in periods %}
                 {% if 'EXA' not in p %}
-                  <th class="text-center" style="width: 80px;" data-period="{{ p }}">
+                  <th class="text-center" style="width: 62px;" data-period="{{ p }}">
                     {{ p }}
                     {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
                   </th>
                 {% else %}
-                  <th class="text-center" style="width: 80px;" data-period="{{ p }}">
+                  <th class="text-center" style="width: 62px;" data-period="{{ p }}">
                     {{ p }}
                     {% if p in submitted_periods %}<span class="ms-1 text-danger" title="Verrouillée">🔒</span>{% endif %}
                   </th>
                 {% endif %}
                 {% if p == 'EXA1' %}
-                  <th class="text-center" style="background: #f8f9fa; width: 90px;">TOTAL 1</th>
+                  <th class="text-center" style="background: #f8f9fa; width: 68px;">TOTAL 1</th>
                 {% elif p == 'EXA2' %}
-                  <th class="text-center" style="background: #f8f9fa; width: 90px;">TOTAL 2</th>
+                  <th class="text-center" style="background: #f8f9fa; width: 68px;">TOTAL 2</th>
                 {% endif %}
               {% endfor %}
-              <th class="text-center" style="background: #fff3cd; width: 120px;">TOTAL GÉNÉRAL</th>
-              <th class="text-center" style="background: #fff3cd; width: 80px;">%</th>
+              <th class="text-center" style="background: #fff3cd; width: 92px;">TOTAL GÉNÉRAL</th>
+              <th class="text-center" style="background: #fff3cd; width: 58px;">%</th>
             </tr>
           </thead>
           <tbody id="studentsTableBody">
             {% for st in all_students_for_class %}
             <tr data-student-id="{{ st.id }}">
-              <td class="fw-medium text-truncate" style="max-width: 200px;" title="{{ st.full_name }}">{{ st.full_name }}</td>
+              <td class="fw-medium text-truncate" style="max-width: 150px;" title="{{ st.full_name }}">{{ st.full_name }}</td>
               {% for p in periods %}
                 {% set is_exa = 'EXA' in p %}
                 {% set is_locked = p in submitted_periods %}
