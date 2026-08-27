@@ -13,6 +13,13 @@ def slugify(value):
 db = SQLAlchemy()
 
 
+user_schools = db.Table(
+    'user_schools',
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('school_id', db.Integer, db.ForeignKey('schools.id'), primary_key=True),
+)
+
+
 class School(db.Model):
     __tablename__ = 'schools'
 
@@ -29,9 +36,11 @@ class School(db.Model):
     bulletin_school_name = db.Column(db.String(255), nullable=True)
     school_code = db.Column(db.String(50), nullable=True)
     slogan = db.Column(db.String(255), nullable=True)
+    other_denomination = db.Column(db.String(255), nullable=True)
     study_prefect_name = db.Column(db.String(120), nullable=True)
-    ministry = db.Column(db.String(255), nullable=True, default="MINISTERE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE", server_default="MINISTERE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE")
-    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text('1'))
+    deliberation_message = db.Column(db.Text, nullable=True)
+    ministry = db.Column(db.String(255), nullable=True, default="MINISTERE DE L'ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE", server_default=db.text("'MINISTERE DE L''ENSEIGNEMENT PRIMAIRE, SECONDAIRE ET TECHNIQUE'"))
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text('true'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     users = db.relationship('User', back_populates='school', lazy='dynamic')
@@ -46,6 +55,9 @@ class School(db.Model):
     holidays = db.relationship('SchoolHoliday', back_populates='school', lazy='dynamic')
     subscriptions = db.relationship('SchoolSubscription', back_populates='school', lazy='dynamic')
     remote_support_tickets = db.relationship('RemoteSupportTicket', back_populates='school', lazy='dynamic')
+    exam_rooms = db.relationship('ExamRoom', back_populates='school', lazy='dynamic')
+    exam_assignments = db.relationship('ExamAssignment', back_populates='school', lazy='dynamic')
+    exam_configs = db.relationship('ExamConfig', back_populates='school', lazy='dynamic')
 
 
 class User(UserMixin, db.Model):
@@ -55,13 +67,14 @@ class User(UserMixin, db.Model):
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=True)  # Nullable pour super_admin
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.Enum('super_admin', 'school_admin', 'secretary', 'discipline', 'professor', name='role_enum'), nullable=False)
+    role = db.Column(db.Enum('super_admin', 'school_admin', 'secretary', 'discipline', 'professor', 'titulaire', name='role_enum'), nullable=False)
+    titulaire_section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), nullable=True)
     full_name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     
     # Added for user management
-    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text('1'))  # For blocking/unblocking
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text('true'))  # For blocking/unblocking
     last_login_at = db.Column(db.DateTime, nullable=True)
     last_login_ip = db.Column(db.String(45), nullable=True)  # IPv6 compatible
     login_failed_attempts = db.Column(db.Integer, default=0, nullable=False)
@@ -70,8 +83,12 @@ class User(UserMixin, db.Model):
     password_reset_token = db.Column(db.String(100), nullable=True)
     password_reset_expires = db.Column(db.DateTime, nullable=True)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+    qualification = db.Column(db.String(120), nullable=True)
+    journee_pedagogique = db.Column(db.String(120), nullable=True)
 
     school = db.relationship('School', back_populates='users')
+    titulaire_section = db.relationship('Section', foreign_keys=[titulaire_section_id], backref=db.backref('titulaire_users', lazy='dynamic'))
+    linked_schools = db.relationship('School', secondary=user_schools, backref=db.backref('linked_users', lazy='dynamic'))
     courses = db.relationship('Course', back_populates='professor', lazy='dynamic')
     attendance_records = db.relationship('AttendanceRecord', foreign_keys='AttendanceRecord.professor_id', back_populates='professor', lazy='dynamic')
     created_subscriptions = db.relationship('SchoolSubscription', foreign_keys='SchoolSubscription.created_by_user_id', back_populates='created_by_user', lazy='dynamic')
@@ -108,8 +125,46 @@ class User(UserMixin, db.Model):
     def is_professor(self):
         return self.role == 'professor'
 
+    def is_titulaire(self):
+        return self.role == 'titulaire'
+
     def is_secretaire(self):
         return self.role == 'secretary'
+
+    def accessible_schools(self):
+        """Écoles accessibles à l'utilisateur.
+
+        Super admin : toutes les écoles.
+        Professeur : son école d'attache + les écoles où il est explicitement
+        lié (user_schools) + les écoles où il enseigne (cours attribués).
+        Autres rôles : son école d'attache uniquement.
+        """
+        if self.is_super_admin():
+            return School.query.order_by(School.name).all()
+
+        school_ids = set()
+        if self.school_id:
+            school_ids.add(self.school_id)
+        if self.is_professor():
+            from models import Course
+            course_school_ids = [
+                row[0] for row in Course.query.filter(
+                    Course.professor_id == self.id,
+                    Course.school_id.isnot(None)
+                ).with_entities(Course.school_id).distinct().all()
+            ]
+            school_ids.update(course_school_ids)
+        school_ids.update(school.id for school in self.linked_schools)
+
+        if not school_ids:
+            return []
+        return School.query.filter(School.id.in_(school_ids), School.is_active.is_(True)).order_by(School.name).all()
+
+    def can_access_school(self, school_id):
+        """Retourne True si l'utilisateur peut accéder à l'école donnée."""
+        if self.is_super_admin():
+            return True
+        return any(school.id == school_id for school in self.accessible_schools())
 
 
 class Section(db.Model):
@@ -165,6 +220,7 @@ class Student(db.Model):
     email = db.Column(db.String(120))
     photo_url = db.Column(db.String(255))
     academic_year = db.Column(db.String(30), nullable=True)
+    is_promoted = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('false'))
     registered_at = db.Column(db.DateTime, server_default=db.func.now())
 
     school = db.relationship('School', back_populates='students')
@@ -175,6 +231,9 @@ class Student(db.Model):
 
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def display_name(self):
+        return f"{self.last_name} {self.first_name}".strip()
 
     def generate_slug(self):
         return slugify(self.full_name())
@@ -187,12 +246,13 @@ class Grade(db.Model):
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
-    period = db.Column(db.String(30), nullable=False, default='P1', server_default='P1')
+    period = db.Column(db.String(30), nullable=False, default='P1', server_default=db.text("'P1'"))
     value = db.Column(db.Numeric(5, 2), nullable=False)
     submitted = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('FALSE'))
     submitted_at = db.Column(db.DateTime, nullable=True)
     submitted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     academic_year = db.Column(db.String(30), nullable=True)
+    flagged = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('FALSE'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
@@ -263,11 +323,11 @@ class Notification(db.Model):
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     actor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    notification_type = db.Column(db.String(50), nullable=False, default='general', server_default='general')
+    notification_type = db.Column(db.String(50), nullable=False, default='general',     server_default=db.text("'general'"))
     title = db.Column(db.String(150), nullable=False)
     message = db.Column(db.Text, nullable=False)
     url = db.Column(db.String(500), nullable=True)
-    is_read = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('0'))
+    is_read = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('false'))
     read_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
@@ -287,7 +347,7 @@ class AttendanceRecord(db.Model):
     professor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     attendance_date = db.Column(db.Date, nullable=False)
     period = db.Column(db.String(30), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='present', server_default=db.text('present'))
+    status = db.Column(db.String(20), nullable=False, default='present', server_default=db.text("'present'"))
     note = db.Column(db.String(255), nullable=True)
     academic_year = db.Column(db.String(30), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -345,11 +405,11 @@ class BulletinConfig(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
-    section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), nullable=False)
+    section_id = db.Column(db.Integer, db.ForeignKey('sections.id'), nullable=True)
     level = db.Column(db.String(50), nullable=False)
     ige_number = db.Column(db.String(50), nullable=True)  # Format: IGE/PS/026
     academic_year = db.Column(db.String(30), nullable=True)
-    validated = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('0'))
+    validated = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('false'))
     validated_at = db.Column(db.DateTime, nullable=True)
     validated_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -360,7 +420,7 @@ class BulletinConfig(db.Model):
     validated_by_user = db.relationship('User', foreign_keys=[validated_by_user_id])
     branches = db.relationship('BulletinBranch', back_populates='config', cascade='all, delete-orphan', lazy='dynamic')
 
-    __table_args__ = (db.UniqueConstraint('school_id', 'section_id', 'level', 'academic_year', name='unique_bulletin_config'),)
+    __table_args__ = (db.UniqueConstraint('school_id', 'section_id', 'level', 'academic_year', name='unique_bulletin_config_per_section_level'),)
     
     def generate_ige_number(self):
         """Generate IGE number in format IGE/[SECTION]/[NUMERO]"""
@@ -406,9 +466,7 @@ class BulletinConfig(db.Model):
     
     def _get_next_ige_sequence(self, section_abbr):
         """Get next sequence number for this section"""
-        from flask import current_app
-        
-        # Query all IGE numbers for this section in this school that start with IGE/[abbr]/
+    # Query all IGE numbers for this section in this school that start with IGE/[abbr]/
         prefix = f"IGE/{section_abbr}/"
         
         # Get the highest number already used
@@ -437,7 +495,7 @@ class BulletinBranch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     config_id = db.Column(db.Integer, db.ForeignKey('bulletin_configs.id'), nullable=False)
     type = db.Column(db.String(20), default='branch')  # 'domain', 'subdomain', or 'branch'
-    category = db.Column(db.String(30), default='general', server_default='general') # 'general', 'specifique', 'option'
+    category = db.Column(db.String(30), default='general',     server_default=db.text("'general'")) # 'general', 'specifique', 'option'
     domain = db.Column(db.String(120))
     subdomain = db.Column(db.String(120))
     name = db.Column(db.String(120), nullable=False)
@@ -469,7 +527,7 @@ class AcademicYear(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), unique=True, nullable=False)  # Ex: "2025 - 2026"
-    is_active = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('0'))
+    is_active = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text('false'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
 
@@ -479,13 +537,13 @@ class SchoolSubscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
     plan_name = db.Column(db.String(120), nullable=False)
-    billing_cycle = db.Column(db.String(30), nullable=False, default='monthly', server_default='monthly')
+    billing_cycle = db.Column(db.String(30), nullable=False, default='monthly', server_default=db.text("'monthly'"))
     amount = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
-    currency = db.Column(db.String(10), nullable=False, default='USD', server_default='USD')
+    currency = db.Column(db.String(10), nullable=False, default='USD', server_default=db.text("'USD'"))
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(30), nullable=False, default='pending_payment', server_default='pending_payment')
-    auto_renew = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('0'))
+    status = db.Column(db.String(30), nullable=False, default='pending_payment', server_default=db.text("'pending_payment'"))
+    auto_renew = db.Column(db.Boolean, nullable=False, default=False, server_default=db.text('false'))
     notes = db.Column(db.Text, nullable=True)
     activated_at = db.Column(db.DateTime, nullable=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -504,10 +562,10 @@ class SchoolSubscriptionPayment(db.Model):
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
     subscription_id = db.Column(db.Integer, db.ForeignKey('school_subscriptions.id'), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
-    currency = db.Column(db.String(10), nullable=False, default='USD', server_default='USD')
+    currency = db.Column(db.String(10), nullable=False, default='USD', server_default=db.text("'USD'"))
     paid_on = db.Column(db.Date, nullable=False, default=date.today)
     reference = db.Column(db.String(120), nullable=True)
-    status = db.Column(db.String(30), nullable=False, default='pending', server_default='pending')
+    status = db.Column(db.String(30), nullable=False, default='pending', server_default=db.text("'pending'"))
     note = db.Column(db.Text, nullable=True)
     confirmed_at = db.Column(db.DateTime, nullable=True)
     confirmed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -523,13 +581,13 @@ class RemoteSupportTicket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
-    request_type = db.Column(db.String(30), nullable=False, default='maintenance', server_default='maintenance')
+    request_type = db.Column(db.String(30), nullable=False, default='maintenance', server_default=db.text("'maintenance'"))
     subject = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     preferred_contact = db.Column(db.String(120), nullable=True)
     remote_tool = db.Column(db.String(80), nullable=True)
     scheduled_at = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(30), nullable=False, default='open', server_default='open')
+    status = db.Column(db.String(30), nullable=False, default='open', server_default=db.text("'open'"))
     resolution_notes = db.Column(db.Text, nullable=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     handled_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -638,4 +696,65 @@ class DeliberationResult(db.Model):
     
     __table_args__ = (
         db.UniqueConstraint('student_id', 'academic_year', 'period', name='unique_student_deliberation'),
+    )
+
+
+class ExamRoom(db.Model):
+    __tablename__ = 'exam_rooms'
+
+    id = db.Column(db.Integer, primary_key=True)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    benches = db.Column(db.Integer, nullable=False, default=0)
+    students_per_bench = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    school = db.relationship('School', back_populates='exam_rooms')
+    assignments = db.relationship('ExamAssignment', back_populates='room', lazy='dynamic', cascade='all, delete-orphan')
+
+    @property
+    def capacity(self):
+        return max(0, self.benches or 0) * max(0, self.students_per_bench or 0)
+
+
+class ExamAssignment(db.Model):
+    __tablename__ = 'exam_assignments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    exam_room_id = db.Column(db.Integer, db.ForeignKey('exam_rooms.id'), nullable=False)
+    academic_year = db.Column(db.String(30), nullable=False)
+    macaron_number = db.Column(db.Integer, nullable=False)
+    bench_number = db.Column(db.Integer, nullable=False)
+    seat_number = db.Column(db.Integer, nullable=False)
+    session_label = db.Column(db.String(120), nullable=True)
+    start_date = db.Column(db.String(20), nullable=True)
+    end_date = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    school = db.relationship('School', back_populates='exam_assignments')
+    student = db.relationship('Student')
+    room = db.relationship('ExamRoom', back_populates='assignments')
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'academic_year', name='unique_student_exam_year'),
+    )
+
+
+class ExamConfig(db.Model):
+    __tablename__ = 'exam_configs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False)
+    academic_year = db.Column(db.String(30), nullable=False)
+    session_label = db.Column(db.String(120), nullable=False, default='')
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    school = db.relationship('School', back_populates='exam_configs')
+
+    __table_args__ = (
+        db.UniqueConstraint('school_id', 'academic_year', name='uq_exam_config_school_year'),
     )

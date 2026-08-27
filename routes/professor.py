@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, g, session, send_file
 from flask_login import login_required, current_user, logout_user
 from sqlalchemy import func
-from models import db, Course, Student, Grade, Section, BulletinConfig, BulletinBranch, User, AttendanceRecord, Notification
+from models import db, Course, Student, Grade, Section, BulletinConfig, BulletinBranch, User, AttendanceRecord, Notification, School
+from routes.attendance_utils import class_denomination, class_denomination_from_parts
+from url_utils import decode_id_or_int
 from datetime import datetime, date, timedelta
 from io import BytesIO
 import re
@@ -59,8 +61,7 @@ def _course_scope_query(school_id):
 def _attendance_scope_label(section):
     if not section:
         return None
-    parts = [section.name, section.level, section.class_name]
-    return ' / '.join(part for part in parts if part)
+    return class_denomination(section)
 
 
 def _attendance_course_title(period):
@@ -166,7 +167,6 @@ def _build_attendance_payload(course=None, section=None, attendance_day=None, ye
 
     if course is not None:
         section = getattr(course, 'section', None)
-        school_id = course.school_id
         students = Student.query.filter_by(
             school_id=course.school_id,
             section_id=course.section_id,
@@ -182,7 +182,6 @@ def _build_attendance_payload(course=None, section=None, attendance_day=None, ye
         if period:
             records_query = records_query.filter_by(period=period)
     else:
-        school_id = section.school_id
         students = Student.query.filter_by(
             school_id=section.school_id,
             section_id=section.id,
@@ -261,16 +260,16 @@ def _coerce_branch_value(branch, field_name, fallback_field=None, default_value=
 def _branch_period_limits(branch):
     return {
         '1èP': _coerce_branch_value(branch, 'max_period_1', default_value=10),
-        '2èP': _coerce_branch_value(branch, 'max_period_2', 'max_period_1', 10),
+        '2èP': _coerce_branch_value(branch, 'max_period_2', default_value=10),
         'EXA1': _coerce_branch_value(branch, 'max_exam_1', default_value=20),
-        '3èP': _coerce_branch_value(branch, 'max_period_3', 'max_period_1', 10),
-        '4èP': _coerce_branch_value(branch, 'max_period_4', 'max_period_1', 10),
-        'EXA2': _coerce_branch_value(branch, 'max_exam_2', 'max_exam_1', 20),
+        '3èP': _coerce_branch_value(branch, 'max_period_3', default_value=10),
+        '4èP': _coerce_branch_value(branch, 'max_period_4', default_value=10),
+        'EXA2': _coerce_branch_value(branch, 'max_exam_2', default_value=20),
         'REPECHAGE': 100.0,
     }
 
 
-def _get_repechage_eligible_student_ids(school_id, year, student_ids):
+def _get_repechage_eligible_student_ids(school_id, year, student_ids, course=None):
     if not student_ids:
         return set()
     from models import DeliberationResult
@@ -281,6 +280,12 @@ def _get_repechage_eligible_student_ids(school_id, year, student_ids):
         DeliberationResult.student_id.in_(student_ids),
         DeliberationResult.decision == 'PASSAGE APRES REPECHAGE'
     ).all()
+    if course and course.title:
+        target = course.title.strip()
+        return {
+            result.student_id for result in results
+            if any(note.strip() == target for note in (result.notes or '').split(';') if note.strip())
+        }
     return {result.student_id for result in results}
 
 
@@ -326,8 +331,7 @@ def _visible_sections_for_current_user(school_id):
 
     Pour les utilisateurs 'discipline' : toutes les sections de l'ecole.
     Pour les professeurs : sections liees a leurs cours (via professor_id).
-    Fallback : si aucun cours n'est attribue au professeur, retourne les sections
-    issues des BulletinConfig pour permettre la navigation.
+    Filtre les classes accessibles au professeur selon ses cours attribués.
     """
     if _is_discipline_user():
         return Section.query.filter_by(school_id=school_id).order_by(
@@ -348,22 +352,6 @@ def _visible_sections_for_current_user(school_id):
         query = query.filter(Course.professor_id == current_user.id)
 
     sections = query.distinct().order_by(Section.name, Section.level, Section.class_name).all()
-
-    # Fallback : si aucune section trouvee pour un professeur (pas encore de cours assignes),
-    # on retourne les sections liees aux BulletinConfigs de l'ecole pour permettre
-    # au moins la navigation hierarchique
-    if not sections and _is_professor_user():
-        sections = (
-            Section.query
-            .join(BulletinConfig, BulletinConfig.section_id == Section.id)
-            .filter(
-                Section.school_id == school_id,
-                BulletinConfig.school_id == school_id,
-            )
-            .distinct()
-            .order_by(Section.name, Section.level, Section.class_name)
-            .all()
-        )
 
     return sections
 
@@ -397,15 +385,14 @@ def _get_course_branch(course):
 
     config = BulletinConfig.query.filter_by(
         school_id=course.school_id,
-        section_id=course.section_id,
+        section_id=section.id,
         level=section.level
     ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
     if not config:
-        config = BulletinConfig.query.join(Section, BulletinConfig.section_id == Section.id).filter(
-            BulletinConfig.school_id == course.school_id,
-            Section.school_id == course.school_id,
-            Section.name == section.name,
-            BulletinConfig.level == section.level
+        config = BulletinConfig.query.filter_by(
+            school_id=course.school_id,
+            section_id=section.id,
+            level=section.level
         ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
     if not config:
         return getattr(course, 'branch', None)
@@ -467,12 +454,20 @@ def restrict_professor():
     if not current_user.is_authenticated:
         return redirect(url_for('auth.login'))
 
-    if current_user.school and not current_user.school.is_active:
+    g.school_id = g.school.id if getattr(g, 'school', None) else current_user.school_id
+
+    if current_user.is_professor() and current_user.must_change_password:
+        redirect_args = {}
+        if getattr(g, 'school_slug', None):
+            redirect_args['school_slug'] = g.school_slug
+        return redirect(url_for('auth.change_password', **redirect_args))
+
+    if getattr(g, 'school', None) and not g.school.is_active and not current_user.is_super_admin():
         logout_user()
         return redirect(url_for('auth.login'))
 
     if getattr(g, 'school_slug', None) and not current_user.is_super_admin():
-        if not current_user.school or current_user.school.slug != g.school_slug:
+        if not current_user.can_access_school(g.school_id):
             return redirect(url_for('auth.redirect_by_role'))
 
     # Allow administrators and secretaries access to shared export endpoints
@@ -485,8 +480,8 @@ def restrict_professor():
 
 @professor_bp.route('/')
 def dashboard(school_slug=None):
-    school_id = current_user.school_id
-    school_slug = current_user.school.slug if current_user.school and current_user.school.slug else school_slug
+    school_id = g.school_id
+    school_slug = school_slug or (current_user.school.slug if current_user.school and current_user.school.slug else None)
     can_manage_grades = _is_professor_user()
     can_manage_attendance = _is_discipline_user()
     can_view_notifications = can_manage_grades
@@ -506,8 +501,8 @@ def dashboard(school_slug=None):
     if not class_name:
         class_name = _normalize_lookup_value(request.args.get('class', type=str))
 
-    section_id = request.args.get('section_id', type=int)
-    course_id = request.args.get('course_id', type=int)
+    section_id = decode_id_or_int(request.args.get('section_id'))
+    course_id = decode_id_or_int(request.args.get('course_id'))
 
     course = None
     students = []
@@ -517,6 +512,8 @@ def dashboard(school_slug=None):
     branch_enabled = None
     branch_name = None
     repechage_eligible_student_ids = set()
+    flagged_student_ids = set()
+    flagged_grade_pairs = set()
     selected_section_name = section_name
     selected_level = level
     selected_class_name = class_name
@@ -594,6 +591,8 @@ def dashboard(school_slug=None):
                     academic_year=year
                 ).order_by(Student.last_name, Student.first_name).all()
                 all_grades = Grade.query.filter_by(school_id=school_id, course_id=course.id, academic_year=year).all()
+                flagged_student_ids = {gr.student_id for gr in all_grades if gr.flagged}
+                flagged_grade_pairs = {(gr.student_id, gr.period) for gr in all_grades if gr.flagged}
                 for grade in all_grades:
                     if grade.student_id not in grades_by_period:
                         grades_by_period[grade.student_id] = {}
@@ -608,9 +607,21 @@ def dashboard(school_slug=None):
                 }
 
                 student_ids = [student.id for student in students]
-                repechage_eligible_student_ids = _get_repechage_eligible_student_ids(school_id, year, student_ids)
+                repechage_eligible_student_ids = _get_repechage_eligible_student_ids(school_id, year, student_ids, course=course)
 
-    selected_class_label = ' / '.join(part for part in [selected_section_name, selected_level, selected_class_name] if part)
+                # Lorsque la période REPECHAGE est sélectionnée, ne garder que les élèves
+                # admis au repêchage pour ce cours précis (si une délibération existe déjà).
+                if request.args.get('period') == 'REPECHAGE':
+                    has_repechage_results = bool(
+                        _get_repechage_eligible_student_ids(school_id, year, student_ids)
+                    )
+                    if has_repechage_results:
+                        repechage_for_course = _get_repechage_eligible_student_ids(
+                            school_id, year, student_ids, course=course
+                        )
+                        students = [st for st in students if st.id in repechage_for_course]
+
+    selected_class_label = class_denomination_from_parts(selected_section_name, selected_level, selected_class_name)
 
     # --- Preload all hierarchical data server-side so dropdowns fill immediately without AJAX ---
     attendance_prefix = ATTENDANCE_COURSE_TITLE_PREFIX
@@ -671,7 +682,12 @@ def dashboard(school_slug=None):
             all_courses_for_class = [{'id': c.id, 'title': c.title} for c in cq.order_by(Course.title).all()]
 
     # Students list for preload
-    all_students_for_class = [{'id': st.id, 'full_name': st.full_name()} for st in students]
+    all_students_for_class = [{
+        'id': st.id,
+        'full_name': st.full_name(),
+        'last_name': st.last_name,
+        'first_name': st.first_name,
+    } for st in students]
 
     notifications = []
     unread_notifications_count = 0
@@ -686,10 +702,22 @@ def dashboard(school_slug=None):
             is_read=False
         ).count()
 
-    school_obj = current_user.school if current_user.school else None
+    school_obj = getattr(g, 'school', None) or (current_user.school if current_user.school else None)
     school_name_display = school_obj.name if school_obj else ''
+    is_home_school = bool(school_obj and current_user.school_id == school_obj.id)
     professor_name = current_user.full_name if hasattr(current_user, 'full_name') else current_user.username
     dashboard_title = f'Bienvenue {professor_name} - Saisie des cotes' if can_manage_grades else 'Gestion des présences et de la conduite'
+
+    accessible_schools = []
+    if not current_user.is_super_admin():
+        accessible_schools = current_user.accessible_schools()
+
+    titulaire_section = None
+    titulaire_url = None
+    if current_user.titulaire_section_id:
+        titulaire_section = db.session.get(Section, current_user.titulaire_section_id)
+        if titulaire_section and current_user.school:
+            titulaire_url = url_for('titulaire.dashboard', school_slug=current_user.school.slug)
 
     return render_template('professor/dashboard.html',
                            course=course,
@@ -705,6 +733,8 @@ def dashboard(school_slug=None):
                            branch_enabled=branch_enabled,
                            branch_name=branch_name,
                            repechage_eligible_student_ids=list(repechage_eligible_student_ids) if course else [],
+                           flagged_student_ids=flagged_student_ids if course else set(),
+                           flagged_grade_pairs=flagged_grade_pairs if course else set(),
                            notifications=notifications,
                            unread_notifications_count=unread_notifications_count,
                            can_manage_grades=can_manage_grades,
@@ -712,6 +742,8 @@ def dashboard(school_slug=None):
                            can_view_notifications=can_view_notifications,
                            school_slug=school_slug,
                            school_name=school_name_display,
+                           is_home_school=is_home_school,
+                           accessible_schools=accessible_schools,
                            conduite_url=url_for('discipline.dashboard', school_slug=school_slug) if can_manage_attendance and school_slug else None,
                            selected_class_label=selected_class_label,
                            all_section_names=all_section_names,
@@ -719,13 +751,15 @@ def dashboard(school_slug=None):
                            all_classes=all_classes,
                            all_courses_for_class=all_courses_for_class,
                            all_students_for_class=all_students_for_class,
+                           titulaire_section=titulaire_section,
+                           titulaire_url=titulaire_url,
                            dashboard_title=dashboard_title)
 
 @professor_bp.route('/api/sections')
 @login_required
 def get_sections(school_slug=None):
     """Get all section names available to the current role."""
-    school_id = current_user.school_id
+    school_id = g.school_id
     sections = _visible_sections_for_current_user(school_id)
     return jsonify(_unique_sorted_values(section.name for section in sections))
 
@@ -734,7 +768,7 @@ def get_sections(school_slug=None):
 @login_required
 def get_levels(section_name=None, school_slug=None):
     """Get all levels available for a section name."""
-    school_id = current_user.school_id
+    school_id = g.school_id
     section_name = _normalize_lookup_value(
         section_name
         or request.args.get('section_name', type=str)
@@ -751,7 +785,7 @@ def get_levels(section_name=None, school_slug=None):
 @login_required
 def get_classes(section_name=None, level=None, school_slug=None):
     """Get all classes for a section name and level."""
-    school_id = current_user.school_id
+    school_id = g.school_id
     section_name = _normalize_lookup_value(
         section_name
         or request.args.get('section_name', type=str)
@@ -769,7 +803,7 @@ def get_classes(section_name=None, level=None, school_slug=None):
 @login_required
 def get_courses(section_name=None, level=None, class_name=None, school_slug=None):
     """Get all courses for a section/level/class."""
-    school_id = current_user.school_id
+    school_id = g.school_id
     section_name = _normalize_lookup_value(
         section_name
         or request.args.get('section_name', type=str)
@@ -802,18 +836,6 @@ def get_courses(section_name=None, level=None, class_name=None, school_slug=None
 
     courses = query.order_by(Course.title).all()
 
-    # Fallback : si aucun cours avec professor_id, retourne tous les cours de la section
-    # (cas ou le professeur n'a pas encore de cours assignes dans la base)
-    if not courses and _is_professor_user():
-        query_fallback = Course.query.filter(
-            Course.school_id == school_id,
-            Course.section_id.in_(section_ids),
-            ~Course.title.like(f'{attendance_prefix}%'),
-            ~Course.title.like('Pr_sence de classe%'),
-            ~Course.title.like('Presence de classe%'),
-        )
-        courses = query_fallback.order_by(Course.title).all()
-
     return jsonify([{
         'id': c.id,
         'title': c.title,
@@ -829,7 +851,7 @@ def get_courses(section_name=None, level=None, class_name=None, school_slug=None
 @login_required
 def get_students(section_name=None, level=None, class_name=None, school_slug=None):
     """Get students for a section/level/class."""
-    school_id = current_user.school_id
+    school_id = g.school_id
     section_name = _normalize_lookup_value(
         section_name
         or request.args.get('section_name', type=str)
@@ -865,10 +887,10 @@ def get_students(section_name=None, level=None, class_name=None, school_slug=Non
 
 
 @professor_bp.route('/api/attendance', methods=['GET'])
-@professor_bp.route('/api/attendance/<int:course_id>', methods=['GET'])
+@professor_bp.route('/api/attendance/<oid:course_id>', methods=['GET'])
 @login_required
 def get_attendance(course_id=None, school_slug=None):
-    school_id = current_user.school_id
+    school_id = g.school_id
     if not _is_discipline_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
@@ -922,7 +944,7 @@ def print_attendance_period(school_slug=None):
     if not _is_discipline_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    school_id = current_user.school_id
+    school_id = g.school_id
     query_course_id = request.args.get('course_id', type=int)
     section_name = _normalize_lookup_value(request.args.get('section_name', type=str))
     level = _normalize_lookup_value(request.args.get('level', type=str))
@@ -1005,7 +1027,7 @@ def print_attendance_period(school_slug=None):
 
     return render_template(
         'professor/attendance_print.html',
-        school=current_user.school,
+        school=getattr(g, 'school', None) or current_user.school,
         class_label=_attendance_scope_label(section),
         period_label=period_label,
         start_date_label=_format_attendance_date(start_day),
@@ -1021,7 +1043,7 @@ def print_attendance_period(school_slug=None):
 @login_required
 def save_attendance(school_slug=None):
     data = request.get_json() or {}
-    school_id = current_user.school_id
+    school_id = g.school_id
     course_id = data.get('course_id')
     entries = data.get('entries') or []
     attendance_day = _parse_attendance_date(data.get('attendance_date'))
@@ -1157,12 +1179,19 @@ def save_grade(school_slug=None):
     value = data.get('value')
     period = data.get('period', '1èP')
     course_id = data.get('course_id')
-    school_id = current_user.school_id
+    school_id = g.school_id
     
     # Validate course belongs to professor
     course = Course.query.filter_by(id=course_id, school_id=school_id, professor_id=current_user.id).first()
     if not course:
         return jsonify({'error': 'Aucun cours associé.'}), 403
+
+    # Validate student belongs to the course's section (no cross-class writes)
+    student = Student.query.filter_by(
+        id=student_id, school_id=school_id, section_id=course.section_id
+    ).first()
+    if not student:
+        return jsonify({'error': 'Élève introuvable dans cette classe.'}), 403
 
     # Check if this grade is locked (submitted) by the secretary
     year = session.get('academic_year', '2025 - 2026')
@@ -1207,6 +1236,13 @@ def save_grade(school_slug=None):
 
 
 def _save_grade_draft_entry(course, school_id, student_id, period, value, year):
+    # Validate student belongs to the course's section (no cross-class writes)
+    student = Student.query.filter_by(
+        id=student_id, school_id=school_id, section_id=course.section_id
+    ).first()
+    if not student:
+        return None, {'error': "Élève introuvable dans cette classe."}, 403
+
     existing_grade = Grade.query.filter_by(
         school_id=school_id,
         student_id=student_id,
@@ -1271,7 +1307,7 @@ def save_grades_draft(school_slug=None):
     data = request.get_json() or {}
     course_id = data.get('course_id')
     entries = data.get('grades') or []
-    school_id = current_user.school_id
+    school_id = g.school_id
 
     if not course_id:
         return jsonify({'error': 'course_id est requis.'}), 400
@@ -1332,7 +1368,7 @@ def submit_period(school_slug=None):
     data = request.get_json() or {}
     course_id = data.get('course_id')
     period = data.get('period')
-    school_id = current_user.school_id
+    school_id = g.school_id
 
     if not course_id or not period:
         return jsonify({'error': 'course_id et period sont requis.'}), 400
@@ -1388,14 +1424,41 @@ def submit_period(school_slug=None):
     })
 
 
-@professor_bp.route('/api/get-period-status/<int:course_id>', methods=['GET'])
+@professor_bp.route('/api/get-flagged-grades/<oid:course_id>', methods=['GET'])
+@login_required
+def get_flagged_grades(course_id, school_slug=None):
+    """Return flagged (student_id, period) pairs for a course, so the professor
+    sees in real time which grades were modified by the titulaire/secretary."""
+    if not _is_professor_user():
+        return jsonify({'error': 'Accès refusé.'}), 403
+
+    school_id = g.school_id
+    course = Course.query.filter_by(id=course_id, school_id=school_id, professor_id=current_user.id).first()
+    if not course:
+        return jsonify({'error': 'Aucun cours associé.'}), 403
+
+    year = session.get('academic_year', '2025 - 2026')
+    flagged = Grade.query.filter_by(
+        school_id=school_id,
+        course_id=course.id,
+        academic_year=year,
+        flagged=True,
+    ).all()
+
+    return jsonify([
+        {'student_id': gr.student_id, 'period': gr.period, 'value': float(gr.value) if gr.value is not None else None}
+        for gr in flagged
+    ])
+
+
+@professor_bp.route('/api/get-period-status/<oid:course_id>', methods=['GET'])
 @login_required
 def get_period_status(course_id, school_slug=None):
     """Get submission status for each period of a course"""
     if not _is_professor_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    school_id = current_user.school_id
+    school_id = g.school_id
     course = Course.query.filter_by(id=course_id, school_id=school_id, professor_id=current_user.id).first()
     if not course:
         return jsonify({'error': 'Aucun cours associé.'}), 403
@@ -1450,7 +1513,7 @@ def export_fiche_cotes(school_slug=None):
         filled = int(filled)
     except ValueError:
         filled = 0
-    course_id = request.args.get('course_id', type=int)
+    course_id = decode_id_or_int(request.args.get('course_id'))
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1465,7 +1528,7 @@ def export_fiche_cotes(school_slug=None):
         cell.font = header_font
 
     if filled == 1 and course_id:
-        school_id = current_user.school_id
+        school_id = g.school_id
         course = Course.query.filter_by(id=course_id, school_id=school_id, professor_id=current_user.id).first()
         if not course:
             return jsonify({'error': 'Cours introuvable ou non autorisé.'}), 404
@@ -1474,10 +1537,10 @@ def export_fiche_cotes(school_slug=None):
         students = students.order_by(Student.last_name, Student.first_name).all()
         grades = Grade.query.filter_by(school_id=school_id, course_id=course.id, academic_year=year).all()
         grades_by_student = {}
-        for g in grades:
-            grades_by_student.setdefault(g.student_id, {})[g.period] = g.value
+        for grade in grades:
+            grades_by_student.setdefault(grade.student_id, {})[grade.period] = grade.value
         for s in students:
-            row = [s.last_name, s.first_name, f"{course.section.name if course.section else ''} {course.section.level if course.section else ''} {course.section.class_name if course.section else ''}"]
+            row = [s.last_name, s.first_name, class_denomination(course.section)]
             for p in PERIODS:
                 row.append(grades_by_student.get(s.id, {}).get(p, ''))
             ws.append(row)
@@ -1511,10 +1574,10 @@ def export_grades_model(school_slug=None):
     if not (_is_professor_user() or current_user.is_admin() or current_user.is_secretary()):
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    course_id = request.args.get('course_id', type=int)
+    course_id = decode_id_or_int(request.args.get('course_id'))
     
-    school_id = current_user.school_id
-    course = Course.query.filter_by(id=course_id, school_id=school_id).first()
+    school_id = g.school_id
+    course = _course_scope_query(school_id).filter(Course.id == course_id).first()
     if not course:
         return jsonify({'error': 'Cours introuvable.'}), 404
 
@@ -1524,8 +1587,8 @@ def export_grades_model(school_slug=None):
 
     grades = Grade.query.filter_by(school_id=school_id, course_id=course.id, academic_year=year).all()
     grades_by_student = {}
-    for g in grades:
-        grades_by_student.setdefault(g.student_id, {})[g.period] = g.value
+    for grade in grades:
+        grades_by_student.setdefault(grade.student_id, {})[grade.period] = grade.value
 
     branch = _get_course_branch(course)
     limits = _branch_period_limits(branch) if branch else {}
@@ -1553,17 +1616,39 @@ def export_grades_model(school_slug=None):
         ws.column_dimensions[col].width = 8
 
     # Headers and static text
-    ws['A1'] = "COMPLEXE SCOLAIRE NGUDI A NGEMBA"
-    ws['A1'].font = Font(bold=True)
-    ws['A2'] = "KONGO CENTRAL MBANZA NGUNGU"
-    ws['A2'].font = Font(underline='single')
+    school = School.query.get(g.school_id) if g.school_id else None
+    school_name = (school.bulletin_school_name or school.name) if school else ''
+    other_denomination = (school.other_denomination or '').strip() if school else ''
+    school_commune_province = ' / '.join(
+        part for part in [
+            (school.commune or '').strip() if school else '',
+            (school.province or '').strip() if school else '',
+        ] if part
+    )
+
+    header_lines = [school_name]
+    commune_province_row = None
+    if other_denomination:
+        header_lines.extend([ln.strip() for ln in other_denomination.splitlines() if ln.strip()])
+    if school_commune_province:
+        header_lines.append(school_commune_province)
+        commune_province_row = len(header_lines)
+
+    offset = max(0, len(header_lines) - 4)
+    for i, line in enumerate(header_lines, start=1):
+        ws.cell(row=i, column=1, value=line)
+        font_kwargs = {'bold': (i == 1)}
+        if commune_province_row and i == commune_province_row:
+            font_kwargs['underline'] = 'single'
+        ws.cell(row=i, column=1).font = Font(**font_kwargs)
+
 
     ws['H1'] = f"Année scolaire {year}"
     ws.merge_cells('H1:L1')
     ws['H1'].font = Font(bold=True)
     ws['H1'].alignment = Alignment(horizontal='right')
 
-    class_name = f"{course.section.level if course.section else ''} {course.section.name if course.section else ''} {course.section.class_name if course.section else ''}"
+    class_name = class_denomination(course.section) if course.section else ''
     ws['H2'] = class_name
     ws.merge_cells('H2:L3')
     ws['H2'].font = Font(bold=True, size=12)
@@ -1577,28 +1662,31 @@ def export_grades_model(school_slug=None):
         for cell in row:
             cell.border = thick_border
 
-    ws['C5'] = "FICHE DES POINTS"
-    ws.merge_cells('C5:J6')
-    ws['C5'].font = Font(bold=True, size=16)
-    ws['C5'].alignment = Alignment(horizontal='center', vertical='center')
-    for row in ws['C5:J6']:
+    title_row = 5 + offset
+    ws.cell(row=title_row, column=3, value="FICHE DES POINTS")
+    ws.merge_cells(start_row=title_row, start_column=3, end_row=title_row + 1, end_column=10)
+    ws.cell(row=title_row, column=3).font = Font(bold=True, size=16)
+    ws.cell(row=title_row, column=3).alignment = Alignment(horizontal='center', vertical='center')
+    for row in ws.iter_rows(min_row=title_row, max_row=title_row + 1, min_col=3, max_col=10):
         for cell in row:
             cell.border = thick_border
 
-    ws['A8'] = f"Branche : {course.title}"
-    ws.merge_cells('A8:E8')
-    ws['A8'].font = Font(bold=True)
+    branch_row = 8 + offset
+    ws.cell(row=branch_row, column=1, value=f"Branche : {course.title}")
+    ws.merge_cells(start_row=branch_row, start_column=1, end_row=branch_row, end_column=5)
+    ws.cell(row=branch_row, column=1).font = Font(bold=True)
     
     professor_name = course.professor.full_name if course.professor else ""
-    ws['H8'] = f"Professeur : {professor_name}"
-    ws.merge_cells('H8:L8')
-    ws['H8'].font = Font(bold=True)
-    ws['H8'].alignment = Alignment(horizontal='right')
+    ws.cell(row=branch_row, column=8, value=f"Professeur : {professor_name}")
+    ws.merge_cells(start_row=branch_row, start_column=8, end_row=branch_row, end_column=12)
+    ws.cell(row=branch_row, column=8).font = Font(bold=True)
+    ws.cell(row=branch_row, column=8).alignment = Alignment(horizontal='right')
 
-    ws['C10'] = "N.B : Les ratures et les surcharges ne sont pas tolérées"
-    ws.merge_cells('C10:J10')
-    ws['C10'].font = Font(bold=True, italic=True)
-    ws['C10'].alignment = Alignment(horizontal='center')
+    nb_row = 10 + offset
+    ws.cell(row=nb_row, column=3, value="N.B : Les ratures et les surcharges ne sont pas tolérées")
+    ws.merge_cells(start_row=nb_row, start_column=3, end_row=nb_row, end_column=10)
+    ws.cell(row=nb_row, column=3).font = Font(bold=True, italic=True)
+    ws.cell(row=nb_row, column=3).alignment = Alignment(horizontal='center')
 
     # Table headers
     thin_border = Border(
@@ -1608,49 +1696,51 @@ def export_grades_model(school_slug=None):
     header_font = Font(bold=True)
     center_aligned = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    ws['A12'] = "N°"
-    ws.merge_cells('A12:A13')
-    ws['B12'] = "NOMS"
-    ws.merge_cells('B12:B13')
-    ws['C12'] = "POSTNOMS"
-    ws.merge_cells('C12:C13')
+    table_row = 12 + offset
+    ws.cell(row=table_row, column=1, value="N°")
+    ws.merge_cells(start_row=table_row, start_column=1, end_row=table_row + 1, end_column=1)
+    ws.cell(row=table_row, column=2, value="NOMS")
+    ws.merge_cells(start_row=table_row, start_column=2, end_row=table_row + 1, end_column=2)
+    ws.cell(row=table_row, column=3, value="POSTNOMS")
+    ws.merge_cells(start_row=table_row, start_column=3, end_row=table_row + 1, end_column=3)
     
-    ws['D12'] = "1ère SEMESTRE"
-    ws.merge_cells('D12:G12')
-    ws['H12'] = "2ème SEMESTRE"
-    ws.merge_cells('H12:K12')
+    ws.cell(row=table_row, column=4, value="1ère SEMESTRE")
+    ws.merge_cells(start_row=table_row, start_column=4, end_row=table_row, end_column=7)
+    ws.cell(row=table_row, column=8, value="2ème SEMESTRE")
+    ws.merge_cells(start_row=table_row, start_column=8, end_row=table_row, end_column=11)
     
-    ws['L12'] = "TOTAL\nGENE"
-    ws.merge_cells('L12:L13')
+    ws.cell(row=table_row, column=12, value="TOTAL\nGENE")
+    ws.merge_cells(start_row=table_row, start_column=12, end_row=table_row + 1, end_column=12)
 
     headers_13 = ['1èP', '2èP', 'Comp', 'TOT', '3èP', '4èP', 'Comp', 'TOT']
     for idx, h in enumerate(headers_13, start=4):
-        ws.cell(row=13, column=idx, value=h)
+        ws.cell(row=table_row + 1, column=idx, value=h)
 
-    for row in ws['A12:L13']:
+    for row in ws.iter_rows(min_row=table_row, max_row=table_row + 1, min_col=1, max_col=12):
         for cell in row:
             cell.border = thin_border
             cell.font = header_font
             cell.alignment = center_aligned
 
-    ws['A14'] = ""
-    ws.merge_cells('A14:B14')
-    ws['C14'] = "MAXIMA"
-    ws['C14'].alignment = Alignment(horizontal='center')
-    ws['C14'].font = header_font
+    max_row = table_row + 2
+    ws.cell(row=max_row, column=1, value="")
+    ws.merge_cells(start_row=max_row, start_column=1, end_row=max_row, end_column=2)
+    ws.cell(row=max_row, column=3, value="MAXIMA")
+    ws.cell(row=max_row, column=3).alignment = Alignment(horizontal='center')
+    ws.cell(row=max_row, column=3).font = header_font
     
     maxima_vals = [max_1ep, max_2ep, max_exa1, max_tot1, max_3ep, max_4ep, max_exa2, max_tot2, max_tot_gen]
     for idx, max_val in enumerate(maxima_vals, start=4):
-        ws.cell(row=14, column=idx, value=max_val)
+        ws.cell(row=max_row, column=idx, value=max_val)
 
-    for row in ws['A14:L14']:
+    for row in ws.iter_rows(min_row=max_row, max_row=max_row, min_col=1, max_col=12):
         for cell in row:
             cell.border = thin_border
             if cell.column >= 3:
                 cell.alignment = center_aligned
                 cell.font = header_font
 
-    for i, s in enumerate(students, start=15):
+    for i, s in enumerate(students, start=max_row + 1):
         ws.cell(row=i, column=1, value=i - 14)
         ws.cell(row=i, column=2, value=s.last_name)
         ws.cell(row=i, column=3, value=s.first_name)
@@ -1701,6 +1791,21 @@ def export_grades_model(school_slug=None):
                 if is_template:
                     c.fill = gray_fill
 
+    # --- Signature : Le Professeur / LA DIRECTION ---
+    last_student_row = max_row + len(students)
+    sig_line_row = last_student_row + 3
+
+    ws.merge_cells(start_row=sig_line_row, start_column=2, end_row=sig_line_row, end_column=4)
+    ws.cell(row=sig_line_row, column=2, value='_' * 24)
+    ws.merge_cells(start_row=sig_line_row, start_column=9, end_row=sig_line_row, end_column=11)
+    ws.cell(row=sig_line_row, column=9, value='_' * 24)
+
+    ws.cell(row=sig_line_row + 1, column=2, value="Le Professeur")
+    ws.cell(row=sig_line_row + 1, column=9, value="LA DIRECTION")
+    for cell in (ws.cell(row=sig_line_row + 1, column=2), ws.cell(row=sig_line_row + 1, column=9)):
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
     file_stream = BytesIO()
     wb.save(file_stream)
     file_stream.seek(0)
@@ -1728,8 +1833,8 @@ def import_grades(school_slug=None):
     if not file.filename.endswith(('.xlsx', '.xls')):
         return jsonify({'error': 'Format de fichier non supporté. Veuillez utiliser Excel (.xlsx).'}), 400
 
-    school_id = current_user.school_id
-    course = Course.query.filter_by(id=course_id, school_id=school_id).first()
+    school_id = g.school_id
+    course = _course_scope_query(school_id).filter(Course.id == course_id).first()
     if not course:
         return jsonify({'error': 'Cours introuvable.'}), 404
 
@@ -1849,7 +1954,7 @@ def get_notifications(school_slug=None):
     if not _is_professor_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    school_id = current_user.school_id
+    school_id = g.school_id
     limit = request.args.get('limit', default=5, type=int) or 5
 
     notifications = Notification.query.filter_by(
@@ -1869,13 +1974,13 @@ def get_notifications(school_slug=None):
     })
 
 
-@professor_bp.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@professor_bp.route('/api/notifications/<oid:notification_id>/read', methods=['POST'])
 @login_required
 def mark_notification_read(notification_id, school_slug=None):
     if not _is_professor_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    school_id = current_user.school_id
+    school_id = g.school_id
     notification = Notification.query.filter_by(
         id=notification_id,
         school_id=school_id,
@@ -1902,7 +2007,7 @@ def mark_all_notifications_read(school_slug=None):
     if not _is_professor_user():
         return jsonify({'error': 'Accès refusé.'}), 403
 
-    school_id = current_user.school_id
+    school_id = g.school_id
     notifications = Notification.query.filter_by(
         school_id=school_id,
         recipient_id=current_user.id,
@@ -1919,3 +2024,25 @@ def mark_all_notifications_read(school_slug=None):
         'success': True,
         'count': len(notifications)
     })
+
+
+@professor_bp.route('/api/notifications/<oid:notification_id>/delete', methods=['POST'])
+@login_required
+def delete_notification(notification_id, school_slug=None):
+    if not _is_professor_user():
+        return jsonify({'error': 'Accès refusé.'}), 403
+
+    school_id = g.school_id
+    notification = Notification.query.filter_by(
+        id=notification_id,
+        school_id=school_id,
+        recipient_id=current_user.id
+    ).first()
+
+    if not notification:
+        return jsonify({'error': 'Notification introuvable.'}), 404
+
+    db.session.delete(notification)
+    db.session.commit()
+
+    return jsonify({'success': True, 'id': notification_id})

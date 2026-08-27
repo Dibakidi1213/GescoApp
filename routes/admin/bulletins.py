@@ -1,8 +1,9 @@
 import json
 from datetime import datetime
 
-from flask import render_template, request, jsonify, url_for, g, session, Response
+from flask import render_template, request, jsonify, g, session, Response
 from flask_login import login_required, current_user
+from sqlalchemy import text
 
 from models import (
     BulletinBranch,
@@ -11,7 +12,7 @@ from models import (
     Section,
     db,
 )
-from routes.admin.helpers import get_school_id_for_admin_context
+from routes.admin.helpers import get_school_id_for_admin_context, resolve_admin_school_id
 from routes.admin.services import (
     find_section_for_level,
     levels_payload_for_section_name,
@@ -19,6 +20,7 @@ from routes.admin.services import (
     _serialize_branches,
 )
 from routes.admin import admin_bp
+from url_utils import decode_id_or_int
 
 
 def _save_bulletin_config_data(school_id, section, level, branches_data, year, ige_number=None):
@@ -32,20 +34,45 @@ def _save_bulletin_config_data(school_id, section, level, branches_data, year, i
         academic_year=year,
     ).first()
     
-    # Preserve validation status if config already exists and is validated
     preserve_validation = False
     if config and config.validated:
         preserve_validation = True
     
     if not config:
-        config = BulletinConfig(
+        db.session.expire_all()
+        config = BulletinConfig.query.filter_by(
             school_id=school_id,
             section_id=section.id,
             level=level,
             academic_year=year,
-        )
-        db.session.add(config)
-        db.session.flush()
+        ).first()
+
+    if not config:
+        try:
+            config = BulletinConfig(
+                school_id=school_id,
+                section_id=section.id,
+                level=level,
+                academic_year=year,
+            )
+            db.session.add(config)
+            db.session.flush()
+        except Exception:
+            db.session.rollback()
+            db.session.expire_all()
+            config = BulletinConfig.query.filter_by(
+                school_id=school_id,
+                section_id=section.id,
+                level=level,
+                academic_year=year,
+            ).first()
+            if not config:
+                row = db.session.execute(
+                    text("SELECT id FROM bulletin_configs WHERE school_id=:sid AND section_id=:secid AND level=:lvl AND academic_year=:ay"),
+                    {"sid": school_id, "secid": section.id, "lvl": level, "ay": year},
+                ).fetchone()
+                if row:
+                    config = db.session.get(BulletinConfig, row[0])
         
         # Use provided IGE number or generate one for new configs
         if ige_number:
@@ -56,6 +83,8 @@ def _save_bulletin_config_data(school_id, section, level, branches_data, year, i
         # For existing configs, update IGE if provided
         if ige_number:
             config.ige_number = ige_number
+        # Update section_id reference to the current section
+        config.section_id = section.id
 
     config.academic_year = year
     
@@ -131,15 +160,21 @@ def bulletins(school_slug=None):
     return _render_bulletins_page(school_slug)
 
 
+@admin_bp.route('/bulletins/preview')
+@login_required
+def bulletin_preview(school_slug=None):
+    return _render_bulletins_page(school_slug, preview_only=True)
+
+
 @admin_bp.route('/bulletins-config')
 @login_required
 def bulletins_config(school_slug=None):
     return _render_bulletins_page(school_slug)
 
 
-def _render_bulletins_page(school_slug=None):
+def _render_bulletins_page(school_slug=None, preview_only=False):
     school_id = get_school_id_for_admin_context()
-    selected_school_id = request.args.get('school_id', type=int)
+    selected_school_id = decode_id_or_int(request.args.get('school_id'))
     raw_section_value = request.args.get('section_name') or request.args.get('section_id')
     selected_level = request.args.get('level')
 
@@ -189,6 +224,7 @@ def _render_bulletins_page(school_slug=None):
         selected_school_id=school_id,
         selected_section_name=selected_section_name,
         selected_level=selected_level,
+        preview_only=preview_only,
         g_school_slug=getattr(g, 'school_slug', None),
     )
 
@@ -196,7 +232,7 @@ def _render_bulletins_page(school_slug=None):
 @admin_bp.route('/api/bulletin-levels/<section_ref>')
 @login_required
 def get_bulletin_levels(section_ref, school_slug=None):
-    school_id = request.args.get('school_id', type=int) or get_school_id_for_admin_context()
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     is_super_admin = current_user.is_super_admin()
 
     if not school_id and is_super_admin:
@@ -215,10 +251,104 @@ def get_bulletin_levels(section_ref, school_slug=None):
     return jsonify(levels_payload_for_section_name(section.name, school_id))
 
 
+@admin_bp.route('/api/section/<section_name>')
+@login_required
+def get_section(section_name, school_slug=None):
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
+    is_super_admin = current_user.role == 'super_admin'
+    
+    if not school_id:
+        if is_super_admin:
+            # Super admin: resolve the section across all schools when no school is selected
+            section = Section.query.filter_by(name=section_name).first()
+            if not section:
+                return jsonify({'error': 'Section non trouvée'}), 404
+            school_id = section.school_id
+        else:
+            # School admin: use their school
+            school_id = get_school_id_for_admin_context()
+    
+    if not school_id:
+        return jsonify({'error': 'École non spécifiée.'}), 400
+
+    section = Section.query.filter_by(school_id=school_id, name=section_name).first()
+    if not section:
+        return jsonify({'error': 'Section non trouvée'}), 404
+
+    return jsonify({
+        'id': section.id,
+        'name': section.name,
+        'level': section.level,
+        'class_name': section.class_name,
+        'school_id': section.school_id
+    })
+
+
+@admin_bp.route('/api/section/<int:section_id>', methods=['PUT'])
+@login_required
+def update_section(section_id, school_slug=None):
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
+    is_super_admin = current_user.role == 'super_admin'
+    
+    if not school_id:
+        if is_super_admin:
+            # Super admin: find section across all schools
+            section = Section.query.get(section_id)
+            if not section:
+                return jsonify({'error': 'Section non trouvée'}), 404
+            school_id = section.school_id
+        else:
+            # School admin: use their school
+            school_id = get_school_id_for_admin_context()
+    
+    if not school_id:
+        return jsonify({'error': 'École non spécifiée.'}), 400
+
+    section = Section.query.filter_by(id=section_id, school_id=school_id).first()
+    if not section:
+        return jsonify({'error': 'Section non trouvée'}), 404
+
+    data = request.json or {}
+    name = data.get('name')
+    level = data.get('level')
+    class_name = data.get('class_name')
+
+    if not name or not level or not class_name:
+        return jsonify({'error': 'Nom, niveau et classe sont requis'}), 400
+
+    # Check if another section with the same name/level/class_name exists in the same school
+    existing = Section.query.filter(
+        Section.school_id == school_id,
+        Section.name == name,
+        Section.level == level,
+        Section.class_name == class_name,
+        Section.id != section_id
+    ).first()
+    if existing:
+        return jsonify({'error': 'Une section avec ce nom, niveau et classe existe déjà'}), 400
+
+    section.name = name
+    section.level = level
+    section.class_name = class_name
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Section modifiée avec succès',
+        'section': {
+            'id': section.id,
+            'name': section.name,
+            'level': section.level,
+            'class_name': section.class_name,
+            'school_id': section.school_id
+        }
+    })
+
+
 @admin_bp.route('/api/bulletin-config/<section_ref>/<level>')
 @login_required
 def get_bulletin_config(section_ref, level, school_slug=None):
-    school_id = request.args.get('school_id', type=int)
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     is_super_admin = current_user.role == 'super_admin'
     
     if not school_id:
@@ -261,7 +391,7 @@ def save_bulletin_config(school_slug=None):
     ige_number = data.get('ige_number')
     year = session.get('academic_year', '2025 - 2026')
 
-    school_id = request.args.get('school_id', type=int) or get_school_id_for_admin_context()
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     
     # Check if current user is super_admin
     is_super_admin = current_user.role == 'super_admin'
@@ -339,7 +469,7 @@ def validate_bulletin_config(school_slug=None):
     level = data.get('level')
     year = session.get('academic_year', '2025 - 2026')
 
-    school_id = request.args.get('school_id', type=int) or get_school_id_for_admin_context()
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     if not school_id:
         return jsonify({'error': 'École non spécifiée.'}), 400
 
@@ -371,7 +501,7 @@ def validate_bulletin_config(school_slug=None):
 @admin_bp.route('/api/bulletin-config/export/<section_name>/<level>')
 @login_required
 def export_bulletin_config(section_name, level, school_slug=None):
-    school_id = request.args.get('school_id', type=int)
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     is_super_admin = current_user.role == 'super_admin'
     if not school_id:
         if is_super_admin:
@@ -451,7 +581,7 @@ def import_bulletin_config(school_slug=None):
     except json.JSONDecodeError:
         return jsonify({'error': 'Le fichier JSON importé est mal formé. Vérifiez la syntaxe du fichier.'}), 400
 
-    school_id = request.args.get('school_id', type=int) or get_school_id_for_admin_context()
+    school_id = resolve_admin_school_id(decode_id_or_int(request.args.get('school_id')))
     if not school_id:
         return jsonify({'error': 'École non spécifiée pour l\'importation des bulletins.'}), 400
 

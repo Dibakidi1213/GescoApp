@@ -5,6 +5,7 @@ from models import (
     BulletinConfig,
     ConductGrade,
     Course,
+    DeliberationResult,
     Grade,
     Section,
     Student,
@@ -12,7 +13,7 @@ from models import (
 )
 
 from routes.admin.helpers import PERIODS, SCOPE_OPTIONS, normalize_text
-from routes.secretary import _get_course_branch, _get_section_by_hierarchy
+from routes.secretary import _get_course_branch
 
 
 def group_students_tree(school_id, year):
@@ -66,11 +67,12 @@ def _get_bulletin_config_for_section(school_id, section, year):
     ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
     if config:
         return config
-    return BulletinConfig.query.filter_by(
+    config = BulletinConfig.query.filter_by(
         school_id=school_id,
         section_id=section.id,
         level=section.level,
     ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
+    return config
 
 
 def get_bulletin_config_for_student(student, school_id, year):
@@ -235,13 +237,13 @@ def _serialize_branches(config, section_name=None):
             'subdomain': branch.subdomain,
             'name': branch.name,
             'order': branch.order,
-            'max_value': float(branch.max_value or 20),
-            'max_period_1': float(branch.max_period_1 or 10),
-            'max_period_2': float(branch.max_period_2 or 10),
-            'max_exam_1': float(branch.max_exam_1 or 10),
-            'max_period_3': float(branch.max_period_3 or 10),
-            'max_period_4': float(branch.max_period_4 or 10),
-            'max_exam_2': float(branch.max_exam_2 or 10),
+            'max_value': float(branch.max_value if branch.max_value is not None else 20),
+            'max_period_1': float(branch.max_period_1 if branch.max_period_1 is not None else 10),
+            'max_period_2': float(branch.max_period_2 if branch.max_period_2 is not None else 10),
+            'max_exam_1': float(branch.max_exam_1 if branch.max_exam_1 is not None else 10),
+            'max_period_3': float(branch.max_period_3 if branch.max_period_3 is not None else 10),
+            'max_period_4': float(branch.max_period_4 if branch.max_period_4 is not None else 10),
+            'max_exam_2': float(branch.max_exam_2 if branch.max_exam_2 is not None else 10),
             'include_period_1': branch.include_period_1,
             'include_period_2': branch.include_period_2,
             'include_comp_1': branch.include_comp_1,
@@ -260,7 +262,8 @@ def build_grades_map_for_student(student, school_id, year):
     section = student.section
     # Use the new function to get config for the student
     config = get_bulletin_config_for_student(student, school_id, year)
-    branches = _serialize_branches(config)
+    section_name = section.name if section else None
+    branches = _serialize_branches(config, section_name)
 
     courses = Course.query.filter_by(school_id=school_id, section_id=section.id).all() if section else []
     course_by_title = {normalize_text(course.title): course for course in courses}
@@ -290,17 +293,14 @@ def build_grades_map_for_student(student, school_id, year):
 
     bulletin_totals = None
     if branches:
-        max_period_1 = sum(float(b['max_period_1'] or 0) * 2 for b in branches if b['type'] == 'branch')
+        max_period_1 = sum(float(b['max_period_1'] or 0) for b in branches if b['type'] == 'branch')
         max_exam_1 = sum(float(b['max_exam_1'] or 0) for b in branches if b['type'] == 'branch')
-        max_period_2 = sum(float(b['max_period_3'] or 0) * 2 for b in branches if b['type'] == 'branch')
-        max_exam_2_val = sum(float(b['max_exam_2'] or 0) for b in branches if b['type'] == 'branch')
-        semester1_total = max_period_1 + max_exam_1
-        semester2_total = max_period_2 + max_exam_2_val
+        semester_total = (max_period_1 * 2) + max_exam_1
         bulletin_totals = {
-            'maxPeriod': max_period_1 + max_period_2,
-            'maxExam': max_exam_1 + max_exam_2_val,
-            'semesterTotal': semester1_total + semester2_total,
-            'generalTotal': semester1_total + semester2_total,
+            'maxPeriod': max_period_1 * 2,
+            'maxExam': max_exam_1,
+            'semesterTotal': semester_total,
+            'generalTotal': semester_total * 2,
         }
 
     return grades_map, branches, bulletin_totals
@@ -350,8 +350,7 @@ def get_failed_courses_for_student(student_id, school_id, year):
         
         # Calculer le maximum annuel
         branch = course.branch
-        max_annual = (float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0)) + \
-                     (float(branch.max_period_3 or 0) * 2) + (float(branch.max_exam_2 or 0))
+        max_annual = ((float(branch.max_period_1 or 0) * 2) + (float(branch.max_exam_1 or 0))) * 2
         
         if max_annual == 0:
             continue
@@ -514,12 +513,14 @@ def _max_points_for_scope(branch, scope):
     if scope == 'semester1':
         return float(branch.get('max_period_1', 0) or 0) * 2 + float(branch.get('max_exam_1', 0) or 0)
     if scope == 'semester2':
-        return float(branch.get('max_period_3', 0) or 0) * 2 + float(branch.get('max_exam_2', 0) or 0)
+        return float(branch.get('max_period_3', 0) or 0) + float(branch.get('max_period_4', 0) or 0) + float(branch.get('max_exam_2', 0) or 0)
     if scope == 'annual':
         return (
-            float(branch.get('max_period_1', 0) or 0) * 2
+            float(branch.get('max_period_1', 0) or 0)
+            + float(branch.get('max_period_2', 0) or 0)
             + float(branch.get('max_exam_1', 0) or 0)
-            + float(branch.get('max_period_3', 0) or 0) * 2
+            + float(branch.get('max_period_3', 0) or 0)
+            + float(branch.get('max_period_4', 0) or 0)
             + float(branch.get('max_exam_2', 0) or 0)
         )
     return 0
@@ -551,7 +552,16 @@ def build_centralization_context(school_id, section_id, scope, year):
         section_id=section.id,
         academic_year=year,
     ).order_by(Student.last_name, Student.first_name).all()
-    courses = Course.query.filter_by(school_id=school_id, section_id=section.id).order_by(Course.title).all()
+    courses = (
+        Course.query.filter_by(school_id=school_id, section_id=section.id)
+        .filter(
+            ~Course.title.like('Présence de classe%'),
+            ~Course.title.like('Pr_sence de classe%'),
+            ~Course.title.like('Presence de classe%'),
+        )
+        .order_by(Course.title)
+        .all()
+    )
 
     config = _get_bulletin_config_for_section(school_id, section, year)
     branches = _serialize_branches(config)
@@ -730,3 +740,146 @@ def find_section_for_level(school_id, section_ref, level):
         query = query.filter_by(school_id=school_id)
     match = query.order_by(Section.id).first()
     return match or section
+
+
+def build_bulletins_batch_for_section(school_id, section_id, year):
+    """
+    Batch build bulletins for all students in a section.
+    Optimized to avoid N+1 queries by loading all data in bulk.
+    Returns: list of dicts with student data, grades, ranks, conducts, deliberation results
+    """
+    section = db.session.get(Section, section_id)
+    if not section or section.school_id != school_id:
+        return []
+    
+    students = Student.query.filter_by(
+        school_id=school_id,
+        section_id=section_id,
+        academic_year=year,
+    ).order_by(Student.last_name, Student.first_name).all()
+    
+    if not students:
+        return []
+    
+    student_ids = [s.id for s in students]
+    
+    # 1. Get bulletin config (same for all students in section)
+    bulletin_config = get_bulletin_config_for_student(students[0], school_id, year)
+    branches = _serialize_branches(bulletin_config, section.name)
+    branch_list = [b for b in branches if b['type'] == 'branch']
+    
+    # 2. Get all courses for this section
+    courses = Course.query.filter_by(school_id=school_id, section_id=section_id).all()
+    course_by_title = {normalize_text(course.title): course for course in courses}
+    course_by_id = {course.id: course for course in courses}
+    
+    # 3. Batch load ALL grades for all students in this section
+    all_grades = Grade.query.filter(
+        Grade.school_id == school_id,
+        Grade.student_id.in_(student_ids),
+        Grade.academic_year == year,
+    ).all()
+    
+    # Build grades_by_student_course_period: student_id -> course_id -> period -> value
+    grades_by_student = defaultdict(lambda: defaultdict(dict))
+    for grade in all_grades:
+        grades_by_student[grade.student_id][grade.course_id][grade.period] = float(grade.value)
+    
+    # 4. Batch load ALL conducts for all students
+    all_conducts = ConductGrade.query.filter(
+        ConductGrade.school_id == school_id,
+        ConductGrade.student_id.in_(student_ids),
+        ConductGrade.academic_year == year,
+    ).all()
+    conducts_by_student = defaultdict(dict)
+    for cg in all_conducts:
+        conducts_by_student[cg.student_id][cg.period] = cg.value
+    
+    # 5. Batch load ALL deliberation results
+    all_deliberations = DeliberationResult.query.filter(
+        DeliberationResult.school_id == school_id,
+        DeliberationResult.student_id.in_(student_ids),
+        DeliberationResult.academic_year == year,
+        DeliberationResult.period == 'ANNEE',
+    ).all()
+    deliberations_by_student = {r.student_id: r for r in all_deliberations}
+    
+    # 6. Compute class ranks once for all students
+    class_ranks, total_students = compute_class_ranks(school_id, section_id, year)
+    
+    # 7. Compute failed courses for all students
+    # Build branch lookup by course
+    branch_by_course_id = {}
+    for course in courses:
+        branch = _get_course_branch(course)
+        if branch:
+            # Convert BulletinBranch model to dict if needed
+            if hasattr(branch, 'max_period_1'):  # It's a model object
+                branch = {
+                    'max_period_1': branch.max_period_1,
+                    'max_exam_1': branch.max_exam_1,
+                }
+            branch_by_course_id[course.id] = branch
+    
+    failed_courses_by_student = defaultdict(list)
+    for student_id in student_ids:
+        for course in courses:
+            branch = branch_by_course_id.get(course.id)
+            max_p1 = branch.get('max_period_1') if branch else None
+            max_e1 = branch.get('max_exam_1') if branch else None
+            if not branch or (not max_p1 and not max_e1):
+                continue
+            
+            student_grades = grades_by_student[student_id].get(course.id, {})
+            total_score = sum(float(v) for k, v in student_grades.items() if v and k != 'REPECHAGE')
+            
+            max_annual = ((float(max_p1 or 0) * 2) + 
+                         (float(max_e1 or 0))) * 2
+            
+            if max_annual > 0 and (total_score / max_annual) < 0.5:
+                failed_courses_by_student[student_id].append(course.id)
+    
+    # 8. Build grades_map for each student using pre-loaded data
+    bulletins = []
+    for student in students:
+        # Build grades_map for this student
+        grades_map = {}
+        for branch in branch_list:
+            course = course_by_title.get(normalize_text(branch['name']))
+            branch_grades = {}
+            if course:
+                branch['course_id'] = course.id
+                branch_grades = grades_by_student[student.id].get(course.id, {})
+            grades_map[branch['id']] = branch_grades
+            grades_map[branch['name']] = branch_grades
+        
+        # Calculate bulletin totals
+        max_period_1 = sum(float(b['max_period_1'] or 0) for b in branch_list)
+        max_exam_1 = sum(float(b['max_exam_1'] or 0) for b in branch_list)
+        semester_total = (max_period_1 * 2) + max_exam_1
+        bulletin_totals = {
+            'maxPeriod': max_period_1 * 2,
+            'maxExam': max_exam_1,
+            'semesterTotal': semester_total,
+            'generalTotal': semester_total * 2,
+        }
+        
+        # Get failed course titles for this student
+        failed_course_ids = failed_courses_by_student.get(student.id, [])
+        failed_courses = [course_by_id[cid].title for cid in failed_course_ids if cid in course_by_id]
+        
+        bulletins.append({
+            'student': student,
+            'school': student.school,
+            'branches': branches,
+            'grades_map': grades_map,
+            'bulletin_totals': bulletin_totals,
+            'config': bulletin_config,
+            'student_ranks': class_ranks.get(student.id, {}),
+            'total_students': total_students,
+            'conducts': conducts_by_student.get(student.id, {}),
+            'deliberation_result': deliberations_by_student.get(student.id),
+            'failed_courses': failed_courses,
+        })
+    
+    return bulletins

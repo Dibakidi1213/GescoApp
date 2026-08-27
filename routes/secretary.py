@@ -5,7 +5,9 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, g, session
 from flask_login import login_required, current_user, logout_user
 
-from models import db, Course, Student, Grade, Section, BulletinConfig, BulletinBranch, User, Notification, ConductGrade
+from models import db, Course, Student, Grade, Section, BulletinConfig, BulletinBranch, Notification, ConductGrade
+from routes.attendance_utils import class_denomination
+from url_utils import encode_id, decode_id_or_int
 
 secretary_bp = Blueprint('secretary', __name__, template_folder='../templates')
 
@@ -27,7 +29,7 @@ def _normalize_text(value):
 def _format_class_label(section):
     if not section:
         return 'Classe inconnue'
-    return f"{section.name} - {section.level} - {section.class_name}"
+    return class_denomination(section)
 
 
 def _section_matches(section, section_name=None, level=None, class_name=None):
@@ -61,15 +63,14 @@ def _get_course_branch(course):
 
     config = BulletinConfig.query.filter_by(
         school_id=course.school_id,
-        section_id=course.section_id,
+        section_id=section.id,
         level=section.level
     ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
     if not config:
-        config = BulletinConfig.query.join(Section, BulletinConfig.section_id == Section.id).filter(
-            BulletinConfig.school_id == course.school_id,
-            Section.school_id == course.school_id,
-            Section.name == section.name,
-            BulletinConfig.level == section.level
+        config = BulletinConfig.query.filter_by(
+            school_id=course.school_id,
+            section_id=section.id,
+            level=section.level
         ).order_by(BulletinConfig.updated_at.desc(), BulletinConfig.id.desc()).first()
     if not config:
         return getattr(course, 'branch', None)
@@ -115,11 +116,11 @@ def _coerce_branch_value(branch, field_name, fallback_field=None, default_value=
 def _branch_period_limits(branch):
     return {
         '1èP': _coerce_branch_value(branch, 'max_period_1', default_value=10),
-        '2èP': _coerce_branch_value(branch, 'max_period_2', 'max_period_1', 10),
+        '2èP': _coerce_branch_value(branch, 'max_period_2', default_value=10),
         'EXA1': _coerce_branch_value(branch, 'max_exam_1', default_value=20),
-        '3èP': _coerce_branch_value(branch, 'max_period_3', 'max_period_1', 10),
-        '4èP': _coerce_branch_value(branch, 'max_period_4', 'max_period_1', 10),
-        'EXA2': _coerce_branch_value(branch, 'max_exam_2', 'max_exam_1', 20),
+        '3èP': _coerce_branch_value(branch, 'max_period_3', default_value=10),
+        '4èP': _coerce_branch_value(branch, 'max_period_4', default_value=10),
+        'EXA2': _coerce_branch_value(branch, 'max_exam_2', default_value=20),
     }
 
 
@@ -145,8 +146,10 @@ def _get_period_field_name(period):
 
 
 def _serialize_section(section):
+    from url_utils import encode_id
     return {
         'id': section.id,
+        'token': encode_id(section.id),
         'name': section.name,
         'level': section.level,
         'class_name': section.class_name,
@@ -157,6 +160,7 @@ def _serialize_section(section):
 def _build_class_period_stats(school_id, section, academic_year):
     courses = Course.query.filter_by(school_id=school_id, section_id=section.id).order_by(Course.title).all()
     course_ids = [course.id for course in courses]
+    course_titles = {course.id: course.title for course in courses}
     stats = {}
 
     for period in PERIODS:
@@ -166,6 +170,7 @@ def _build_class_period_stats(school_id, section, academic_year):
             'submitted_count': 0,
             'total_count': 0,
             'courses_count': len(courses),
+            'courses': {},
         }
 
     if not course_ids:
@@ -182,8 +187,14 @@ def _build_class_period_stats(school_id, section, academic_year):
         if not period_stats:
             continue
         period_stats['total_count'] += 1
+        title = course_titles.get(grade.course_id, f'Cours #{grade.course_id}')
+        course_stats = period_stats['courses'].setdefault(
+            title, {'submitted_count': 0, 'total_count': 0}
+        )
+        course_stats['total_count'] += 1
         if grade.submitted:
             period_stats['submitted_count'] += 1
+            course_stats['submitted_count'] += 1
 
     for period_stats in stats.values():
         total_count = period_stats['total_count']
@@ -213,8 +224,10 @@ def _create_notification(*, school_id, recipient_id, title, message, notificatio
 
 
 def _serialize_notification(notification):
+    from url_utils import encode_id
     return {
         'id': notification.id,
+        'token': encode_id(notification.id),
         'title': notification.title,
         'message': notification.message,
         'type': notification.notification_type,
@@ -314,7 +327,7 @@ def get_notifications(school_slug=None):
     })
 
 
-@secretary_bp.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@secretary_bp.route('/api/notifications/<oid:notification_id>/read', methods=['POST'])
 @login_required
 def mark_notification_read(notification_id, school_slug=None):
     school_id = current_user.school_id
@@ -428,7 +441,7 @@ def get_courses(school_slug=None):
     """Get all courses for the secretary's school."""
     school_id = current_user.school_id
 
-    section_id = request.args.get('section_id', type=int)
+    section_id = decode_id_or_int(request.args.get('section_id'))
     section_name = request.args.get('section_name', type=str)
     level = request.args.get('level', type=str)
     class_name = request.args.get('class_name', type=str)
@@ -446,6 +459,7 @@ def get_courses(school_slug=None):
     return jsonify([
         {
             'id': course.id,
+            'token': encode_id(course.id),
             'title': course.title,
             'section_id': course.section_id,
             'professor_id': course.professor_id,
@@ -458,7 +472,7 @@ def get_courses(school_slug=None):
     ])
 
 
-@secretary_bp.route('/api/class-period-status/<int:section_id>', methods=['GET'])
+@secretary_bp.route('/api/class-period-status/<oid:section_id>', methods=['GET'])
 @login_required
 def get_class_period_status(section_id, school_slug=None):
     """Return period status aggregated for a whole class."""
@@ -477,7 +491,7 @@ def get_class_period_status(section_id, school_slug=None):
     })
 
 
-@secretary_bp.route('/api/locked-grades/<int:course_id>', methods=['GET'])
+@secretary_bp.route('/api/locked-grades/<oid:course_id>', methods=['GET'])
 @login_required
 def get_locked_grades(course_id, school_slug=None):
     """Get all grades for a course, with their submission state."""
@@ -513,6 +527,7 @@ def get_locked_grades(course_id, school_slug=None):
 
         grades_by_period[grade.period].append({
             'grade_id': grade.id,
+            'grade_token': encode_id(grade.id),
             'student_id': grade.student_id,
             'student_name': student.full_name() if student else 'Unknown',
             'period': grade.period,
@@ -522,12 +537,13 @@ def get_locked_grades(course_id, school_slug=None):
             'submitted_by': grade.submitted_by,
             'submitted_by_name': grade.submitted_by_user.full_name if grade.submitted_by_user else 'Unknown',
             'submitted_at': grade.submitted_at.isoformat() if grade.submitted_at else None,
+            'flagged': bool(grade.flagged),
         })
 
     return jsonify(grades_by_period)
 
 
-@secretary_bp.route('/api/update-grade/<int:grade_id>', methods=['POST'])
+@secretary_bp.route('/api/update-grade/<oid:grade_id>', methods=['POST'])
 @login_required
 def update_grade(grade_id, school_slug=None):
     """Update a locked grade as secretary."""
@@ -562,9 +578,10 @@ def update_grade(grade_id, school_slug=None):
             return jsonify({'error': f'La note maximale pour {period} est {max_allowed}.'}), 400
 
     grade.value = new_value
+    grade.flagged = True
     professor = course.professor if course else None
     if professor and old_value is not None and float(old_value) != float(new_value):
-        student_name = grade.student.full_name() if grade.student else "l'élève"
+        student_name = grade.student.display_name() if grade.student else "l'élève"
         _create_notification(
             school_id=school_id,
             recipient_id=professor.id,
@@ -587,7 +604,7 @@ def update_grade(grade_id, school_slug=None):
     })
 
 
-@secretary_bp.route('/api/unlock-period/<int:course_id>', methods=['POST'])
+@secretary_bp.route('/api/unlock-period/<oid:course_id>', methods=['POST'])
 @login_required
 def unlock_period(course_id, school_slug=None):
     """Unlock all grades for a period (return to professor for editing)."""
@@ -644,7 +661,7 @@ def unlock_period(course_id, school_slug=None):
     })
 
 
-@secretary_bp.route('/api/unlock-class-period/<int:section_id>', methods=['POST'])
+@secretary_bp.route('/api/unlock-class-period/<oid:section_id>', methods=['POST'])
 @login_required
 def unlock_class_period(section_id, school_slug=None):
     """Unlock all submitted grades for a given class and period."""
@@ -750,26 +767,8 @@ def conduite(school_slug=None):
         return redirect(url_for('admin.attendance_management', school_slug=target_slug))
     return redirect(url_for('auth.redirect_by_role'))
 
-    school_id = current_user.school_id
-    sections = Section.query.filter_by(school_id=school_id).order_by(Section.name, Section.level, Section.class_name).all()
-    school_slug = school_slug or (current_user.school.slug if current_user.school else None)
 
-    if current_user.is_discipline():
-        back_url = url_for('professor.dashboard', school_slug=school_slug) if school_slug else url_for('auth.redirect_by_role')
-        access_label = 'Discipline'
-    else:
-        back_url = url_for('secretary.dashboard', school_slug=school_slug) if school_slug else url_for('auth.redirect_by_role')
-        access_label = 'Secrétaire'
-    
-    return render_template(
-        'secretary/conduite.html',
-        sections=sections,
-        back_url=back_url,
-        access_label=access_label,
-    )
-
-
-@secretary_bp.route('/api/conduite/<int:section_id>', methods=['GET'])
+@secretary_bp.route('/api/conduite/<oid:section_id>', methods=['GET'])
 @login_required
 def get_conduite(section_id, school_slug=None):
     if not current_user.is_discipline():
@@ -811,7 +810,7 @@ def get_conduite(section_id, school_slug=None):
     return jsonify(result)
 
 
-@secretary_bp.route('/api/conduite/<int:section_id>', methods=['POST'])
+@secretary_bp.route('/api/conduite/<oid:section_id>', methods=['POST'])
 @login_required
 def save_conduite(section_id, school_slug=None):
     if not current_user.is_discipline():
