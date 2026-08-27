@@ -97,10 +97,9 @@ def _save_bulletin_config_data(school_id, section, level, branches_data, year, i
     
     branch_ids = [b.id for b in BulletinBranch.query.filter_by(config_id=config.id).all()]
     if branch_ids:
-        db.session.execute(
-            db.text("UPDATE courses SET branch_id = NULL WHERE branch_id IN :ids"),
-            {"ids": tuple(branch_ids)},
-        )
+        conn = db.session.connection()
+        placeholders = ', '.join([str(bid) for bid in branch_ids])
+        conn.execute(db.text(f"UPDATE courses SET branch_id = NULL WHERE branch_id IN ({placeholders})"))
         db.session.flush()
     BulletinBranch.query.filter_by(config_id=config.id).delete(synchronize_session=False)
 
