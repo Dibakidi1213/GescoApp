@@ -154,10 +154,11 @@ def _ensure_bulletin_config_section_unique():
     if 'bulletin_configs' not in inspector.get_table_names():
         return
     constraints = {c['name'] for c in inspector.get_unique_constraints('bulletin_configs')}
+    indexes = {idx['name'] for idx in inspector.get_indexes('bulletin_configs')}
     with db.engine.begin() as conn:
         if 'unique_bulletin_config_per_level' in constraints:
             conn.execute(text('ALTER TABLE bulletin_configs DROP CONSTRAINT unique_bulletin_config_per_level'))
-        if 'unique_bulletin_config_per_section_level' not in constraints:
+        if 'unique_bulletin_config_per_section_level' not in constraints and 'unique_bulletin_config_per_section_level' not in indexes:
             conn.execute(text('CREATE UNIQUE INDEX unique_bulletin_config_per_section_level ON bulletin_configs (school_id, section_id, level, academic_year)'))
 
 
