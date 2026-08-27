@@ -1,24 +1,24 @@
 import os
 from datetime import date, datetime
 
-from flask import current_app, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import login_required, current_user
 
-from models import AttendanceRecord, ActivityLog, Course, Grade, LoginHistory, Notification, Payment, School, SchoolHoliday, Section, Student, User, db
+from models import AcademicYear, AttendanceRecord, ActivityLog, Course, DeliberationResult, Grade, LoginHistory, Notification, Payment, School, SchoolHoliday, Section, Student, User, db, user_schools
 from routes.attendance_utils import (
     ATTENDANCE_STATUS_LABELS,
     ATTENDANCE_STATUS_OPTIONS,
+    class_denomination,
     class_label,
     holiday_payload,
     is_working_day,
-    month_bounds,
     month_key_for_day,
     parse_iso_date,
-    parse_month,
     students_for_section_year,
 )
-from routes.admin.helpers import PERIOD_OPTIONS, get_school_id_for_admin_context, log_activity, require_super_admin, sum_payments_for_school
+from routes.admin.helpers import PERIOD_OPTIONS, get_school_id_for_admin_context, log_activity, require_super_admin
 from routes.admin import admin_bp
+from url_utils import decode_id_or_int
 
 try:
     import openpyxl
@@ -39,7 +39,7 @@ ATTENDANCE_PLACEHOLDER_PREFIX = 'Présence de classe'
 def _attendance_class_label(section):
     if not section:
         return ''
-    return ' / '.join(part for part in [section.name, section.level, section.class_name] if part)
+    return class_denomination(section)
 
 
 def _attendance_course_title(period):
@@ -84,9 +84,11 @@ def _current_academic_year():
 
 
 def _build_sections_catalog(sections):
+    from url_utils import encode_id
     return [
         {
             'id': section.id,
+            'token': encode_id(section.id),
             'name': section.name,
             'level': section.level,
             'class_name': section.class_name,
@@ -243,6 +245,24 @@ def _build_class_attendance_list(school_id, section, attendance_day, academic_ye
     }
 
 
+def _school_professor_ids(school_id):
+    """IDs des professeurs membres de l'école : école d'attache + professeurs liés."""
+    if not school_id:
+        return []
+    home_ids = [u.id for u in User.query.filter_by(school_id=school_id, role='professor').all()]
+    linked_ids = [
+        row[0] for row in db.session.query(user_schools.c.user_id)
+        .filter(user_schools.c.school_id == school_id).all()
+    ]
+    return list(set(home_ids) | set(linked_ids))
+
+
+def _professor_in_school(professor, school_id):
+    if professor.school_id == school_id:
+        return True
+    return any(school.id == school_id for school in professor.linked_schools)
+
+
 @admin_bp.route('/professors', methods=['GET', 'POST'])
 @login_required
 def professors(school_slug=None):
@@ -253,11 +273,15 @@ def professors(school_slug=None):
 
     if request.method == 'POST':
         if request.files.get('import_file'):
+            import_file = request.files['import_file']
+            if not import_file.filename.lower().endswith(('.xls', '.xlsx')):
+                flash('Format de fichier non supporté. Utilisez un fichier Excel (.xls ou .xlsx).', 'danger')
+                return redirect(url_for('admin.professors', school_slug=school_slug))
             if not OPENPYXL_AVAILABLE:
                 flash('Import Excel indisponible : installez openpyxl pour activer cette fonctionnalité.', 'warning')
                 return redirect(url_for('admin.professors', school_slug=school_slug))
 
-            workbook = openpyxl.load_workbook(request.files['import_file'])
+            workbook = openpyxl.load_workbook(import_file)
             sheet = workbook.active
             header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), None)
             headers = [str(cell).strip().lower() if cell else '' for cell in (header_row or [])]
@@ -265,6 +289,8 @@ def professors(school_slug=None):
             username_index = next((i for i, name in enumerate(headers) if name in ('username', 'utilisateur', 'user_name')), None)
             email_index = next((i for i, name in enumerate(headers) if name in ('email', 'courriel')), None)
             password_index = next((i for i, name in enumerate(headers) if name in ('password', 'mot_de_passe', 'motdepasse')), None)
+            qualification_index = next((i for i, name in enumerate(headers) if name in ('qualification',)), None)
+            journee_index = next((i for i, name in enumerate(headers) if name in ('journee_pedagogique', 'journee pedagogique', 'journée pédagogique')), None)
 
             if full_name_index is None:
                 flash('Le fichier doit contenir une colonne <code>full_name</code> ou <code>nom_complet</code>.', 'danger')
@@ -300,9 +326,12 @@ def professors(school_slug=None):
                     username=username,
                     full_name=full_name,
                     email=email,
+                    qualification=str(row[qualification_index]).strip() if qualification_index is not None and len(row) > qualification_index and row[qualification_index] else None,
+                    journee_pedagogique=str(row[journee_index]).strip() if journee_index is not None and len(row) > journee_index and row[journee_index] else None,
                     role='professor',
                 )
                 professor.set_password(password)
+                professor.must_change_password = True
                 db.session.add(professor)
                 created += 1
 
@@ -317,6 +346,8 @@ def professors(school_slug=None):
         password = request.form.get('password')
         full_name = request.form.get('full_name')
         email = request.form.get('email')
+        qualification = request.form.get('qualification')
+        journee_pedagogique = request.form.get('journee_pedagogique')
         if not username or not password or not full_name:
             flash('Nom d\'utilisateur, mot de passe et nom complet sont obligatoires.', 'danger')
         elif User.query.filter_by(username=username).first():
@@ -327,43 +358,158 @@ def professors(school_slug=None):
                 username=username,
                 full_name=full_name,
                 email=email,
+                qualification=qualification,
+                journee_pedagogique=journee_pedagogique,
                 role='professor',
             )
             professor.set_password(password)
+            professor.must_change_password = True
             db.session.add(professor)
             db.session.commit()
             flash('Professeur créé avec succès.', 'success')
         return redirect(url_for('admin.professors', school_slug=school_slug))
 
-    professors_list = User.query.filter_by(school_id=school_id, role='professor').order_by(User.full_name).all()
-    return render_template('admin/professors.html', professors=professors_list)
+    member_ids = _school_professor_ids(school_id)
+    if member_ids:
+        professors_list = User.query.filter(
+            User.role == 'professor', User.id.in_(member_ids)
+        ).order_by(User.full_name).all()
+        available_professors = User.query.filter(
+            User.role == 'professor', ~User.id.in_(member_ids)
+        ).order_by(User.full_name).all()
+    else:
+        professors_list = []
+        available_professors = User.query.filter_by(role='professor').order_by(User.full_name).all()
+    return render_template(
+        'admin/professors.html',
+        professors=professors_list,
+        available_professors=available_professors,
+        school_id=school_id,
+        sections=Section.query.filter_by(school_id=school_id).order_by(
+            Section.name, Section.level, Section.class_name
+        ).all(),
+    )
 
 
-@admin_bp.route('/professors/<int:professor_id>/edit', methods=['GET', 'POST'])
+@admin_bp.route('/professors/attach', methods=['POST'])
+@login_required
+def attach_professor(school_slug=None):
+    school_id = get_school_id_for_admin_context() or current_user.school_id
+    if not school_id:
+        flash('Aucune école associée.', 'danger')
+        return redirect(url_for('admin.dashboard', school_slug=school_slug))
+    professor_id = request.form.get('professor_id', type=int)
+    professor = User.query.filter_by(id=professor_id, role='professor').first()
+    if not professor:
+        flash('Professeur introuvable.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
+    if _professor_in_school(professor, school_id):
+        flash(f'{professor.full_name} est déjà rattaché à cette école.', 'warning')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
+    school = db.session.get(School, school_id)
+    if not school:
+        flash('École introuvable.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
+    professor.linked_schools.append(school)
+    db.session.commit()
+    flash(f'Professeur {professor.full_name} rattaché à l\'école.', 'success')
+    return redirect(url_for('admin.professors', school_slug=school_slug))
+
+
+@admin_bp.route('/professors/<oid:professor_id>/detach', methods=['POST'])
+@login_required
+def detach_professor(professor_id, school_slug=None):
+    school_id = get_school_id_for_admin_context() or current_user.school_id
+    professor = User.query.filter_by(id=professor_id, role='professor').first_or_404()
+    school = db.session.get(School, school_id)
+    if not school:
+        flash('École introuvable.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
+    if school in professor.linked_schools:
+        professor.linked_schools.remove(school)
+        Course.query.filter_by(school_id=school_id, professor_id=professor.id).update({'professor_id': None})
+        db.session.commit()
+        flash(f'Professeur {professor.full_name} détaché de l\'école.', 'success')
+    else:
+        flash('Ce professeur n\'est pas lié à cette école.', 'warning')
+    return redirect(url_for('admin.professors', school_slug=school_slug))
+
+
+@admin_bp.route('/professors/<oid:professor_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_professor(professor_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
-    professor = User.query.filter_by(id=professor_id, school_id=school_id, role='professor').first_or_404()
+    professor = User.query.filter_by(id=professor_id, role='professor').first_or_404()
+    if not _professor_in_school(professor, school_id):
+        flash('Accès non autorisé à ce professeur.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
 
     if request.method == 'POST':
         professor.full_name = request.form.get('full_name') or professor.full_name
         professor.email = request.form.get('email')
         professor.username = request.form.get('username') or professor.username
+        professor.qualification = request.form.get('qualification')
+        professor.journee_pedagogique = request.form.get('journee_pedagogique')
+        if professor.school_id == school_id:
+            titulaire_section_id = request.form.get('titulaire_section_id', type=int)
+            if titulaire_section_id:
+                section = Section.query.filter_by(id=titulaire_section_id, school_id=school_id).first()
+                if not section:
+                    flash('La classe sélectionnée est invalide.', 'danger')
+                    return redirect(url_for('admin.edit_professor', professor_id=professor.id, school_slug=school_slug))
+                professor.titulaire_section_id = section.id
+            else:
+                professor.titulaire_section_id = None
         password = request.form.get('password')
         if password:
             professor.set_password(password)
+            professor.must_change_password = True
         db.session.commit()
         flash('Professeur mis à jour.', 'success')
         return redirect(url_for('admin.professors', school_slug=school_slug))
 
-    return render_template('admin/edit_professor.html', professor=professor)
+    sections = Section.query.filter_by(school_id=school_id).order_by(
+        Section.name, Section.level, Section.class_name
+    ).all()
+    return render_template(
+        'admin/edit_professor.html',
+        professor=professor,
+        sections=sections,
+        can_assign_titulaire=professor.school_id == school_id,
+    )
 
 
-@admin_bp.route('/professors/<int:professor_id>/delete', methods=['POST'])
+@admin_bp.route('/professors/<oid:professor_id>/titulaire', methods=['POST'])
+@login_required
+def set_professor_titulaire(professor_id, school_slug=None):
+    school_id = get_school_id_for_admin_context() or current_user.school_id
+    professor = User.query.filter_by(id=professor_id, role='professor').first_or_404()
+    if not _professor_in_school(professor, school_id):
+        flash('Accès non autorisé à ce professeur.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
+    titulaire_section_id = request.form.get('titulaire_section_id', type=int)
+    if titulaire_section_id:
+        section = Section.query.filter_by(id=titulaire_section_id, school_id=school_id).first()
+        if not section:
+            flash('La classe sélectionnée est invalide.', 'danger')
+            return redirect(url_for('admin.professors', school_slug=school_slug))
+        professor.titulaire_section_id = section.id
+        flash(f'{professor.full_name} est désormais titulaire de la classe {section.name} - {section.level} - {section.class_name}.', 'success')
+    else:
+        professor.titulaire_section_id = None
+        flash(f'La classe titulaire de {professor.full_name} a été retirée.', 'warning')
+    db.session.commit()
+    return redirect(url_for('admin.professors', school_slug=school_slug))
+
+
+@admin_bp.route('/professors/<oid:professor_id>/delete', methods=['POST'])
 @login_required
 def delete_professor(professor_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
-    professor = User.query.filter_by(id=professor_id, school_id=school_id, role='professor').first_or_404()
+    professor = User.query.filter_by(id=professor_id, role='professor').first_or_404()
+    if not _professor_in_school(professor, school_id):
+        flash('Accès non autorisé à ce professeur.', 'danger')
+        return redirect(url_for('admin.professors', school_slug=school_slug))
     Course.query.filter_by(professor_id=professor.id).update({'professor_id': None})
     db.session.delete(professor)
     db.session.commit()
@@ -371,17 +517,20 @@ def delete_professor(professor_id, school_slug=None):
     return redirect(url_for('admin.professors', school_slug=school_slug))
 
 
-@admin_bp.route('/professors/<int:professor_id>/reset-password', methods=['POST'])
+@admin_bp.route('/professors/<oid:professor_id>/reset-password', methods=['POST'])
 @login_required
 def reset_professor_password(professor_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
-    professor = User.query.filter_by(id=professor_id, school_id=school_id, role='professor').first_or_404()
+    professor = User.query.filter_by(id=professor_id, role='professor').first_or_404()
+    if not _professor_in_school(professor, school_id):
+        flash('Accès non autorisé à ce professeur.', 'danger')
+        return redirect(url_for('admin.school_reset', school_slug=school_slug))
     professor.set_password('prof123')
     if hasattr(professor, 'must_change_password'):
         professor.must_change_password = True
     db.session.commit()
     flash('Mot de passe du professeur réinitialisé à prof123.', 'success')
-    return redirect(url_for('admin.professors', school_slug=school_slug))
+    return redirect(url_for('admin.school_reset', school_slug=school_slug))
 
 
 @admin_bp.route('/professors/reset-password', methods=['POST'])
@@ -414,12 +563,99 @@ def school_reset(school_slug=None):
         for section in sections
     ]
     professors = User.query.filter_by(school_id=school_id, role='professor').order_by(User.full_name).all()
+
+    current_year = _current_academic_year()
+    years = AcademicYear.query.order_by(AcademicYear.name.desc()).all()
+    prev_year_name = None
+    for idx, y in enumerate(years):
+        if y.name == current_year and idx + 1 < len(years):
+            prev_year_name = years[idx + 1].name
+            break
+
+    promoted_students = []
+    if prev_year_name:
+        promoted_students = Student.query.filter(
+            Student.school_id == school_id,
+            Student.academic_year == current_year,
+            Student.is_promoted == True,
+        ).order_by(Student.last_name, Student.first_name).all()
+
     return render_template(
         'admin/school_reset.html',
         sections_catalog=sections_catalog,
         section_names=section_names,
         professors=professors,
+        promoted_students=promoted_students,
+        promoted_count=len(promoted_students),
+        current_year=current_year,
+        prev_year_name=prev_year_name,
     )
+
+
+@admin_bp.route('/reset-student-promotions', methods=['POST'])
+@login_required
+def reset_student_promotions(school_slug=None):
+    """Annule la promotion des élèves promus pour l'année en cours."""
+    school_id = get_school_id_for_admin_context() or current_user.school_id
+    if not school_id:
+        flash('Aucune école associée.', 'danger')
+        return redirect(url_for('admin.dashboard', school_slug=school_slug))
+
+    current_year = _current_academic_year()
+
+    years = AcademicYear.query.order_by(AcademicYear.name.desc()).all()
+    prev_year_name = None
+    for idx, y in enumerate(years):
+        if y.name == current_year and idx + 1 < len(years):
+            prev_year_name = years[idx + 1].name
+            break
+
+    if not prev_year_name:
+        flash('Année académique précédente introuvable.', 'danger')
+        return redirect(url_for('admin.school_reset', school_slug=school_slug))
+
+    promoted_students = Student.query.filter(
+        Student.school_id == school_id,
+        Student.academic_year == current_year,
+        Student.is_promoted == True,
+    ).all()
+
+    if not promoted_students:
+        flash('Aucun élève promu à annuler pour cette année.', 'info')
+        return redirect(url_for('admin.school_reset', school_slug=school_slug))
+
+    reverted_count = 0
+    not_found_count = 0
+
+    for student in promoted_students:
+        prev_student = Student.query.filter(
+            Student.school_id == school_id,
+            Student.first_name == student.first_name,
+            Student.last_name == student.last_name,
+            Student.academic_year == prev_year_name,
+        ).first()
+
+        if prev_student:
+            student.section_id = prev_student.section_id
+            student.academic_year = prev_year_name
+            student.is_promoted = False
+            reverted_count += 1
+        else:
+            not_found_count += 1
+
+    db.session.commit()
+
+    log_activity(
+        'reset_student_promotions',
+        f'Annulation des promotions : {reverted_count} élève(s) rétabli(s) vers {prev_year_name}.',
+        school_id=school_id,
+    )
+
+    msg = f'{reverted_count} élève(s) rétabli(s) dans l\'année {prev_year_name}.'
+    if not_found_count:
+        msg += f' {not_found_count} élève(s) non retrouvé(s) dans l\'année précédente.'
+    flash(msg, 'success')
+    return redirect(url_for('admin.school_reset', school_slug=school_slug))
 
 
 @admin_bp.route('/reset-course-assignments', methods=['POST'])
@@ -554,7 +790,7 @@ def attendance_daily_stats(school_slug=None):
 @login_required
 def attendance_class_list(school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
-    section_id = request.args.get('section_id', type=int)
+    section_id = decode_id_or_int(request.args.get('section_id'))
     attendance_day = parse_iso_date(request.args.get('date')) or date.today()
     section = db.session.get(Section, section_id)
     if not section or section.school_id != school_id:
@@ -579,7 +815,7 @@ def print_attendance_daily_stats(school_slug=None):
 @login_required
 def print_attendance_class_list(school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
-    section_id = request.args.get('section_id', type=int)
+    section_id = decode_id_or_int(request.args.get('section_id'))
     attendance_day = parse_iso_date(request.args.get('date')) or date.today()
     section = db.session.get(Section, section_id)
     if not section or section.school_id != school_id:
@@ -624,7 +860,7 @@ def save_attendance_holiday(school_slug=None):
     return jsonify({'success': True, 'holiday': holiday_payload(holiday)})
 
 
-@admin_bp.route('/api/attendance/holidays/<int:holiday_id>', methods=['DELETE', 'POST'])
+@admin_bp.route('/api/attendance/holidays/<oid:holiday_id>', methods=['DELETE', 'POST'])
 @login_required
 def delete_attendance_holiday(holiday_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
@@ -636,7 +872,7 @@ def delete_attendance_holiday(holiday_id, school_slug=None):
     return jsonify({'success': True})
 
 
-@admin_bp.route('/api/attendance/class/<int:section_id>', methods=['GET'])
+@admin_bp.route('/api/attendance/class/<oid:section_id>', methods=['GET'])
 @login_required
 def get_class_attendance(section_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
@@ -703,7 +939,7 @@ def get_class_attendance(section_id, school_slug=None):
     })
 
 
-@admin_bp.route('/api/attendance/class/<int:section_id>/save', methods=['POST'])
+@admin_bp.route('/api/attendance/class/<oid:section_id>/save', methods=['POST'])
 @login_required
 def save_class_attendance(section_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
@@ -807,15 +1043,6 @@ def save_class_attendance(section_id, school_slug=None):
     })
 
 
-@admin_bp.route('/exam-management')
-@login_required
-def exam_management(school_slug=None):
-    school_id = get_school_id_for_admin_context() or current_user.school_id
-    from models import Section
-    sections = Section.query.filter_by(school_id=school_id).all() if school_id else []
-    return render_template('admin/exam_management.html', sections=sections)
-
-
 @admin_bp.route('/payments', methods=['GET', 'POST'])
 @login_required
 def payments(school_slug=None):
@@ -829,12 +1056,13 @@ def payments(school_slug=None):
         amount = request.form.get('amount')
         payment_date_raw = request.form.get('payment_date')
         concept = request.form.get('concept')
-        if not student_id or not amount:
-            flash('Élève et montant obligatoires.', 'danger')
+        student = Student.query.filter_by(id=student_id, school_id=school_id).first() if student_id else None
+        if not student_id or not student or not amount:
+            flash('Élève invalide et montant obligatoires.', 'danger')
         else:
             payment = Payment(
                 school_id=school_id,
-                student_id=student_id,
+                student_id=student.id,
                 amount=amount,
                 payment_date=datetime.strptime(payment_date_raw, '%Y-%m-%d').date() if payment_date_raw else date.today(),
                 concept=concept,
@@ -872,7 +1100,7 @@ def audit_logs(school_slug=None):
 
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
-    user_filter = request.args.get('user_id', type=int)
+    user_filter = decode_id_or_int(request.args.get('user_id'))
     action_filter = request.args.get('action_type', '')
 
     today = now.strftime('%Y-%m-%d')
@@ -1065,7 +1293,7 @@ def communications(school_slug=None):
     school_id = get_school_id_for_admin_context()
 
     page = request.args.get('page', 1, type=int)
-    school_filter = request.args.get('school_id', type=int)
+    school_filter = decode_id_or_int(request.args.get('school_id'))
     type_filter = request.args.get('type', '')
 
     query = Notification.query

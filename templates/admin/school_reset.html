@@ -1,9 +1,7 @@
 {% extends 'base.html' %}
 
 
-
 {% block title %}Réinitialisations école{% endblock %}
-
 
 
 {% block content %}
@@ -32,6 +30,7 @@
 
 
 
+
   <div class="row gy-4">
 
     <div class="col-lg-12">
@@ -52,7 +51,9 @@
 
                   <p class="text-muted">Le mot de passe sera remis à <code>prof123</code> pour le professeur sélectionné.</p>
 
-                  <form method="post" action="{{ url_for('admin.reset_professor_password_form') }}" onsubmit="return confirm('Réinitialiser le mot de passe de ce professeur à prof123 ?');">
+                  <form method="post" action="{{ url_for('admin.reset_professor_password_form') }}" onsubmit="return Kalasi.confirmForm(this, 'Réinitialiser le mot de passe de ce professeur à prof123 ?');">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="mb-3">
 
@@ -84,6 +85,8 @@
 
 
 
+
+
             <div class="col-lg-8">
 
               <div class="row gy-4">
@@ -98,7 +101,9 @@
 
                       <p class="text-muted">Cette action supprime définitivement tous les élèves de la classe sélectionnée.</p>
 
-                      <form method="post" action="{{ url_for('admin.reset_student_class') }}" onsubmit="return confirm('Cette opération supprimera définitivement tous les élèves de cette classe. Continuer ?');">
+                      <form method="post" action="{{ url_for('admin.reset_student_class') }}" onsubmit="return Kalasi.confirmForm(this, 'Cette opération supprimera définitivement tous les élèves de cette classe. Continuer ?');">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <div class="mb-3">
 
@@ -154,6 +159,8 @@
 
 
 
+
+
                 <div class="col-lg-6">
 
                   <div class="card h-100 border-warning-subtle">
@@ -164,7 +171,9 @@
 
                       <p class="text-muted">Cette action supprime définitivement tous les élèves du niveau sélectionné.</p>
 
-                      <form method="post" action="{{ url_for('admin.reset_student_level') }}" onsubmit="return confirm('Cette opération supprimera définitivement tous les élèves du niveau sélectionné. Continuer ?');">
+                      <form method="post" action="{{ url_for('admin.reset_student_level') }}" onsubmit="return Kalasi.confirmForm(this, 'Cette opération supprimera définitivement tous les élèves du niveau sélectionné. Continuer ?');">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <div class="mb-3">
 
@@ -220,6 +229,8 @@
 
 
 
+
+
     <!-- Nouvelle section: Réinitialisation des Attributions des cours -->
 
     <div class="col-lg-12 mt-4">
@@ -252,7 +263,9 @@
 
                   </div>
 
-                  <form method="post" action="{{ url_for('admin.reset_course_assignments') }}" onsubmit="return confirm('Êtes-vous sûr de vouloir retirer les professeurs de TOUS les cours de l\'école ? Cette action est irréversible.');">
+                  <form method="post" action="{{ url_for('admin.reset_course_assignments') }}" onsubmit="return Kalasi.confirmForm(this, 'Êtes-vous sûr de vouloir retirer les professeurs de TOUS les cours de l\'école ? Cette action est irréversible.');">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <button type="submit" class="btn btn-danger w-100 mt-3">Réinitialiser toutes les attributions</button>
 
@@ -280,7 +293,9 @@
 
                   
 
-                  <form method="post" action="{{ url_for('admin.reset_section_course_assignments') }}" onsubmit="return confirm('Retirer les professeurs pour les cours de la section/classe sélectionnée ?');">
+                  <form method="post" action="{{ url_for('admin.reset_section_course_assignments') }}" onsubmit="return Kalasi.confirmForm(this, 'Retirer les professeurs pour les cours de la section/classe sélectionnée ?');">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="row g-3">
 
@@ -350,14 +365,68 @@
 
     </div>
 
+
+
+    <!-- Annulation des promotions -->
+    <div class="col-lg-12 mt-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h4 class="card-title text-info mb-3">Annuler la promotion des élèves</h4>
+          <p class="text-muted">
+            Rétablit les élèves promus pour l'année <strong>{{ current_year }}</strong> dans leur classe d'origine de l'année <strong>{{ prev_year_name or '—' }}</strong>.
+          </p>
+
+          {% if promoted_count > 0 %}
+            <div class="alert alert-warning">
+              <strong>{{ promoted_count }} élève(s) promu(s)</strong> seront rétabli(s) dans l'année {{ prev_year_name }}.
+            </div>
+
+            <div class="table-responsive mb-3" style="max-height: 300px; overflow-y: auto;">
+              <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>#</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th> Sexe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in promoted_students %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ s.last_name }}</td>
+                    <td>{{ s.first_name }}</td>
+                    <td>{{ 'M' if s.gender == 'M' else 'F' }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <form method="post" action="{{ url_for('admin.reset_student_promotions') }}"
+                  onsubmit="return Kalasi.confirmForm(this, 'Annuler la promotion de {{ promoted_count }} élève(s) ? Les élèves seront rétablis dans leur classe de l\\'année précédente.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-info w-100">Annuler la promotion des élèves</button>
+            </form>
+          {% else %}
+            <div class="alert alert-success mb-0">
+              Aucun élève promu pour l'année {{ current_year }}.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
 
 
-{% endblock %}
 
+
+{% endblock %}
 
 
 {% block scripts %}
@@ -365,130 +434,108 @@
   {{ super() }}
 
   <script>
+    // === School Reset JS - Auto-init on DOMContentLoaded ===
+    (function() {
+      'use strict';
 
-    const sectionsCatalog = {{ sections_catalog|tojson }};
+      // Data injected by Jinja
+      var sectionsCatalog = {{ sections_catalog|tojson }};
+      console.log('[SchoolReset] Catalog loaded:', sectionsCatalog?.length || 0, 'items');
 
+      // Element IDs
+      var ids = {
+        resetClassSection: 'resetClassSection',
+        resetClassLevel: 'resetClassLevel',
+        resetClassName: 'resetClassName',
+        resetLevelSection: 'resetLevelSection',
+        resetLevelLevel: 'resetLevelLevel',
+        assignSectionName: 'assignSectionName',
+        assignLevel: 'assignLevel',
+        assignClassName: 'assignClassName'
+      };
 
+      // Get elements safely
+      function $(id) { return document.getElementById(id); }
 
-    const resetClassSection = document.getElementById('resetClassSection');
-
-    const resetClassLevel = document.getElementById('resetClassLevel');
-
-    const resetClassName = document.getElementById('resetClassName');
-
-    const resetLevelSection = document.getElementById('resetLevelSection');
-
-    const resetLevelLevel = document.getElementById('resetLevelLevel');
-
-
-
-    const assignSectionName = document.getElementById('assignSectionName');
-
-    const assignLevel = document.getElementById('assignLevel');
-
-    const assignClassName = document.getElementById('assignClassName');
-
-
-
-    function populateSelect(selectElement, placeholder, items) {
-
-      selectElement.innerHTML = `<option value="">${placeholder}</option>`;
-
-      for (const item of items) {
-
-        const option = document.createElement('option');
-
-        option.value = item;
-
-        option.textContent = item;
-
-        selectElement.appendChild(option);
-
+      function populateSelect(sel, placeholder, items) {
+        if (!sel) return;
+        sel.innerHTML = '<option value="">' + placeholder + '</option>';
+        items.forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item;
+          opt.textContent = item;
+          sel.appendChild(opt);
+        });
+        sel.disabled = items.length === 0;
       }
 
-      selectElement.disabled = items.length === 0;
+      function norm(v) { return (v || '').trim(); }
 
-    }
+      function getLevels(sectionName) {
+        var n = norm(sectionName);
+        var levels = [];
+        var seen = {};
+        sectionsCatalog.forEach(function(s) {
+          if (norm(s.name) === n && s.level) {
+            var lv = norm(s.level);
+            if (!seen[lv]) { seen[lv] = true; levels.push(lv); }
+          }
+        });
+        return levels.sort();
+      }
 
+      function getClasses(sectionName, levelName) {
+        var ns = norm(sectionName), nl = norm(levelName);
+        var classes = [];
+        var seen = {};
+        sectionsCatalog.forEach(function(s) {
+          if (norm(s.name) === ns && norm(s.level) === nl && s.class_name) {
+            var cl = norm(s.class_name);
+            if (!seen[cl]) { seen[cl] = true; classes.push(cl); }
+          }
+        });
+        return classes.sort();
+      }
 
+      function wire(sectionId, levelId, classId, classPlaceholder) {
+        var sectionSel = $(sectionId);
+        var levelSel = $(levelId);
+        var classSel = classId ? $(classId) : null;
 
-    function getLevelsForSection(sectionName) {
-
-      return [...new Set(sectionsCatalog.filter(s => s.name === sectionName).map(s => s.level))].filter(Boolean).sort();
-
-    }
-
-
-
-    function getClassesForSectionAndLevel(sectionName, levelName) {
-
-      return [...new Set(sectionsCatalog
-
-        .filter(s => s.name === sectionName && s.level === levelName)
-
-        .map(s => s.class_name))]
-
-        .filter(Boolean)
-
-        .sort();
-
-    }
-
-
-
-    function wireHierarchy(sectionSelect, levelSelect, classSelect, classPlaceholder = 'Choisir une classe') {
-
-      if (!sectionSelect) return;
-
-
-
-      sectionSelect.addEventListener('change', () => {
-
-        const sectionName = sectionSelect.value;
-
-        const levels = sectionName ? getLevelsForSection(sectionName) : [];
-
-        populateSelect(levelSelect, 'Choisir un niveau', levels);
-
-        if (classSelect) {
-
-          populateSelect(classSelect, classPlaceholder, []);
-
+        if (!sectionSel || !levelSel) {
+          console.warn('[SchoolReset] Missing elements:', sectionId, levelId);
+          return;
         }
 
-      });
+        console.log('[SchoolReset] Wiring:', sectionId, '->', levelId, classId ? '->' + classId : '');
 
-
-
-      if (levelSelect) {
-
-        levelSelect.addEventListener('change', () => {
-
-          if (!classSelect) return;
-
-          const sectionName = sectionSelect.value;
-
-          const levelName = levelSelect.value;
-
-          const classes = (sectionName && levelName) ? getClassesForSectionAndLevel(sectionName, levelName) : [];
-
-          populateSelect(classSelect, classPlaceholder, classes);
-
+        sectionSel.addEventListener('change', function() {
+          var val = sectionSel.value;
+          console.log('[SchoolReset] Section changed:', val);
+          var levels = val ? getLevels(val) : [];
+          populateSelect(levelSel, 'Choisir un niveau', levels);
+          if (classSel) populateSelect(classSel, classPlaceholder || 'Choisir une classe', []);
         });
 
+        levelSel.addEventListener('change', function() {
+          if (!classSel) return;
+          var sVal = sectionSel.value;
+          var lVal = levelSel.value;
+          console.log('[SchoolReset] Level changed:', lVal, 'for section:', sVal);
+          var classes = (sVal && lVal) ? getClasses(sVal, lVal) : [];
+          populateSelect(classSel, classPlaceholder || 'Choisir une classe', classes);
+        });
       }
 
-    }
-
-
-
-    wireHierarchy(resetClassSection, resetClassLevel, resetClassName);
-
-    wireHierarchy(resetLevelSection, resetLevelLevel, null);
-
-    wireHierarchy(assignSectionName, assignLevel, assignClassName, 'Toutes les classes');
-
+      // Init when DOM ready
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('[SchoolReset] DOM ready, initializing...');
+        wire(ids.resetClassSection, ids.resetClassLevel, ids.resetClassName);
+        wire(ids.resetLevelSection, ids.resetLevelLevel, null);
+        wire(ids.assignSectionName, ids.assignLevel, ids.assignClassName, 'Toutes les classes');
+        console.log('[SchoolReset] Initialized');
+      });
+    })();
   </script>
 
 {% endblock %}
-

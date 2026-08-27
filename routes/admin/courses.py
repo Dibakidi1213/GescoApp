@@ -3,10 +3,11 @@ from io import BytesIO
 from flask import render_template, request, redirect, url_for, flash, send_file, jsonify, session, g
 from flask_login import login_required, current_user
 
-from models import BulletinBranch, BulletinConfig, Course, School, Section, User, db
+from models import AttendanceRecord, BulletinBranch, Course, School, Section, User, db, user_schools
 from routes.admin.helpers import get_school_id_for_admin_context
 from routes.admin.services import _get_bulletin_config_for_section, _serialize_branches
 from routes.admin import admin_bp
+from url_utils import encode_id, decode_id_or_int
 
 try:
     import openpyxl
@@ -15,10 +16,32 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 
+def _school_professor_ids(school_id):
+    """IDs des professeurs de l'école : école d'attache + professeurs explicitement liés."""
+    if not school_id:
+        return []
+    linked_ids = [
+        row[0] for row in db.session.query(user_schools.c.user_id)
+        .filter(user_schools.c.school_id == school_id).all()
+    ]
+    return linked_ids
+
+
+def _school_professors_query(school_id):
+    """Requête des professeurs de l'école (attache + liés)."""
+    linked_ids = _school_professor_ids(school_id)
+    return User.query.filter(
+        User.role == 'professor',
+        db.or_(User.school_id == school_id, User.id.in_(linked_ids)),
+    ).order_by(User.full_name)
+
+
 def _build_sections_payload(sections):
+    from url_utils import encode_id
     return [
         {
             'id': section.id,
+            'token': encode_id(section.id),
             'name': section.name,
             'level': section.level,
             'class_name': section.class_name,
@@ -50,7 +73,7 @@ def _build_sorted_grouped(courses_list):
 @login_required
 def courses(school_slug=None):
     schools = []
-    selected_school_id = request.args.get('school_id', type=int)
+    selected_school_id = decode_id_or_int(request.args.get('school_id'))
 
     if current_user.is_super_admin() and not getattr(g, 'school_slug', None):
         schools = School.query.order_by(School.name).all()
@@ -77,54 +100,75 @@ def courses(school_slug=None):
             return redirect(url_for('admin.courses', school_slug=school_slug))
 
         section_id = request.form.get('section_id', type=int)
+        target_ids_raw = request.form.getlist('target_section_ids')
+        target_section_ids = [int(tid) for tid in target_ids_raw if tid.isdigit()]
+
+        if not target_section_ids and section_id:
+            target_section_ids = [section_id]
+
         titles_raw = request.form.getlist('titles[]')
         professor_id = request.form.get('professor_id', type=int)
 
-        if not section_id or not titles_raw:
-            flash('La section et au moins un intitulé du cours sont obligatoires.', 'danger')
+        professor = User.query.filter_by(id=professor_id, school_id=effective_school_id).first() if professor_id else None
+
+        if not target_section_ids or not titles_raw:
+            flash('Au moins une classe et un intitulé de cours sont obligatoires.', 'danger')
+            return redirect(url_for('admin.courses', school_slug=school_slug, add=1, section_id=encode_id(section_id)))
         else:
             added_count = 0
-            for raw_val in titles_raw:
-                if not raw_val:
+            skipped_count = 0
+            for tid in target_section_ids:
+                target_section = Section.query.filter_by(id=tid, school_id=effective_school_id).first()
+                if not target_section:
                     continue
-                parts = raw_val.split('|', 1)
-                if len(parts) == 2:
-                    branch_id_str, title = parts
-                    branch_id = int(branch_id_str) if branch_id_str.isdigit() else None
-                else:
-                    branch_id = None
-                    title = raw_val
-                
-                title = title.strip()
-                if title:
-                    existing = Course.query.filter_by(
-                        school_id=effective_school_id,
-                        section_id=section_id,
-                        title=title
-                    ).first()
-                    
-                    if existing:
-                        prof_name = existing.professor.full_name if existing.professor else "Aucun"
-                        flash(f"Le cours '{title}' est déjà attribué au professeur '{prof_name}' dans cette classe.", 'danger')
+                for raw_val in titles_raw:
+                    if not raw_val:
                         continue
+                    parts = raw_val.split('|', 1)
+                    if len(parts) == 2:
+                        branch_id_str, title = parts
+                        branch_id = int(branch_id_str) if branch_id_str.isdigit() else None
+                    else:
+                        branch_id = None
+                        title = raw_val
+                    
+                    title = title.strip()
+                    if title:
+                        existing = Course.query.filter_by(
+                            school_id=effective_school_id,
+                            section_id=target_section.id,
+                            title=title
+                        ).first()
+                        
+                        if existing:
+                            skipped_count += 1
+                            continue
 
-                    course = Course(
-                        school_id=effective_school_id,
-                        section_id=section_id,
-                        title=title,
-                        professor_id=professor_id,
-                        branch_id=branch_id or None,
-                    )
-                    db.session.add(course)
-                    added_count += 1
+                        course = Course(
+                            school_id=effective_school_id,
+                            section_id=target_section.id,
+                            title=title,
+                            professor_id=professor.id if professor else None,
+                            branch_id=branch_id or None,
+                        )
+                        db.session.add(course)
+                        added_count += 1
             if added_count > 0:
                 db.session.commit()
-                flash(f'{added_count} cours créé(s) avec succès.', 'success')
+                msg = f'{added_count} cours créé(s) avec succès.'
+                if len(target_section_ids) > 1:
+                    msg += f' ({len(target_section_ids)} classes)'
+                if skipped_count > 0:
+                    msg += f' {skipped_count} doublon(s) ignoré(s).'
+                flash(msg, 'success')
             else:
-                flash('Aucun cours valide n\'a été soumis.', 'warning')
-        return redirect(url_for('admin.courses', school_slug=school_slug))
+                if skipped_count > 0:
+                    flash(f'{skipped_count} doublon(s) ignoré(s). Aucun cours ajouté.', 'warning')
+                else:
+                    flash('Aucun cours valide n\'a été soumis.', 'warning')
+        return redirect(url_for('admin.courses', school_slug=school_slug, add=1, section_id=encode_id(section_id)))
 
-    filter_section_id = request.args.get('filter_section_id', type=int)
+    filter_section_id = decode_id_or_int(request.args.get('filter_section_id'))
 
     if effective_school_id:
         sections = Section.query.filter_by(school_id=effective_school_id).order_by(
@@ -136,9 +180,7 @@ def courses(school_slug=None):
             query = query.filter_by(section_id=filter_section_id)
         courses_list = query.order_by(Course.title).all()
         
-        professors = User.query.filter_by(school_id=effective_school_id, role='professor').order_by(
-            User.full_name
-        ).all()
+        professors = _school_professors_query(effective_school_id).all()
     else:
         sections = []
         query = Course.query
@@ -147,7 +189,7 @@ def courses(school_slug=None):
         courses_list = query.order_by(Course.title).all()
         professors = []
 
-    selected_section_id = request.args.get('section_id', type=int)
+    selected_section_id = decode_id_or_int(request.args.get('section_id'))
     selected_section = None
     initial_branch_options = []
     if selected_section_id and effective_school_id:
@@ -186,18 +228,32 @@ def courses(school_slug=None):
     )
 
 
-@admin_bp.route('/courses/<int:course_id>/edit', methods=['GET', 'POST'])
+@admin_bp.route('/courses/<oid:course_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_course(course_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
     course = Course.query.filter_by(id=course_id, school_id=school_id).first_or_404()
     sections = Section.query.filter_by(school_id=school_id).order_by(Section.name, Section.level, Section.class_name).all()
-    professors = User.query.filter_by(school_id=school_id, role='professor').order_by(User.full_name).all()
+    professors = _school_professors_query(school_id).all()
 
     if request.method == 'POST':
         course.title = request.form.get('title') or course.title
-        course.section_id = request.form.get('section_id', type=int) or course.section_id
-        course.professor_id = request.form.get('professor_id', type=int)
+        new_section_id = request.form.get('section_id', type=int)
+        if new_section_id:
+            new_section = Section.query.filter_by(id=new_section_id, school_id=school_id).first()
+            if not new_section:
+                flash('Classe invalide.', 'danger')
+                return redirect(url_for('admin.edit_course', course_id=course.id, school_slug=school_slug))
+            course.section_id = new_section.id
+        new_professor_id = request.form.get('professor_id', type=int)
+        if new_professor_id:
+            new_professor = User.query.filter_by(id=new_professor_id, school_id=school_id).first()
+            if not new_professor:
+                flash('Professeur invalide.', 'danger')
+                return redirect(url_for('admin.edit_course', course_id=course.id, school_slug=school_slug))
+            course.professor_id = new_professor.id
+        elif new_professor_id == 0:
+            course.professor_id = None
         course.branch_id = request.form.get('branch_id', type=int)
         db.session.commit()
         flash('Cours mis à jour.', 'success')
@@ -206,11 +262,15 @@ def edit_course(course_id, school_slug=None):
     return render_template('admin/edit_course.html', course=course, sections=sections, professors=professors)
 
 
-@admin_bp.route('/courses/<int:course_id>/delete', methods=['POST'])
+@admin_bp.route('/courses/<oid:course_id>/delete', methods=['POST'])
 @login_required
 def delete_course(course_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
     course = Course.query.filter_by(id=course_id, school_id=school_id).first_or_404()
+
+    # Supprimer les présences liées avant le cours (course_id NOT NULL)
+    AttendanceRecord.query.filter_by(course_id=course.id).delete(synchronize_session=False)
+
     db.session.delete(course)
     db.session.commit()
     flash('Cours supprimé.', 'success')
@@ -239,7 +299,7 @@ def download_courses_template(school_slug=None):
     )
 
 
-@admin_bp.route('/api/courses/bulletin-branches/<int:section_id>')
+@admin_bp.route('/api/courses/bulletin-branches/<oid:section_id>')
 @login_required
 def api_courses_bulletin_branches(section_id, school_slug=None):
     school_id = get_school_id_for_admin_context() or current_user.school_id
@@ -287,10 +347,10 @@ def api_assign_courses_bulk(school_slug=None):
     if not course_ids or not isinstance(course_ids, list):
         return jsonify({'success': False, 'error': 'course_ids list required'}), 400
     
-    # Validate professor exists if provided
+    # Validate professor exists if provided (professeur de l'école uniquement)
     if professor_id:
-        professor = User.query.filter_by(id=professor_id, school_id=school_id, role='professor').first()
-        if not professor:
+        professor = User.query.filter_by(id=professor_id, role='professor').first()
+        if not professor or professor.id not in _school_professor_ids(school_id) and professor.school_id != school_id:
             return jsonify({'success': False, 'error': 'Professor not found'}), 404
     else:
         professor_id = None

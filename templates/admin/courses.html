@@ -8,151 +8,7 @@
 
   <!-- SIDEBAR NAVIGATION -->
 
-  <aside class="sidebar-ista">
-
-    <!-- Principal -->
-
-    <div class="sidebar-group">
-
-      <h6 class="sidebar-ista-group-title">Principal</h6>
-
-      <ul>
-
-        <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-chart-line"></i>
-
-          <span>Tableau de Bord</span>
-
-        </a></li>
-
-      </ul>
-
-    </div>
-
-
-
-    <!-- Gestion Académique -->
-
-    <div class="sidebar-group">
-
-      <h6 class="sidebar-ista-group-title">Gestion Académique</h6>
-
-      <ul>
-
-        <li><a href="{{ url_for('admin.students') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-users"></i>
-
-          <span>Inscription élèves</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.sections') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-layer-group"></i>
-
-          <span>Sections/Niveaux/Classes</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.courses') }}" class="sidebar-ista-link active">
-
-          <i class="fas fa-book"></i>
-
-          <span>Cours/Attributions</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.professors') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-chalkboard-user"></i>
-
-          <span>Professeurs</span>
-
-        </a></li>
-
-      </ul>
-
-    </div>
-
-
-
-    <!-- Évaluations -->
-
-    <div class="sidebar-group">
-
-      <h6 class="sidebar-ista-group-title">Évaluations</h6>
-
-      <ul>
-
-        <li><a href="{{ url_for('admin.grades_management') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-star"></i>
-
-          <span>Gestion des cotes</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.bulletins_config') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-file-pdf"></i>
-
-          <span>Paramétrage Bulletins</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.deliberation_execute') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-balance-scale"></i>
-
-          <span>Délibération</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.deliberation_config') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-sliders-h"></i>
-
-          <span>Paramètres Délibération</span>
-
-        </a></li>
-
-      </ul>
-
-    </div>
-
-
-
-    <!-- Configuration -->
-
-    <div class="sidebar-group">
-
-      <h6 class="sidebar-ista-group-title">Configuration</h6>
-
-      <ul>
-
-        <li><a href="{{ url_for('admin.edit_school', school_id=session.get('school_id', 1)) }}" class="sidebar-ista-link">
-
-          <i class="fas fa-cog"></i>
-
-          <span>Paramètres école</span>
-
-        </a></li>
-
-        <li><a href="{{ url_for('admin.users') }}" class="sidebar-ista-link">
-
-          <i class="fas fa-user-shield"></i>
-
-          <span>Utilisateurs</span>
-
-        </a></li>
-
-      </ul>
-
-    </div>
-
-  </aside>
+  
 
 
 
@@ -248,7 +104,7 @@
 
               {% for school in schools %}
 
-              <option value="{{ school.id }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
+              <option value="{{ oid(school.id) }}" {% if selected_school_id and selected_school_id == school.id %}selected{% endif %}>
 
                 {{ school.name }}
 
@@ -288,7 +144,7 @@
 
             {% if selected_school_id %}
 
-            <input type="hidden" name="school_id" value="{{ selected_school_id }}">
+            <input type="hidden" name="school_id" value="{{ oid(selected_school_id) }}">
 
             {% endif %}
 
@@ -304,9 +160,9 @@
 
               {% for section in sections %}
 
-              <option value="{{ section.id }}" {% if filter_section_id and filter_section_id == section.id %}selected{% endif %}>
+              <option value="{{ oid(section.id) }}" {% if filter_section_id and filter_section_id == section.id %}selected{% endif %}>
 
-                {{ section.name }}
+                {{ class_denomination(section) }}
 
               </option>
 
@@ -536,6 +392,8 @@
 
           <form method="post" class="needs-validation" novalidate>
 
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div class="form-sections">
 
               {% if schools %}
@@ -660,7 +518,7 @@
 
                     </select>
 
-                    <input type="hidden" name="section_id" id="section_id" value="{{ selected_section_id or '' }}" required>
+                    <input type="hidden" name="section_id" id="section_id" value="{{ selected_section_id or '' }}">
 
                     <div class="invalid-feedback">
 
@@ -760,6 +618,22 @@
 
                 </div>
 
+                <div class="row g-3 mt-2">
+                  <div class="col-12">
+                    <label class="form-label fw-bold">
+                      <i class="fas fa-layer-group"></i> Appliquer à ces classes <span class="text-muted">(optionnel — si aucune sélection, applique à la classe ci-dessus)</span>
+                    </label>
+                    <select name="target_section_ids" id="target_section_ids" class="form-select" multiple size="5">
+                      {% for section in sections %}
+                      <option value="{{ section.id }}">
+                        {{ class_denomination(section) }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                    <small class="text-muted">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs classes. Les mêmes cours et professeur seront attribués à toutes les classes sélectionnées.</small>
+                  </div>
+                </div>
+
               </div>
 
             </div>
@@ -800,6 +674,8 @@
 
           <form method="post" id="course-import-form" enctype="multipart/form-data">
 
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div class="form-sections">
 
               <!-- Import Information -->
@@ -824,7 +700,7 @@
 
                     <div class="input-group">
 
-                      <input type="file" name="import_file" id="import_file" class="form-control" accept=".xlsx,.xls" required>
+                      <input type="file" name="import_file" id="import_file" class="form-control" accept=".xlsx,.xls" required disabled title="Bientôt disponible">
 
                       <a href="{{ url_for('admin.download_courses_template') }}" class="btn btn-outline-secondary" title="Télécharger le template">
 
@@ -868,11 +744,11 @@
 
             <div class="form-actions">
 
-              <button type="submit" id="course-import-button" class="btn btn-primary-modern w-100">
+              <button type="submit" id="course-import-button" class="btn btn-primary-modern w-100" disabled title="Bientôt disponible">
 
                 <i class="fas fa-upload"></i>
 
-                <span id="course-import-button-text">Importer les cours</span>
+                <span id="course-import-button-text">Importer les cours — bientôt disponible</span>
 
                 <span id="course-import-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
 
@@ -883,6 +759,14 @@
           </form>
 
         </div>
+
+      </div>
+
+      <div class="alert alert-warning alert-modern mt-3">
+
+        <i class="fas fa-hourglass-half"></i>
+
+        <div>L'import des cours depuis Excel sera disponible prochainement. Utilisez le formulaire « Ajouter un cours » pour créer vos cours individuellement.</div>
 
       </div>
 
@@ -957,6 +841,8 @@
         <button type="button" class="btn-ista-secondary" data-bs-dismiss="modal">Annuler</button>
 
         <form method="post" action="{{ url_for('admin.delete_course', course_id=course.id) }}" style="display: inline;">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
           <button type="submit" class="btn btn-danger">
 
@@ -1274,6 +1160,158 @@
 
 
 
+  /* ===== DARK MODE: overrides spécifiques à la page cours ===== */
+
+  [data-theme="dark"] .section-courses-group {
+
+    background: var(--bg-card) !important;
+
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45) !important;
+
+  }
+
+
+[data-theme="dark"] .table {
+  color: var(--text-primary) !important;
+  background-color: transparent !important;
+}
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+  color: var(--text-primary) !important;
+  background-color: transparent !important;
+  border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .table tbody tr:hover {
+  background-color: var(--bg-table-hover) !important;
+}
+
+
+  [data-theme="dark"] .section-title {
+
+    color: var(--text-primary) !important;
+
+    border-bottom-color: var(--border-color) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .section-title i {
+
+    color: var(--ista-blue) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .table thead {
+
+    background-color: var(--bg-card-header) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .table thead th {
+
+    color: var(--text-primary) !important;
+
+    border-bottom-color: var(--border-color) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .table tbody td {
+
+    color: var(--text-primary) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .table tbody tr:hover {
+
+    background-color: var(--bg-table-hover) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .filter-panel {
+
+    background: var(--bg-card) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .card-ista {
+
+    background: var(--bg-card) !important;
+
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .form-section {
+
+    border-bottom-color: var(--border-color) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .section-header h6 {
+
+    color: var(--text-primary) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .section-header i {
+
+    color: var(--ista-blue) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .alert-modern {
+
+    background: var(--bg-card-header) !important;
+
+    border-left-color: var(--ista-blue) !important;
+
+    color: var(--text-secondary) !important;
+
+  }
+
+
+
+  [data-theme="dark"] .badge.bg-info {
+
+    background-color: #0e7490 !important;
+
+    color: #ecfeff !important;
+
+  }
+
+
+
+  [data-theme="dark"] .badge.bg-secondary {
+
+    background-color: #3f3f46 !important;
+
+    color: #d4d4d8 !important;
+
+  }
+
+
+
   @media (max-width: 768px) {
 
     .filter-select {
@@ -1418,6 +1456,8 @@
 
       id: section.id,
 
+      token: section.token || '',
+
       name: normalizeValue(section.name),
 
       level: normalizeValue(section.level),
@@ -1521,6 +1561,8 @@
       );
 
       sectionIdInput.value = section ? section.id : '';
+
+      sectionIdInput.dataset.token = section ? section.token : '';
 
       sectionIdInput.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -1714,9 +1756,13 @@
 
 
 
+    function selectedSectionToken() {
+      return sectionSelect.dataset.token || '';
+    }
+
     sectionSelect.addEventListener('change', () => {
 
-      loadBranchOptions(sectionSelect.value);
+      loadBranchOptions(selectedSectionToken());
 
     });
 
@@ -1728,7 +1774,7 @@
 
     } else if (sectionSelect.value) {
 
-      loadBranchOptions(sectionSelect.value);
+      loadBranchOptions(selectedSectionToken());
 
     } else {
 
