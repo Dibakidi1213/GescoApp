@@ -97,8 +97,12 @@ def _save_bulletin_config_data(school_id, section, level, branches_data, year, i
     
     branch_ids = [b.id for b in BulletinBranch.query.filter_by(config_id=config.id).all()]
     if branch_ids:
-        Course.query.filter(Course.branch_id.in_(branch_ids)).update({Course.branch_id: None}, synchronize_session=False)
-    BulletinBranch.query.filter_by(config_id=config.id).delete()
+        db.session.execute(
+            db.text("UPDATE courses SET branch_id = NULL WHERE branch_id IN :ids"),
+            {"ids": tuple(branch_ids)},
+        )
+        db.session.flush()
+    BulletinBranch.query.filter_by(config_id=config.id).delete(synchronize_session=False)
 
     for index, branch_data in enumerate(branches_data):
         branch_type = branch_data.get('type', 'branch')
