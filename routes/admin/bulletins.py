@@ -8,6 +8,7 @@ from sqlalchemy import text
 from models import (
     BulletinBranch,
     BulletinConfig,
+    Course,
     School,
     Section,
     db,
@@ -94,6 +95,9 @@ def _save_bulletin_config_data(school_id, section, level, branches_data, year, i
         config.validated_at = None
         config.validated_by_user_id = None
     
+    branch_ids = [b.id for b in BulletinBranch.query.filter_by(config_id=config.id).all()]
+    if branch_ids:
+        Course.query.filter(Course.branch_id.in_(branch_ids)).update({Course.branch_id: None}, synchronize_session=False)
     BulletinBranch.query.filter_by(config_id=config.id).delete()
 
     for index, branch_data in enumerate(branches_data):
